@@ -1,5 +1,24 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-16] [MODERATION-ORPHANS-001] Сироты в очереди модерации после hard-delete
+- **Статус:** ✅ Исправлено (чистка прода + фикс в purge-коде)
+- **Что случилось:** при чистке прод-базы в очереди модерации остались 3 OPEN-кейса
+  (46b25cdd, dfbbaaca, 61fee013) на уже удалённые сущности. Root cause:
+  `ModerationCase/ModerationAction.entityId` — строка БЕЗ FK (schema.prisma:1289-1324),
+  каскады user-purge их не зацепили. APPROVE/REJECT по сироте падает P2025
+  (take-action.use-case.ts:90-101 — store.update по несуществующему id).
+- **Что сделано:** 3 кейса удалены через DELETE /admin/db/tables/moderation_cases/:id (все 200);
+  в admin-purge-user.use-case.ts и новый purge-store-subtree.ts добавлена ручная чистка
+  moderation-таблиц по entityId (user/seller/store/productIds) внутри транзакции.
+
+## [2026-07-16] [ADMIN-STORES-COUNT-SOFT-DELETED-001] Счётчик товаров в /stores включал soft-deleted
+- **Статус:** ✅ Исправлено (код), ждёт деплой api
+- **Что случилось:** admin force-delete товара — это SOFT delete (products.repository.ts:366-370,
+  deletedAt), а `_count.products` в findStores считал все строки → список магазинов показывал
+  «удалённые» товары в колонке ТОВАРЫ.
+- **Что сделано:** admin.repository.ts findStores: `_count.products` с фильтром
+  `{ where: { deletedAt: null } }` + комментарий с ID бага.
+
 ## [2026-07-14] [ADMIN-VENDOR-CHUNK-CRASH-001] Прод-админка чёрный экран после деплоя ef9f482
 - **Статус:** ✅ Исправлено (vite.config admin, hotfix)
 - **Что случилось:** после сегодняшнего деплоя admin (purge-кнопка + подтянутый main c lockfile-

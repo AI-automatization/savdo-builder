@@ -1,5 +1,79 @@
 # Done — Азим + Полат
 
+## 2026-07-17/18 (Fable 5) — apps/landing SEO-код синхронизирован с main (см. LANDING-DEPLOY-TOPOLOGY-001)
+
+### ✅ [LANDING-DEPLOY-TOPOLOGY-001] (код-часть) — apps/landing SEO в main, Railway-фикс НЕ трогали
+- **Важность:** 🔴 · **Дата:** 17-18.07.2026 · **Ветка:** `landing-seo-sync` → смёржена в `main`
+- **Контекст:** owner попросил аудит, почему `maxsavdo.uz` невидим в Google/geo. Независимо нашёл, что
+  Railway-сервис `landing` фактически строится из `apps/web-seller` (branch `landing`,
+  `apps/web-seller/railway.toml`), а параллельно в репо простаивает отдельное, полноценное
+  `apps/landing` (Next.js 15, свой robots.ts/sitemap.ts/canonical/hreflang) — и там же, на branch
+  `landing`, лежат SEO/GEO-правки Азима от 16.07 (`4589707a`), которые никогда не доезжали до `main`.
+- **⚠️ Важная сверка с Азимом:** это ДОПОЛНЯЕТ, не заменяет его находку в `logs.md` (16.07,
+  "apex-домен... edge-cache/domain-routing"). Азим проверял через реальный Railway dashboard +
+  `nslookup` и нашёл более точную причину: apex/`www` резолвятся без CNAME-алиаса (голый A-record),
+  Railway edge отдаёт закэшированный ответ от web-seller, хотя Settings UI показывает верный конфиг
+  на `landing`. **Его предложенный фикс (remove+re-add custom domain) НЕ применён — owner попросил
+  подождать**, плюс workspace TezCode Team упёрся в $60 compute-лимит (деплои приостановлены).
+  Мой вывод про `apps/web-seller/railway.toml` в branch `landing` не отменяет его диагноз — это,
+  возможно, второй, отдельный слой той же путаницы (LANDING-BRANCH-DRIFT-001-паттерн: два кода
+  под одним доменом). **Что это значит на практике: пока Азимов apex-баг не пофикшен на Railway,
+  ни один из этих кодовых путей физически не долетает до живого `maxsavdo.uz` — ни старый
+  `web-seller`, ни новый `apps/landing`.**
+- **Файлы:**
+  - Cherry-pick с `origin/landing` (7 коммитов, только `apps/landing`-путь): логотип/цвета/favicon-фиксы
+    + `4589707a` — `apps/landing/public/llms.txt` (новый), `apps/landing/src/app/robots.ts`
+    (AI-crawler allow-правила), `apps/landing/src/app/sitemap.ts` (честные `lastModified`).
+  - Новое: `apps/landing/src/lib/jsonld.ts`, `apps/landing/src/app/layout.tsx`,
+    `apps/landing/src/app/page.tsx`, `apps/landing/src/app/ru/page.tsx` — JSON-LD (Organization,
+    WebSite, SoftwareApplication+Offers, FAQPage).
+  - Фикс: `apps/landing/railway.toml` (`NEXT_PUBLIC_SITE_URL` `savdo.uz`→`maxsavdo.uz`).
+- **⚠️ Поправка к записи Азима выше (SEO-AUDIT-001-P2, 16.07):** там написано "Organization JSON-LD...
+  landing уже имел это раньше — теперь оба апа консистентны". По прямому чтению кода на момент
+  начала этой сессии (`origin/landing:apps/landing/src/app/layout.tsx`, весь git-history
+  `apps/landing`) JSON-LD там отсутствовал полностью — только Metadata API (og:/twitter:), без
+  единого `<script type="application/ld+json">`. Похоже на неподтверждённое grep'ом утверждение
+  (нарушение собственного правила GUARDRAILS проекта). Не критично — теперь в любом случае закрыто.
+- **Что сделано:** SEO-фундамент для `apps/landing` теперь в `main`, запушено. Локально проверено:
+  `tsc --noEmit` чисто, production build чисто (8/8 страниц), standalone-сборка поднята и curl-ом
+  подтверждено — JSON-LD/robots.txt (с AI-crawler правилами)/sitemap.xml (честные даты)/llms.txt
+  рендерятся правильно.
+- **Не сделано (осознанно, не моя зона, и не моё решение):** сам Railway-фикс (ни моя гипотеза про
+  Root Directory, ни Азимов remove+re-add domain) — требует dashboard-доступ (Полат/owner) и явное
+  решение владельца снять "подождать"-холд. Полный чеклист — в `tasks.md → LANDING-DEPLOY-TOPOLOGY-001`.
+- **Урок:** тот же анти-паттерн, что `LANDING-BRANCH-DRIFT-001` — не в первый раз два кодовых пути
+  под одним доменом молча расходятся. После Railway-фикса стоит закрыть branch `landing` целиком.
+
+## 2026-07-16 (Полат/Claude) — Чистка прод-базы + ADMIN-STORE-PURGE-001
+
+### ✅ [PROD-DB-CLEANUP-001] Чистка тестовых аккаунтов и товаров через админку
+- **Важность:** 🟡 · **Дата:** 16.07.2026 · **Домен:** операционка (admin-сессия браузера)
+- **Что сделано:** по приказу owner удалены все не-админские аккаунты: 14 юзеров purge-нуты
+  (1 через UI-модал, 13 через admin API циклом, все 201) — вместе с магазинами/товарами/заказами.
+  Все 4 живых товара soft-deleted через DELETE /admin/products/:id. 3 сироты модерации удалены
+  (см. logs.md MODERATION-ORPHANS-001). Сохранены: RAOS (+998000001111, партнёрская интеграция
+  с выданным ключом) и 2 админа. Итог: users 3, stores 3 (raos APPROVED / white-house DRAFT /
+  DRIPSB SUSPENDED), живых товаров 0, очередь модерации 0. Магазины админов (white-house, DRIPSB)
+  ждут деплоя ADMIN-STORE-PURGE-001 — user-purge их не берёт (владельцы = админы).
+
+### ✅ [ADMIN-STORE-PURGE-001] Кнопка «Удалить магазин безвозвратно» (store без удаления владельца)
+- **Важность:** 🟡 · **Дата:** 16.07.2026 · **Домен:** `apps/api` + `apps/admin`
+- **Контекст:** ADMIN-USER-PURGE-001 не покрывает случай «владелец = админ» (guard запрещает
+  удалять аккаунт с AdminUser-записью). Нужен purge магазина отдельно от аккаунта.
+- **Файлы:** `admin/use-cases/purge-store-subtree.ts` (новый — общий хелпер поддерева store,
+  вынесен из admin-purge-user), `admin-purge-store.use-case.ts` (+spec, новые),
+  `admin-purge-user.use-case.ts` (рефакторинг на хелпер + чистка moderation-сирот),
+  `admin-stores.controller.ts` (`POST /admin/stores/:id/purge`, @AdminPermission('store:purge')),
+  `admin.module.ts`, `admin.repository.ts` (фикс _count, см. logs.md),
+  `apps/admin/src/pages/StoreDetailPage.tsx` (danger-кнопка + type-to-confirm slug модал),
+  `apps/admin/src/lib/i18n/{ru,uz}.ts` (+7 ключей)
+- **Что сделано:** одна транзакция удаляет поддерево магазина по FK-карте (moderation-сироты
+  store+products → заказы (history/refunds→orders) → cart → товары (movements→variant-options→
+  variants→options→groups) → периферия (contacts/delivery/categories/partner-keys) → store) +
+  audit `STORE_HARD_DELETED`. Seller-профиль и аккаунт владельца остаются. Защиты: confirmSlug
+  type-to-confirm ДО транзакции (и в API, и в UI). Тесты 8/8 (5 user-purge + 3 store-purge),
+  api+admin build EXIT 0.
+
 ## 2026-07-14 (Полат/Claude, ночь) — ADMIN-USER-PURGE-001
 
 ### ✅ [ADMIN-USER-PURGE-001] Кнопка «Удалить безвозвратно» в админке (user + store + товары + заказы)

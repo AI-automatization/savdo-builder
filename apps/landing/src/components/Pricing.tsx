@@ -3,20 +3,20 @@ import { Check } from 'lucide-react';
 export type Locale = 'uz' | 'ru';
 
 export type PricingPlan = {
-  id: 'trial' | 'basic' | 'pro';
+  id: 'free' | 'pro' | 'studio';
   name: string;
   price: string;
   period: string;
-  description: string;
+  tagline: string;
   features: string[];
   cta: string;
-  badge?: string;
+  highlight?: boolean;
 };
 
 export type PricingDict = {
   title: string;
   subtitle?: string;
-  plans: PricingPlan[]; // expect 3, order: trial, basic, pro
+  plans: PricingPlan[];
 };
 
 type PricingProps = {
@@ -28,10 +28,7 @@ const BOT_URL = 'https://t.me/maxsavdo_bot';
 
 export default function Pricing({ dict }: PricingProps) {
   return (
-    <section
-      id="pricing"
-      className="border-t border-brand-border bg-brand-bg py-20 lg:py-28"
-    >
+    <section id="pricing" className="py-20 lg:py-28">
       <div className="mx-auto w-full max-w-content px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-brand-text sm:text-4xl">
@@ -42,36 +39,23 @@ export default function Pricing({ dict }: PricingProps) {
           ) : null}
         </div>
 
-        <ul className="mt-14 grid gap-6 md:grid-cols-3">
+        <ul className="mt-14 grid gap-5 md:grid-cols-3">
           {dict.plans.map((plan) => {
-            const highlight = plan.id === 'basic';
+            const highlight = plan.highlight === true;
             return (
               <li
                 key={plan.id}
-                className={
-                  'relative flex flex-col rounded-2xl border p-7 ' +
-                  (highlight
-                    ? 'border-brand-accent bg-brand-surface shadow-[0_20px_60px_-20px_rgba(232,165,82,0.35)]'
-                    : 'border-brand-border bg-brand-surface')
-                }
+                className={highlight ? 'card-glass-highlight relative flex flex-col p-7' : 'card-glass relative flex flex-col p-7'}
               >
-                {plan.badge ? (
-                  <span
-                    className={
-                      'absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider ' +
-                      (highlight
-                        ? 'bg-brand-accent text-brand-bg'
-                        : 'bg-brand-bg text-brand-muted border border-brand-border')
-                    }
-                  >
-                    {plan.badge}
-                  </span>
-                ) : null}
+                {highlight && (
+                  <div
+                    className="absolute -top-px inset-x-6 h-px"
+                    style={{ background: 'linear-gradient(90deg, transparent, rgba(232,165,82,0.6), transparent)' }}
+                  />
+                )}
 
-                <h3 className="text-lg font-semibold text-brand-text">
-                  {plan.name}
-                </h3>
-                <p className="mt-1 text-sm text-brand-muted">{plan.description}</p>
+                <h3 className="text-lg font-semibold text-brand-text">{plan.name}</h3>
+                <p className="mt-1 text-sm text-brand-muted">{plan.tagline}</p>
 
                 <div className="mt-6 flex items-baseline gap-2">
                   <span className="text-4xl font-bold tracking-tight text-brand-text">
@@ -82,15 +66,8 @@ export default function Pricing({ dict }: PricingProps) {
 
                 <ul className="mt-6 flex flex-col gap-3">
                   {plan.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className="flex items-start gap-2 text-sm text-brand-text"
-                    >
-                      <Check
-                        size={16}
-                        className="mt-0.5 shrink-0 text-brand-accent"
-                        aria-hidden
-                      />
+                    <li key={feature} className="flex items-start gap-2.5 text-sm text-brand-text">
+                      <Check size={15} className="mt-0.5 shrink-0" style={{ color: '#E8A552' }} aria-hidden />
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -100,11 +77,19 @@ export default function Pricing({ dict }: PricingProps) {
                   href={BOT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={
-                    'mt-8 inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition-colors ' +
-                    (highlight
-                      ? 'bg-brand-accent text-brand-bg hover:bg-brand-accentHover'
-                      : 'border border-brand-border bg-brand-bg text-brand-text hover:border-brand-accent')
+                  className="mt-8 inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition-all"
+                  style={
+                    highlight
+                      ? {
+                          background: 'linear-gradient(135deg, #E8A552 0%, #D4922E 100%)',
+                          color: '#0F0F0F',
+                          boxShadow: '0 6px 20px rgba(232,165,82,0.30)',
+                        }
+                      : {
+                          background: 'rgba(255,255,255,0.04)',
+                          border: '1px solid rgba(232,165,82,0.20)',
+                          color: '#F5F5F5',
+                        }
                   }
                 >
                   {plan.cta}

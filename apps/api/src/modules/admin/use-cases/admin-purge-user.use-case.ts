@@ -2,6 +2,7 @@ import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { purgeStoreSubtree } from './purge-store-subtree';
 
 /**
  * ADMIN-USER-PURGE-001: безвозвратное удаление аккаунта из админки —
@@ -75,38 +76,28 @@ export class AdminPurgeUserUseCase {
     const deleted = { orders: 0, products: 0, store: !!storeId };
 
     await this.prisma.$transaction(async (tx) => {
+      // Модерация уровня user/seller: ModerationCase/Action держат entityId
+      // строкой БЕЗ FK — каскады их не зацепят, чистим вручную (иначе в
+      // очереди админки сироты, а APPROVE/REJECT по ним падает P2025).
+      // Store/product-уровень чистит purgeStoreSubtree.
+      const moderationEntityIds = [userId, ...(sellerId ? [sellerId] : [])];
+      await tx.moderationAction.deleteMany({ where: { entityId: { in: moderationEntityIds } } });
+      await tx.moderationCase.deleteMany({ where: { entityId: { in: moderationEntityIds } } });
+
       // ── SELLER-ветка ────────────────────────────────────────────────────
       if (sellerId) {
         // ChatThread.sellerId REQUIRED (Restrict) → сообщения, потом треды.
+        // Хелпер ниже чистит чаты сам (store-only путь), но seller может быть
+        // и БЕЗ магазина — поэтому чистка здесь обязательна (для хелпера no-op).
         await tx.chatMessage.deleteMany({ where: { thread: { sellerId } } });
         await tx.chatThread.deleteMany({ where: { sellerId } });
 
         if (storeId) {
-          // Заказы магазина: history/refunds — Restrict → вручную; items — Cascade.
-          await tx.orderStatusHistory.deleteMany({ where: { order: { storeId } } });
-          await tx.orderRefund.deleteMany({ where: { order: { storeId } } });
-          deleted.orders = (await tx.order.deleteMany({ where: { storeId } })).count;
-          // Корзины магазина (CartItem — Cascade через Cart).
-          await tx.cart.deleteMany({ where: { storeId } });
-          // Товары: Restrict-хвосты (движения склада, вариант-опции, варианты,
-          // опции) — вручную; images/attributes/wishlist/reviews — Cascade.
-          await tx.inventoryMovement.deleteMany({ where: { product: { storeId } } });
-          await tx.productVariantOptionValue.deleteMany({
-            where: { variant: { product: { storeId } } },
-          });
-          await tx.productVariant.deleteMany({ where: { product: { storeId } } });
-          await tx.productOptionValue.deleteMany({
-            where: { optionGroup: { product: { storeId } } },
-          });
-          await tx.productOptionGroup.deleteMany({ where: { product: { storeId } } });
-          deleted.products = (await tx.product.deleteMany({ where: { storeId } })).count;
-          // Store-периферия (Restrict): контакты, доставка, категории, партнёрские ключи.
-          await tx.storeContact.deleteMany({ where: { storeId } });
-          await tx.storeDeliverySettings.deleteMany({ where: { storeId } });
-          await tx.storeCategory.deleteMany({ where: { storeId } });
-          await tx.partnerApiKey.deleteMany({ where: { storeId } });
-          // StoreDirection — Cascade. Сам магазин:
-          await tx.store.delete({ where: { id: storeId } });
+          // Поддерево магазина (заказы/товары/периферия/store) — общий хелпер
+          // с AdminPurgeStoreUseCase (ADMIN-STORE-PURGE-001).
+          const res = await purgeStoreSubtree(tx, storeId, sellerId);
+          deleted.orders = res.orders;
+          deleted.products = res.products;
         }
 
         // Подписка (payments — Restrict) и документы верификации.
