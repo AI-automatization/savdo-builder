@@ -241,11 +241,23 @@ export class AdminRepository {
     status?: string;
     page?: number;
     limit?: number;
+    // PERF-API-001: серверный поиск (admin StoresPage фильтровала клиентом
+    // только загруженную страницу). name/slug insensitive, trgm-индексы есть.
+    search?: string;
   }) {
     const { page, limit, skip } = toPrismaPagination(filters);
 
+    const q = filters.search?.trim();
     const where = {
       ...(filters.status ? { status: filters.status as any } : {}),
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: 'insensitive' as const } },
+              { slug: { contains: q, mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
     };
 
     const [stores, total] = await this.prisma.$transaction([
