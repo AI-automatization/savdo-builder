@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import Link from "next/link";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { OrderStatus, DeliveryType, ThreadType } from "types";
+import type { Order } from "types";
 import { useOrder, useCancelOrder } from "@/hooks/use-orders";
 import { useBuyerSocket } from "@/hooks/use-buyer-socket";
 import { track } from "@/lib/analytics";
@@ -14,68 +15,8 @@ import { useTranslation } from "@/lib/i18n";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const toNum = (v: unknown): number => {
-  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
-  if (typeof v === "string") { const n = Number(v); return Number.isFinite(n) ? n : 0; }
-  if (v && typeof v === "object") { const n = Number(String(v)); return Number.isFinite(n) ? n : 0; }
-  return 0;
-};
-const formatPrice = (n: unknown) => toNum(n).toLocaleString("ru-RU");
+const formatPrice = (n: number) => n.toLocaleString("ru-RU");
 const shortId = (id: string) => id.slice(-6).toUpperCase();
-
-// ── Types + normalize ────────────────────────────────────────────────────────
-
-type NormalizedItem = {
-  id: string;
-  title: string;
-  variantTitle: string | null;
-  quantity: number;
-  unitPrice: number;
-  subtotal: number;
-};
-type NormalizedAddress = { street: string; city: string; region?: string } | undefined;
-type NormalizedStore = { name?: string; telegramContactLink?: string | null } | null;
-type NormalizedOrder = {
-  id: string;
-  orderNumber?: string;
-  status: OrderStatus;
-  storeId: string;
-  store: NormalizedStore;
-  items: NormalizedItem[];
-  totalAmount: number;
-  deliveryFee: number;
-  deliveryType: DeliveryType;
-  deliveryAddress: NormalizedAddress;
-  buyerNote: string | null;
-};
-
-function normalizeOrder(raw: any): NormalizedOrder {
-  const rawItems: any[] = Array.isArray(raw.items) ? raw.items : [];
-  const deliveryAddress: NormalizedAddress = raw.deliveryAddress
-    ?? (raw.city || raw.addressLine1
-      ? { street: raw.addressLine1 ?? '', city: raw.city ?? '', region: raw.region ?? undefined }
-      : undefined);
-  return {
-    id: raw.id ?? '',
-    orderNumber: raw.orderNumber ?? '',
-    status: raw.status,
-    storeId: raw.storeId ?? '',
-    store: raw.store ?? null,
-    items: rawItems.map((it: any): NormalizedItem => ({
-      id: it.id,
-      title: it.title ?? it.productTitleSnapshot ?? '',
-      variantTitle: it.variantTitle ?? it.variantLabelSnapshot ?? null,
-      quantity: it.quantity ?? 0,
-      unitPrice: toNum(it.unitPrice ?? it.unitPriceSnapshot),
-      subtotal: toNum(it.subtotal ?? it.lineTotalAmount),
-    })),
-    totalAmount: toNum(raw.totalAmount),
-    deliveryFee: toNum(raw.deliveryFee ?? raw.deliveryFeeAmount),
-    deliveryType: raw.deliveryType,
-    deliveryAddress,
-    buyerNote: raw.buyerNote ?? raw.customerComment ?? null,
-  };
-}
 
 // ── Status meta ──────────────────────────────────────────────────────────────
 
@@ -130,7 +71,7 @@ function StatusPill({ status }: { status: OrderStatus }) {
   );
 }
 
-function StatusHero({ order }: { order: NormalizedOrder }) {
+function StatusHero({ order }: { order: Order }) {
   const { t } = useTranslation();
   const cancelled = order.status === OrderStatus.CANCELLED;
   const label = t(`orders.meta.${order.status}.label` as Parameters<typeof t>[0]) || order.status;
@@ -239,13 +180,12 @@ function PageSkeleton() {
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { t } = useTranslation();
-  const { data: rawOrder, isLoading, isError } = useOrder(id);
+  const { data: order, isLoading, isError } = useOrder(id);
   const cancelOrder = useCancelOrder();
   useBuyerSocket();
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
-  const order = rawOrder ? normalizeOrder(rawOrder) : null;
   const isCancelled = order?.status === OrderStatus.CANCELLED;
   const canCancel = order?.status === OrderStatus.PENDING;
   const subtotal = order?.items.reduce((s, it) => s + it.subtotal, 0) ?? 0;

@@ -64,6 +64,19 @@ export async function serverGetSitemapFeed(): Promise<SitemapFeed> {
   return sfetch<SitemapFeed>('/storefront/sitemap');
 }
 
+/**
+ * SEO-AUDIT-001 п.16: `/storefront/products?storeId=` всегда пагинирован
+ * backend'ом (default limit 20, `storefront.controller.ts` ветка `storeId`) —
+ * без чтения `meta.total` магазины с >PRODUCTS_PAGE_SIZE товаров молча теряли
+ * остаток каталога на витрине (ни ошибки, ни намёка, что список неполный).
+ */
+export const PRODUCTS_PAGE_SIZE = 24;
+
+export interface ServerProductsResult {
+  data: ProductListItem[];
+  meta: { total: number; page: number };
+}
+
 export async function serverGetProducts(params: {
   storeId: string;
   globalCategoryId?: string;
@@ -71,9 +84,12 @@ export async function serverGetProducts(params: {
   attributeFilters?: Record<string, string>;
   priceMin?: number;
   priceMax?: number;
-}): Promise<ProductListItem[]> {
+  page?: number;
+}): Promise<ServerProductsResult> {
   const search = new URLSearchParams();
   search.set('storeId', params.storeId);
+  search.set('page', String(params.page ?? 1));
+  search.set('limit', String(PRODUCTS_PAGE_SIZE));
   if (params.globalCategoryId) search.set('globalCategoryId', params.globalCategoryId);
   if (params.storeCategoryId) search.set('storeCategoryId', params.storeCategoryId);
   if (params.priceMin != null && Number.isFinite(params.priceMin)) {
@@ -87,8 +103,7 @@ export async function serverGetProducts(params: {
       if (v) search.append(`filters[${k}]`, v);
     }
   }
-  const res = await sfetch<{ data: ProductListItem[]; meta: { total: number; page: number } }>('/storefront/products', search);
-  return res.data;
+  return sfetch<ServerProductsResult>('/storefront/products', search);
 }
 
 export async function serverGetGlobalCategories(): Promise<GlobalCategory[]> {

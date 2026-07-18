@@ -64,6 +64,9 @@ export const uz: Translations = {
   'store.productsSearch': 'Mahsulotlar boʻyicha qidiruv...',
   'store.productsEmpty': 'Bu kategoriyada hozircha mahsulot yoʻq',
   'store.searchEmpty': 'Hech narsa topilmadi',
+  'store.pager.prev': '← Orqaga',
+  'store.pager.next': 'Keyingisi →',
+  'store.pager.pageOf': '{page}-sahifa, jami {total}',
 
   // product — mahsulot sahifasi
   'product.notFound': 'Mahsulot topilmadi',

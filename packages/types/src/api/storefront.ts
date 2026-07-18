@@ -44,6 +44,26 @@ export interface FeaturedStorefrontResponse {
 }
 
 /**
+ * SEO-AUDIT-001 п.1: фид для динамического sitemap.xml web-buyer.
+ * Ответ GET /storefront/sitemap (storefront.controller.ts, Cache-Control 1h).
+ * `updatedAt` — ISO-строка (честный lastmod вместо new Date()).
+ */
+export interface StorefrontSitemapStore {
+  slug: string;
+  updatedAt: string;
+}
+
+export interface StorefrontSitemapProduct {
+  id: string;
+  updatedAt: string;
+}
+
+export interface StorefrontSitemapFeed {
+  stores: StorefrontSitemapStore[];
+  products: StorefrontSitemapProduct[];
+}
+
+/**
  * GlobalCategory с iconEmoji и tree-полями.
  * Ответ GET /storefront/categories/tree.
  */

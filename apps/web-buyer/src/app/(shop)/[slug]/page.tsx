@@ -10,7 +10,9 @@ import {
   serverGetProducts,
   serverGetGlobalCategories,
   serverGetCategoryFilters,
+  PRODUCTS_PAGE_SIZE,
 } from "@/lib/api/storefront-server";
+import StoreProductsPager from "@/components/store/StoreProductsPager";
 
 import { TrackStorefrontView } from "@/components/TrackView";
 import { RegisterRecentStore } from "@/components/store/RegisterRecentStore";
@@ -86,6 +88,9 @@ export default async function StorePage({
   const priceMin = parsePrice(sp.priceMin);
   const priceMax = parsePrice(sp.priceMax);
 
+  const parsedPage = typeof sp.page === "string" ? parseInt(sp.page, 10) : 1;
+  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+
   const activeAttributes: Record<string, string> = {};
   for (const [k, v] of Object.entries(sp)) {
     if (k.startsWith("f.") && typeof v === "string" && v) {
@@ -111,14 +116,16 @@ export default async function StorePage({
     ? globalCategories.find((c) => c.slug === gcat)?.id
     : undefined;
 
-  const products = await serverGetProducts({
+  const { data: products, meta: productsMeta } = await serverGetProducts({
     storeId: store.id,
     storeCategoryId: categoryId,
     globalCategoryId,
     attributeFilters: Object.keys(activeAttributes).length > 0 ? activeAttributes : undefined,
     priceMin,
     priceMax,
+    page,
   });
+  const totalPages = Math.max(1, Math.ceil(productsMeta.total / PRODUCTS_PAGE_SIZE));
 
   // Preserve global category + attribute filter state across storeCategory chip clicks.
   const persistentParams = new URLSearchParams();
@@ -143,6 +150,16 @@ export default async function StorePage({
     sortOrder: cat.sortOrder,
     href: buildStoreCategoryHref(cat.id),
   }));
+
+  const buildPageHref = (p: number) => {
+    const next = new URLSearchParams(persistentParams);
+    if (categoryId) next.set("categoryId", categoryId);
+    if (p > 1) next.set("page", String(p));
+    const qs = next.toString();
+    return qs ? `/${slug}?${qs}` : `/${slug}`;
+  };
+  const prevHref = page > 1 ? buildPageHref(page - 1) : null;
+  const nextHref = page < totalPages ? buildPageHref(page + 1) : null;
 
   return (
     <div className="relative pb-24 md:pb-12">
@@ -196,7 +213,7 @@ export default async function StorePage({
         {/* ── Products section ───────────────────────────────────────────────── */}
         <section id="products" className="mt-8">
           <div className="flex justify-between items-baseline mb-4">
-            <StoreProductsLabel productCount={products.length} />
+            <StoreProductsLabel productCount={productsMeta.total} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6 lg:gap-8">
@@ -212,6 +229,7 @@ export default async function StorePage({
             </aside>
             <main>
               <ProductsWithSearch products={products} storeSlug={slug} />
+              <StoreProductsPager page={page} totalPages={totalPages} prevHref={prevHref} nextHref={nextHref} />
             </main>
           </div>
         </section>

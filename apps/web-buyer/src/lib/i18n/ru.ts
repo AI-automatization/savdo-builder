@@ -66,6 +66,9 @@ export const ru: Translations = {
   'store.productsSearch': 'Поиск по товарам...',
   'store.productsEmpty': 'Товаров в этой категории пока нет',
   'store.searchEmpty': 'Ничего не найдено',
+  'store.pager.prev': '← Назад',
+  'store.pager.next': 'Далее →',
+  'store.pager.pageOf': 'Страница {page} из {total}',
 
   // product — страница товара
   'product.notFound': 'Товар не найден',

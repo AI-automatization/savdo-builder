@@ -10,7 +10,7 @@ import { useRequestOtp, useVerifyOtp } from "@/hooks/use-auth";
 import { useCheckoutPreview, useConfirmCheckout } from "@/hooks/use-checkout";
 import { useCart } from "@/hooks/use-cart";
 import { track } from "@/lib/analytics";
-import type { CheckoutPreview, CheckoutPreviewItem, CartItem } from "types";
+import type { CheckoutPreview } from "types";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { colors, dangerTint, warningTint } from "@/lib/styles";
 import { PhoneInput, formatUzPhone, isValidUzPhone } from "@/components/PhoneInput";
@@ -20,40 +20,8 @@ type DeliveryMode = "delivery" | "pickup";
 type PageStep = "otp-phone" | "otp-code" | "form";
 type PaymentId = "cash" | "card" | "online";
 
-type PreviewItemLoose = CheckoutPreviewItem & {
-  title?: string;
-  productTitleSnapshot?: string;
-  variantLabelSnapshot?: string | null;
-  lineTotal?: number;
-};
-// WB-B01: `CheckoutPreview` теперь канонически несёт `deliveryFee` + `total`
-// (API-CHECKOUT-PREVIEW-DELIVERY-FEE-001). Локальный extension оставлен только
-// под legacy-поле `validItems` — старые ответы preview отдавали его вместо `items`.
-type PreviewWithFee = CheckoutPreview & {
-  validItems?: PreviewItemLoose[];
-};
-
 const fmt = (n: number | null | undefined) =>
   (typeof n === "number" ? n : Number(n) || 0).toLocaleString("ru-RU");
-
-const toNum = (v: unknown): number => {
-  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
-  if (typeof v === "string") {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : 0;
-  }
-  return 0;
-};
-
-const cartItemUnitPrice = (i: CartItem) =>
-  toNum(i.variant?.salePriceOverride) ||
-  toNum(i.variant?.priceOverride) ||
-  toNum(i.salePriceSnapshot) ||
-  toNum(i.unitPrice) ||
-  toNum(i.unitPriceSnapshot) ||
-  toNum(i.product?.salePrice) ||
-  toNum(i.product?.basePrice) ||
-  0;
 
 // ── Reusable field style ──────────────────────────────────────────────────────
 
@@ -300,17 +268,11 @@ export default function CheckoutPage() {
   // Error
   const [apiError, setApiError] = useState<string>();
 
-  const previewData = preview.data as PreviewWithFee | undefined;
-  const previewItems: PreviewItemLoose[] =
-    previewData?.items ?? previewData?.validItems ?? [];
+  const previewData: CheckoutPreview | undefined = preview.data;
+  const previewItems = previewData?.items ?? [];
   const storeDeliveryFee = previewData?.deliveryFee ?? 0;
   const deliveryFee = mode === "delivery" ? storeDeliveryFee : 0;
-  const cartSubtotal = cartItems.reduce(
-    (s, it) => s + cartItemUnitPrice(it) * (it.quantity || 0),
-    0,
-  );
-  const rawSubtotal = toNum(previewData?.subtotal);
-  const subtotal = rawSubtotal > 0 ? rawSubtotal : cartSubtotal;
+  const subtotal = previewData?.subtotal ?? 0;
   const total = subtotal + deliveryFee;
 
   // Payment methods — defined inside component to access t().
@@ -773,11 +735,7 @@ export default function CheckoutPage() {
                   {cartItems.map((item) => {
                     const title = item.product?.title ?? t('cart.productFallback');
                     const mediaUrl = item.product?.mediaUrl ?? null;
-                    const unit = cartItemUnitPrice(item);
-                    const lineSubtotal =
-                      typeof item.subtotal === "number"
-                        ? item.subtotal
-                        : unit * (item.quantity || 0);
+                    const lineSubtotal = item.subtotal;
                     return (
                       <div key={item.id} className="flex gap-2.5">
                         <div
