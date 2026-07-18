@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const PRESIGNED_URL_TTL_SECONDS = 300;
@@ -123,6 +128,36 @@ export class R2StorageService {
       );
       throw err;
     }
+  }
+
+  /**
+   * BACKUP-001: список ключей под префиксом (с пагинацией ListObjectsV2).
+   * Используется retention-логикой бэкапов; для медиа не нужен — ключи медиа
+   * живут в БД (MediaFile).
+   */
+  async listObjects(bucket: string, prefix: string): Promise<string[]> {
+    if (!this.s3Client) throw new Error('S3 Storage is not configured');
+
+    const keys: string[] = [];
+    let continuationToken: string | undefined;
+    do {
+      const res = await this.s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        }),
+      );
+      for (const obj of res.Contents ?? []) {
+        if (obj.Key) keys.push(obj.Key);
+      }
+      continuationToken = res.IsTruncated ? res.NextContinuationToken : undefined;
+    } while (continuationToken);
+    return keys;
+  }
+
+  getPrivateBucket(): string {
+    return this.configService.get<string>('storage.bucketPrivate') ?? 'savdo-private';
   }
 
   getDefaultBucket(): string {

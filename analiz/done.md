@@ -1,5 +1,30 @@
 # Done — Азим + Полат
 
+## 2026-07-18 (Fable 5) — BACKUP-001: автоматические ежедневные бэкапы прод-Postgres
+
+### ✅ [BACKUP-001] Ежедневный pg_dump → R2 с retention 14
+- **Важность:** 🔴
+- **Дата:** 18.07.2026
+- **Файлы:** `apps/api/src/queues/processors/db-backup.processor.ts` (+spec, +module),
+  `apps/api/src/modules/media/services/r2-storage.service.ts` (listObjects, getPrivateBucket),
+  `apps/api/src/app.module.ts`, `apps/api/src/config/env.validation.ts`,
+  `apps/api/.env.example`, `apps/api/Dockerfile` (postgresql-client)
+- **Что сделано:** cron `@nestjs/schedule` (конвенция single-instance, как
+  PurgeDeletedUsersProcessor) в 22:00 UTC (03:00 Ташкент): `pg_dump -Fc
+  --no-owner --no-privileges` → upload в `savdo-private/db-backups/savdo-<ISO>.dump`,
+  retention — последние 14, старые удаляются (чужие ключи под префиксом не трогаем).
+  Kill-switch `DB_BACKUP_ENABLED` (default false). Sentry capture при сбое.
+  Restore: `pg_restore --clean --if-exists -d $DATABASE_URL <file>.dump`.
+- **⚙️ ЧТОБЫ ЗАРАБОТАЛО (Полат, Railway):** добавить `DB_BACKUP_ENABLED=true` в env
+  savdo-api. Больше ничего — STORAGE_* уже настроены (тот же R2, что и медиа).
+- **⚠️ Проверить после первого прогона:** мажор pg_dump (alpine postgresql-client)
+  ≥ мажора Railway Postgres — иначе pg_dump упадёт с version mismatch (будет
+  видно в Sentry/логах в первую же ночь).
+- **Связь с задачами:** `INFRA-BACKUP-R2-SETUP-001` (отдельный bucket + lifecycle)
+  становится опциональным — off-site дампы теперь едут автоматически в существующий
+  private-bucket; `INFRA-BACKUP-DRILL-FIRST-RUN-001` (restore drill) остаётся
+  обязательным и упрощается: свежий дамп можно брать прямо из R2.
+
 ## 2026-07-17/18 (Fable 5) — apps/landing SEO-код синхронизирован с main (см. LANDING-DEPLOY-TOPOLOGY-001)
 
 ### ✅ [LANDING-DEPLOY-TOPOLOGY-001] (код-часть) — apps/landing SEO в main, Railway-фикс НЕ трогали
