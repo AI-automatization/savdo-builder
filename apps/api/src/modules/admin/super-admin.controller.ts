@@ -12,6 +12,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { SkipMfaCheck } from '../../common/decorators/skip-mfa.decorator';
 import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
+import { ADMIN_PERMISSION_VOCABULARY } from '../../common/constants/admin-permissions';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 import { UsersRepository } from '../users/repositories/users.repository';
@@ -144,6 +145,55 @@ export class SuperAdminController {
   ) {
     const actor = await this.requireMyAdminRecord(user.sub);
     return this.adminUsersMgmt.revoke(actor.id, targetId);
+  }
+
+  // ─── FEAT-CUSTOM-ROLES-001: кастомные роли (только super_admin) ─────────────
+
+  // Словарь permissions для UI (какие можно выдать кастомной роли).
+  @Get('permissions/vocabulary')
+  @AdminPermission('admin:read')
+  async permissionVocabulary() {
+    return { permissions: ADMIN_PERMISSION_VOCABULARY };
+  }
+
+  @Get('custom-roles')
+  @AdminPermission('admin:read')
+  async listCustomRoles() {
+    return this.adminUsersMgmt.listCustomRoles();
+  }
+
+  @Post('custom-roles')
+  @AdminPermission('admin:create')
+  async createCustomRole(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { name: string; label: string; permissions: string[] },
+  ) {
+    if (!body?.name || !body?.label || !Array.isArray(body?.permissions)) {
+      throw new BadRequestException('name, label, permissions[] required');
+    }
+    const actor = await this.requireMyAdminRecord(user.sub);
+    return this.adminUsersMgmt.createCustomRole(actor.id, body.name, body.label, body.permissions);
+  }
+
+  @Patch('custom-roles/:id')
+  @AdminPermission('admin:update')
+  async updateCustomRole(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() body: { label?: string; permissions?: string[] },
+  ) {
+    const actor = await this.requireMyAdminRecord(user.sub);
+    return this.adminUsersMgmt.updateCustomRole(actor.id, id, body);
+  }
+
+  @Delete('custom-roles/:id')
+  @AdminPermission('admin:delete')
+  async deleteCustomRole(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
+    const actor = await this.requireMyAdminRecord(user.sub);
+    return this.adminUsersMgmt.deleteCustomRole(actor.id, id);
   }
 
   // ─── Refund order ──────────────────────────────────────────────────────────

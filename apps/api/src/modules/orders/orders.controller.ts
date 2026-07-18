@@ -70,8 +70,10 @@ export class OrdersController {
       archived: query.archived === 'true',
     });
 
-    const orders = (result as any).orders ?? [];
-    const total = (result as any).total ?? 0;
+    // ARCH-DEBT as-any cleanup: use-case возвращает типизированный
+    // PaginatedOrders { orders, total } — касты были лишние.
+    const orders = result.orders ?? [];
+    const total = result.total ?? 0;
     const totalPages = Math.ceil(total / limit) || 1;
 
     return {

@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Header,
   Param,
   Query,
   UseGuards,
@@ -78,6 +79,30 @@ export class StorefrontController {
     return this.getFeatured.execute();
   }
 
+  // ─── SEO-AUDIT-001: sitemap feed ─────────────────────────────────────────
+
+  /**
+   * GET /api/v1/storefront/sitemap
+   *
+   * Фид для динамического sitemap.xml web-buyer: slug'и публичных магазинов
+   * + id видимых товаров, оба с updatedAt (честный lastmod вместо new Date()).
+   * URL из slug/id собирает фронт — API не знает канонический хост.
+   *
+   * Cache-Control 1h + Throttle 10/min: фид дешёвый (select 2 полей),
+   * но дёргают его только генераторы sitemap, чаще незачем.
+   */
+  @Get('storefront/sitemap')
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Header('Cache-Control', 'public, max-age=3600')
+  async getSitemapFeed() {
+    const [stores, products] = await Promise.all([
+      this.storesRepo.findAllPublishedForSitemap(),
+      this.productsRepo.findAllPublicForSitemap(),
+    ]);
+    return { stores, products };
+  }
+
   // ─── Stores ──────────────────────────────────────────────────────────────
 
   // API-STORES-PAGINATION-001: opt-in пагинация через ?page=&limit=.
@@ -110,25 +135,47 @@ export class StorefrontController {
   @Get('storefront/stores/:slug')
   @Public()
   async getStorefrontStoreBySlug(@Param('slug') slug: string) {
-    const store = await this.storesRepo.findBySlug(slug);
-    if (!store) {
-      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
-    }
-    const s = store as typeof store & { logoMediaId?: string | null; coverMediaId?: string | null };
-    const { logoUrl, coverUrl } = await this.presenter.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
-    return { ...store, logoUrl, coverUrl };
+    return this.mapPublicStoreBySlug(slug);
   }
 
   @Get('stores/:slug')
   @Public()
   async getStoreBySlug(@Param('slug') slug: string) {
+    return this.mapPublicStoreBySlug(slug);
+  }
+
+  /**
+   * Общий маппер обоих public by-slug endpoints.
+   * SELLER-PAYMENT-REQUISITES-001: findBySlug отдаёт ВСЕ колонки Store —
+   * сырые payment-поля вырезаем и отдаём `paymentRequisites` объектом,
+   * где карта видна ТОЛЬКО при acceptsCardTransfer=true.
+   */
+  private async mapPublicStoreBySlug(slug: string) {
     const store = await this.storesRepo.findBySlug(slug);
     if (!store) {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
-    const s = store as typeof store & { logoMediaId?: string | null; coverMediaId?: string | null };
-    const { logoUrl, coverUrl } = await this.presenter.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
-    return { ...store, logoUrl, coverUrl };
+    const {
+      paymentCardNumber, paymentCardHolder, paymentClickLink, paymentPaymeLink,
+      acceptsCash, acceptsCardTransfer,
+      ...safe
+    } = store;
+    const { logoUrl, coverUrl } = await this.presenter.resolveStoreImageUrls(
+      store.logoMediaId, store.coverMediaId,
+    );
+    return {
+      ...safe,
+      logoUrl,
+      coverUrl,
+      paymentRequisites: {
+        acceptsCash,
+        acceptsCardTransfer,
+        cardNumber: acceptsCardTransfer ? paymentCardNumber : null,
+        cardHolder: acceptsCardTransfer ? paymentCardHolder : null,
+        clickLink: acceptsCardTransfer ? paymentClickLink : null,
+        paymeLink: acceptsCardTransfer ? paymentPaymeLink : null,
+      },
+    };
   }
 
   // ─── Search ──────────────────────────────────────────────────────────────

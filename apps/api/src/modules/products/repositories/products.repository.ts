@@ -436,4 +436,26 @@ export class ProductsRepository {
 
     return { products, total };
   }
+
+  /**
+   * SEO-AUDIT-001: лёгкий фид для sitemap — id+updatedAt видимых товаров
+   * (та же видимость, что findAllPublic, без include/пагинации).
+   * take 5000 — safety cap: sitemap-протокол разрешает 50k URL, наш каталог
+   * сильно меньше; при росте перейти на курсорную выборку.
+   */
+  async findAllPublicForSitemap() {
+    // SEO-AUDIT-001 п.2: + storeSlug (плоско) — без него web-buyer не может
+    // построить канонический URL товара `/{slug}/products/{id}` в sitemap.
+    const rows = await this.prisma.product.findMany({
+      where: {
+        status: ProductStatus.ACTIVE,
+        deletedAt: null,
+        store: { status: 'APPROVED', isPublic: true, isSuspendedByBilling: false },
+      },
+      select: { id: true, updatedAt: true, store: { select: { slug: true } } },
+      orderBy: { updatedAt: 'desc' },
+      take: 5000,
+    });
+    return rows.map((r) => ({ id: r.id, updatedAt: r.updatedAt, storeSlug: r.store.slug }));
+  }
 }

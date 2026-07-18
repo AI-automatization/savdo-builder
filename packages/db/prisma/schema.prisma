@@ -479,6 +479,16 @@ model Store {
   // isPublic = seller хочет/не хочет. isSuspendedByBilling = платформа скрыла.
   // Storefront: isPublic=true AND isSuspendedByBilling=false.
   isSuspendedByBilling      Boolean     @default(false)
+  // SELLER-PAYMENT-REQUISITES-001: реквизиты продавца для MANUAL_TRANSFER на
+  // checkout (payments-legal-tax §1.4). Владелец вводит один раз; покупателю
+  // карта показывается ТОЛЬКО при acceptsCardTransfer=true (гейт в
+  // storefront.controller — findBySlug отдаёт все колонки).
+  paymentCardNumber         String?
+  paymentCardHolder         String?
+  paymentClickLink          String?
+  paymentPaymeLink          String?
+  acceptsCash               Boolean     @default(true)
+  acceptsCardTransfer       Boolean     @default(false)
   publishedAt               DateTime?
   createdAt                 DateTime    @default(now())
   updatedAt                 DateTime    @updatedAt
@@ -493,6 +503,7 @@ model Store {
   carts            Cart[]
   orders           Order[]
   directions       StoreDirection[]
+  partnerApiKeys   PartnerApiKey[]
 
   @@index([status])
   @@index([isPublic])
@@ -550,6 +561,31 @@ model StoreDeliverySettings {
   store Store @relation(fields: [storeId], references: [id])
 
   @@map("store_delivery_settings")
+}
+
+// ─────────────────────────────────────────────
+// PARTNER API (PARTNER-API-RAOS-001)
+// ─────────────────────────────────────────────
+
+// Партнёрский API-ключ: внешняя система (RAOS) создаёт товары в конкретном
+// магазине MaxSavdo через POST /partner/products с заголовком X-Api-Key.
+// Храним ТОЛЬКО sha256-hash ключа — plaintext показывается один раз при выдаче.
+// Ключ скоупится на один store: компрометация ключа не даёт доступ к чужим
+// магазинам. Revoke = isActive=false (строка остаётся для аудита lastUsedAt).
+model PartnerApiKey {
+  id         String    @id @default(uuid())
+  keyHash    String    @unique // sha256(rawKey) hex
+  name       String // человекочитаемо: "RAOS"
+  storeId    String
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  store Store @relation(fields: [storeId], references: [id])
+
+  @@index([storeId])
+  @@map("partner_api_keys")
 }
 
 // ─────────────────────────────────────────────
@@ -1208,6 +1244,24 @@ model AdminUser {
 
   @@index([adminRole])
   @@map("admin_users")
+}
+
+// FEAT-CUSTOM-ROLES-001: кастомные admin-роли сверх базовых (super_admin/admin/
+// moderator/support/finance/read_only). Базовые роли остаются в коде
+// (admin-permissions.ts) под PR-review; кастомные — управляются super_admin из
+// панели. `name` кладётся в AdminUser.adminRole (та уже свободная строка), guard
+// резолвит permissions отсюда, если роль не базовая. permissions — подмножество
+// известного словаря без reserved (`*`, `admin:*`, `db:*`, `system:*`).
+model AdminCustomRole {
+  id               String   @id @default(uuid())
+  name             String   @unique // slug-идентификатор, кладётся в AdminUser.adminRole
+  label            String            // человекочитаемое название
+  permissions      String[]          // resource:action из словаря
+  createdByAdminId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("admin_custom_roles")
 }
 
 // DB-AUDIT-001: была дыра — таблица существовала в DB (migration 20260503020000)

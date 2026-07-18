@@ -70,6 +70,11 @@ import { UsersModule } from '../users/users.module';
     PostProductToChannelUseCase,
     PreviewChannelPostUseCase,
     ChannelTemplateService,
+    // PARTNER-API-RAOS-001: PartnerModule переиспользует create/publish-конвейер
+    // товара вместо дублирования (лимиты тарифа, state machine, автопост).
+    CreateProductUseCase,
+    ChangeProductStatusUseCase,
+    ProductImagesRepository,
   ],
 })
 export class ProductsModule {}

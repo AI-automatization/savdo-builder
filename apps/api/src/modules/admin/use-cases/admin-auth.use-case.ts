@@ -10,6 +10,7 @@ import { ErrorCode } from '../../../shared/constants/error-codes';
 import {
   ADMIN_PERMISSIONS,
   hasAdminPermission,
+  isBaseAdminRole,
 } from '../../../common/constants/admin-permissions';
 
 // RFC 6238 TOTP: 6 цифр, 30 сек шаг — стандарт для Google Authenticator/Authy.
@@ -48,9 +49,19 @@ export class AdminAuthUseCase {
       isSuperadmin: admin.isSuperadmin,
       mfaEnabled: admin.mfaEnabled,
       lastLoginAt: admin.lastLoginAt,
-      permissions: ADMIN_PERMISSIONS[admin.adminRole] ?? [],
+      permissions: await this.resolveAdminPermissions(admin.adminRole),
       user: admin.user,
     };
+  }
+
+  // FEAT-CUSTOM-ROLES-001: permissions роли — базовая из кода, кастомная из БД.
+  private async resolveAdminPermissions(adminRole: string): Promise<string[]> {
+    if (isBaseAdminRole(adminRole)) return ADMIN_PERMISSIONS[adminRole] ?? [];
+    const custom = await this.prisma.adminCustomRole.findUnique({
+      where: { name: adminRole },
+      select: { permissions: true },
+    });
+    return custom?.permissions ?? [];
   }
 
   // ── POST /admin/auth/mfa/setup ───────────────────────────────────────
@@ -157,7 +168,7 @@ export class AdminAuthUseCase {
     const admin = await this.requireAdmin(adminUserId);
 
     // Только super_admin или admin с user:impersonate
-    const perms = ADMIN_PERMISSIONS[admin.adminRole] ?? [];
+    const perms = await this.resolveAdminPermissions(admin.adminRole);
     if (!hasAdminPermission(perms, 'user:impersonate')) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Insufficient permissions for impersonation', HttpStatus.FORBIDDEN);
     }

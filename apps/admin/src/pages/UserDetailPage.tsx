@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag, Eye, Rocket, Repeat } from 'lucide-react'
+import { Phone, AlertCircle, ShieldOff, ShieldCheck, UserCheck, Store, ShoppingBag, Eye, Rocket, Repeat, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
@@ -70,6 +70,11 @@ export default function UserDetailPage() {
   const [activateModal, setActivateModal] = useState(false)
   const [activating, setActivating] = useState(false)
 
+  // ADMIN-USER-PURGE-001: безвозвратное удаление аккаунта (type-to-confirm).
+  const [purgeModal, setPurgeModal] = useState(false)
+  const [purgePhone, setPurgePhone] = useState('')
+  const [purging, setPurging] = useState(false)
+
   // HYBRID-4: смена дефолтного контекста (роли). Non-destructive.
   const [roleModal, setRoleModal] = useState(false)
   const [roleReason, setRoleReason] = useState('')
@@ -118,6 +123,24 @@ export default function UserDetailPage() {
       setActionError(e.message ?? t('common.error'))
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  // ADMIN-USER-PURGE-001: hard-delete аккаунта + магазина + товаров + заказов.
+  async function purgeUser() {
+    if (!id || !user) return
+    setPurging(true)
+    setActionError(null)
+    try {
+      const res = await api.post<{ purged: boolean; orders: number; products: number }>(
+        `/api/v1/admin/users/${id}/purge`,
+        { confirmPhone: purgePhone.trim() },
+      )
+      toast.success(`${t('userDetail.purgeDone')} (orders: ${res.orders}, products: ${res.products})`)
+      navigate('/users')
+    } catch (e: any) {
+      setActionError(e.message ?? t('common.error'))
+      setPurging(false)
     }
   }
 
@@ -463,6 +486,21 @@ export default function UserDetailPage() {
               <Repeat size={14} /> {roleTarget === 'SELLER' ? t('userDetail.changeRoleToSeller') : t('userDetail.changeRoleToBuyer')}
             </button>
           )}
+          {/* ADMIN-USER-PURGE-001: безвозвратное удаление (danger zone) */}
+          {!user.admin && (
+            <button
+              onClick={() => { setPurgePhone(''); setActionError(null); setPurgeModal(true) }}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-[14px] font-semibold"
+              style={{
+                border: '1px solid rgba(239,68,68,0.5)',
+                background: 'rgba(239,68,68,0.15)',
+                color: '#EF4444',
+                cursor: 'pointer',
+              }}
+            >
+              <Trash2 size={14} /> {t('userDetail.purge')}
+            </button>
+          )}
         </ActionPanel>
 
         {/* История действий с этим пользователем (suspend/unsuspend, верификации и т.д.) */}
@@ -528,6 +566,60 @@ export default function UserDetailPage() {
                 }}
               >
                 {actionLoading ? t('common.loading') : t('userDetail.block')}
+              </button>
+            </div>
+        </DialogShell>
+      )}
+
+      {/* ADMIN-USER-PURGE-001: Purge Modal (type-to-confirm phone) */}
+      {purgeModal && (
+        <DialogShell onClose={() => !purging && setPurgeModal(false)} width={440} ariaLabelledBy="purge-modal-title">
+            <h3 id="purge-modal-title" className="m-0 mb-2 text-[18px] font-bold" style={{ color: '#EF4444' }}>
+              {t('userDetail.purgeTitle')}
+            </h3>
+            <p className="m-0 mb-2 text-[14px]" style={{ color: 'var(--text-muted)' }}>
+              {t('userDetail.purgeWarning')}
+            </p>
+            <p className="m-0 mb-4 text-[13px]" style={{ color: 'var(--text-muted)' }}>
+              {t('userDetail.purgeConfirmHint')} <code className="font-mono" style={{ color: 'var(--text)' }}>{user.phone}</code>
+            </p>
+            <input
+              value={purgePhone}
+              onChange={e => setPurgePhone(e.target.value)}
+              placeholder={user.phone}
+              aria-label={t('userDetail.purgeConfirmHint')}
+              className="w-full px-3.5 py-3 rounded-xl text-[14px] outline-none font-mono"
+              style={{
+                background: 'var(--surface2)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                color: 'var(--text)',
+                boxSizing: 'border-box',
+              }}
+            />
+            {actionError && (
+              <div role="alert" className="mt-2 text-[12px]" style={{ color: '#EF4444' }}>{actionError}</div>
+            )}
+            <div className="flex gap-2.5 justify-end mt-4">
+              <button
+                onClick={() => setPurgeModal(false)}
+                disabled={purging}
+                className="px-5 py-2.5 rounded-xl text-[14px]"
+                style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={purgeUser}
+                disabled={purgePhone.trim() !== user.phone || purging}
+                className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
+                style={{
+                  border: 'none',
+                  cursor: purgePhone.trim() === user.phone && !purging ? 'pointer' : 'not-allowed',
+                  background: purgePhone.trim() === user.phone ? '#EF4444' : 'var(--surface2)',
+                  color: purgePhone.trim() === user.phone ? 'white' : 'var(--text-muted)',
+                }}
+              >
+                {purging ? t('common.loading') : t('userDetail.purgeButton')}
               </button>
             </div>
         </DialogShell>

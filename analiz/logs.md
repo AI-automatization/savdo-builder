@@ -1,5 +1,94 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-16] [MODERATION-ORPHANS-001] Сироты в очереди модерации после hard-delete
+- **Статус:** ✅ Исправлено (чистка прода + фикс в purge-коде)
+- **Что случилось:** при чистке прод-базы в очереди модерации остались 3 OPEN-кейса
+  (46b25cdd, dfbbaaca, 61fee013) на уже удалённые сущности. Root cause:
+  `ModerationCase/ModerationAction.entityId` — строка БЕЗ FK (schema.prisma:1289-1324),
+  каскады user-purge их не зацепили. APPROVE/REJECT по сироте падает P2025
+  (take-action.use-case.ts:90-101 — store.update по несуществующему id).
+- **Что сделано:** 3 кейса удалены через DELETE /admin/db/tables/moderation_cases/:id (все 200);
+  в admin-purge-user.use-case.ts и новый purge-store-subtree.ts добавлена ручная чистка
+  moderation-таблиц по entityId (user/seller/store/productIds) внутри транзакции.
+
+## [2026-07-16] [ADMIN-STORES-COUNT-SOFT-DELETED-001] Счётчик товаров в /stores включал soft-deleted
+- **Статус:** ✅ Исправлено (код), ждёт деплой api
+- **Что случилось:** admin force-delete товара — это SOFT delete (products.repository.ts:366-370,
+  deletedAt), а `_count.products` в findStores считал все строки → список магазинов показывал
+  «удалённые» товары в колонке ТОВАРЫ.
+- **Что сделано:** admin.repository.ts findStores: `_count.products` с фильтром
+  `{ where: { deletedAt: null } }` + комментарий с ID бага.
+
+## [2026-07-14] [ADMIN-VENDOR-CHUNK-CRASH-001] Прод-админка чёрный экран после деплоя ef9f482
+- **Статус:** ✅ Исправлено (vite.config admin, hotfix)
+- **Что случилось:** после сегодняшнего деплоя admin (purge-кнопка + подтянутый main c lockfile-
+  регенерацией 0e6afa8) ВСЯ админка падала на старте: `TypeError: Cannot read properties of
+  undefined (reading 'forwardRef')` в `vendor-ui-*.js`, чёрный экран. Root cause: ручной
+  `manualChunks` в `apps/admin/vite.config.ts` (vendor-react/ui/charts/mfa) — после смены графа
+  зависимостей (pnpm 11 lockfile) Rollup стал исполнять vendor-ui (lucide/sonner) ДО инициализации
+  React-чанка. Сборка при этом зелёная — краш только runtime, поэтому build EXIT 0 не ловит.
+- **Что сделано:** manualChunks удалён (дефолтный чанкинг Vite упорядочивает init корректно;
+  admin — внутренняя панель, размер не критичен). Проверено `vite preview` в браузере до пуша.
+- **Урок:** после изменения lockfile/бандлера проверять SPA не только сборкой, но и рантаймом
+  (vite preview / прод-смоук на консоль-ошибки).
+
+## [2026-07-14] [INFRA-DOCKER-PNPM11-001] Деплой savdo-api дважды упал после dep-bump Азима (0e6afa8)
+- **Статус:** ✅ Исправлено (коммиты `82b4886` + `6caa58b`), третий деплой в процессе
+- **Что случилось:** коммит `0e6afa8` (audit-фиксы) поднял `packageManager` до `pnpm@11.12.0` и
+  переписал lockfile, но Dockerfile'ы остались на `pnpm@9.0.0` + `node:20-alpine`. Деплой №1:
+  `ERR_PNPM_BAD_PM_VERSION` на `pnpm rebuild sharp`. После фикса pnpm→11.12.0 деплой №2:
+  `ERR_UNKNOWN_BUILTIN_MODULE node:sqlite` — pnpm 11 требует Node ≥22.13, а образ Node 20.
+- **Что сделано:** во всех Dockerfile (api ×2 стадии, admin, tma): `pnpm@9.0.0`→`11.12.0`,
+  `node:20-alpine`→`node:22-alpine`. ⚠️ Урок: bump packageManager = проверять ВСЕ Dockerfile
+  (web-* на Railway без Dockerfile — их не задело). ⚠️ Деплои admin/tma тоже сломались бы на
+  следующем пуше — фикс уже в main, подтянется при очередном merge веток.
+
+## [2026-07-12] [BOT-STORE-LINK-404-001] Бот выдавал 404-ссылку магазина после регистрации
+- **Статус:** ✅ Исправлено (коммит `544e192`)
+- **Что случилось:** owner сообщил — в боте у продавца сообщение «Магазин создан» (и /store)
+  выдаёт ссылку, которая открывает 404. Root cause: `telegram-demo.handler.ts` хардкодил
+  `maxsavdo.uz/{slug}` (строки 482, 832 до фикса). До 09.07 это работало, но по карте доменов
+  apex+www отданы ЛЕНДИНГУ — магазины переехали на `shop.maxsavdo.uz/{slug}`. Бот не обновили —
+  та же семья, что и код-правки Азима (extractSlug/buyerStoreUrl из DEPLOY-DOMAIN-MAXSAVDO-001).
+- **Что сделано:** `buyerBaseUrl()` = `BUYER_URL` env ?? `https://shop.maxsavdo.uz`; все ссылки бота
+  через него. ⚠️ Проверить в Railway env savdo-api: если `BUYER_URL` задан старым railway.app URL —
+  обновить на `https://shop.maxsavdo.uz` (иначе и channel-post-builder шлёт неканонические ссылки).
+
+## [2026-07-07] [SEO-AUDIT-001] Аудит SEO/GEO/AEO web-buyer — критические находки (read-only, фиксы не применялись)
+- **Статус:** 🟡 Предупреждение (зона web-* = Азим; API-контракт под sitemap — Полат)
+- **Что случилось:** проведён аудит web-buyer/web-seller/admin по коду. Критичное:
+  1. `apps/web-buyer/src/app/sitemap.ts` — статичный, 5 URL, ни одного магазина/товара; главная
+     `(shop)/page.tsx` = "use client" без серверных ссылок на магазины → у краулеров НЕТ пути
+     к `/[slug]` (discovery-дыра).
+  2. `(shop)/[slug]/products/[id]/page.tsx:1` — "use client": контент товара не в HTML → невидим
+     для AI-краулеров без JS (GPTBot/ClaudeBot/PerplexityBot). Спасает только JSON-LD из layout.
+  3. Нет uz-локали/hreflang (`layout.tsx:48` lang="ru" hardcoded, i18n-каталога в src/lib нет).
+  4. ⚠️ РАСХОЖДЕНИЕ ТРЕКЕРА С КОДОМ: done.md/tasks.md утверждают что FAQ-001 (/help, 21.05) и
+     i18n ru/uz web-buyer сделаны — в текущем коде маршрута /help и i18n НЕТ. Похоже потеряны
+     при редизайне dark-luxury 25.05.
+  5. `apps/web-seller` — нет robots.ts/noindex, дашборд индексируем.
+  6. `web-buyer/src/app/manifest.ts` icons → `/favicon.ico`, но `public/` пуст → 404 иконки PWA.
+  7. Product JSON-LD (`products/[id]/layout.tsx:37`): availability всегда InStock, price fallback 0,
+     нет aggregateRating/BreadcrumbList; нет JSON-LD на странице магазина; нет llms.txt.
+- **Что сделано:** только аудит + отчёт владельцу. Фиксы — по решению (web-* — Азим).
+
+## [2026-07-08] [LANDING-BRANCH-DRIFT-001] `landing` и `web-seller` — разные Railway-сервисы из одного apps/web-seller, молча расходятся
+- **Статус:** ✅ Исправлено (см. done.md), но паттерн повторится если не следить
+- **Что случилось:** `maxsavdo.uz` (сервис `landing`) и `seller.maxsavdo.uz` (сервис `savdo-builder-sl`)
+  оба билдятся из `apps/web-seller/Dockerfile`, но с РАЗНЫХ git-веток (`landing` vs `web-seller`).
+  Правки на `web-seller` (включая i18n-переводы, которые сами по себе кажутся "просто текстом")
+  НИКОГДА автоматически не попадают на `landing` — нужен ручной cherry-pick/sync. За 3 недели
+  (19.06 → 07.07) ветки разошлись на 7 файлов, из-за чего публичный лендинг тихо деградировал
+  (сырые i18n-ключи, мёртвая ссылка на демо-магазин) без единого failed-деплоя или ошибки в логах.
+- **Что сделано:** ручной перенос 7 файлов + fallback-фикс, см. `done.md` → `LANDING-BRANCH-DRIFT-001`.
+- **Урок / антипаттерн:** любой PR в landing-релевантные файлы `apps/web-seller` (i18n словари,
+  `components/landing/**`, `lib/landing/**`, `app/page.tsx`, `app/layout.tsx`) должен параллельно
+  идти и в `web-seller`, и в `landing`, иначе один из двух публичных фронтов молча отстаёт. Перед
+  таким PR — сверять целевой файл на обеих ветках (см. существующий антипаттерн "Cherry-pick на
+  deploy-ветки без чтения целевого файла", 30.06 в Obsidian `_antipatterns.md`). Стоит завести
+  задачу на объединение дублирующегося landing-кода в общий пакет/компонент, чтобы не жить с двумя
+  разъезжающимися копиями.
+
 ## [2026-07-04] [API-TEST-AUTH-SUITE-FAIL] Падают auth/admin тесты (не блокер, предсуществующее)
 - **Статус:** 🟡 Предупреждение (не блокирует деплой — падения не в моей текущей задаче)
 - **Что случилось:** `pnpm --filter api test` → 9 failed: `telegram-auth.use-case.spec.ts` (8) +
@@ -2612,3 +2701,106 @@ P2: остальное.
 - P1 split `products.controller.ts` и `admin.controller.ts` — большой, в отдельную сессию.
 - P1 Swagger setup — `API-SWAGGER-001` уже в tasks.md.
 
+## [2026-07-12] [SEO-AUDIT-001] Sitemap-фид не несёт store.slug — товары нельзя добавить в sitemap.ts
+- **Статус:** 🟡 Блокер на Полате (не критично — sitemap с магазинами уже живой)
+- **Что случилось:** реализуя п.2 SEO-AUDIT-001 (динамический `sitemap.ts`, ветка `web-buyer`
+  `b215b59b`), обнаружил, что `GET /storefront/sitemap` (`1d2b4bc4`, Полат) отдаёт товары как
+  `{ id, updatedAt }` — без `store.slug`/`storeId`. Канонический URL товара в web-buyer —
+  `/{storeSlug}/products/{id}` (см. `[slug]/products/[id]/page.tsx`), без slug магазина построить
+  его нельзя. В итоге `sitemap.ts` сейчас эмитит только магазины, товары — пропущены.
+- **Что нужно:** в `apps/api/src/modules/products/repositories/products.repository.ts`
+  `findAllPublicForSitemap()` — добавить в `select` `store: { select: { slug: true } }` (или
+  плоский `storeSlug` через отдельный select), прокинуть в `storefront.controller.ts` ответ
+  `getSitemapFeed()`. Тривиальная правка (тот же паттерн, что уже есть в `findAllPublic`).
+- **Что сделано:** ничего пока — не моя зона (`apps/api`). web-buyer готов принять поле сразу,
+  как оно появится (`SitemapFeed` в `storefront-server.ts` нужно расширить `products[].storeSlug`
+  + один map в `sitemap.ts`, ~10 минут работы после бэкенд-правки).
+
+
+## [2026-07-16] [SEO-AUDIT-001] apex-домен maxsavdo.uz отдаёт 404 на /robots.txt и /sitemap.xml — НЕ баг кода, edge-cache/domain-routing
+
+- **Статус:** 🔴 Баг (подтверждён live-проверкой), НЕ код-фикс — нужен Railway/Cloudflare дашборд
+- **Контекст:** внешний SEO/GEO/AIO-аудит (Bekzod aka, AI-ассистент) сообщил, что maxsavdo.uz
+  (3/10, худший из 7 сайтов компании) не имеет robots.txt/sitemap.xml вообще. Проверил вживую:
+  claim подтверждён на live-домене, НО код в порядке — `apps/landing/src/app/robots.ts` и
+  `sitemap.ts` существуют с первого scaffold-коммита (`698cf21b`), локальный `npm run build`
+  генерирует их как статичные роуты (`○ /robots.txt`, `○ /sitemap.xml`) без ошибок.
+- **Доказательства (curl, 16.07.2026):**
+  - `curl https://maxsavdo.uz/robots.txt` → HTTP 404, `x-nextjs-cache: HIT`, тело содержит
+    `<title>maxsavdo — Seller Dashboard</title>` — это метадата **web-seller**, не `landing`.
+  - `curl https://maxsavdo.uz/sitemap.xml`, `/ru` — тот же паттерн (404 + Seller Dashboard meta).
+  - НО `curl https://seller.maxsavdo.uz/robots.txt` (правильный поддомен web-seller) → 200,
+    честный `Disallow: /` — сам web-seller деплой здоров.
+  - `curl https://shop.maxsavdo.uz/robots.txt` (web-buyer) → 200, полный корректный robots.txt
+    с Sitemap-строкой — web-buyer тоже здоров.
+  - Апекс-домен `/` при этом ВИЗУАЛЬНО выглядит как landing (маркетинг-копия "Магазин, который
+    выглядит дорого") — не рассинхрон с `DEPLOY-DOMAIN-MAXSAVDO-001` картой на первый взгляд,
+    но `www.maxsavdo.uz/robots.txt` — та же ошибка (Seller Dashboard 404).
+- **Вероятная причина:** `web-seller/src/app/robots.ts` не зависит от Host и вернул бы то же
+  `Disallow: /`, если бы апекс реально проксировался на web-seller ориджин — но апекс получает
+  404, значит это **не живой рендер**, а закэшированный на Railway edge (`Server: railway-hikari`,
+  `x-nextjs-prerender: 1`) ответ от какого-то прошлого запроса/хоста, отданный сейчас под
+  неверным доменом. Похоже на то, что кэш на грани Railway/Cloudflare не учитывает Host в ключе
+  кэширования для этих путей → cross-domain cache pollution.
+- **Что НЕ делал:** не трогал код `apps/landing` — правка кода тут не поможет, раз локальная
+  сборка и так генерирует файлы верно. Нет доступа к Railway/Cloudflare дашборду в этой сессии
+  (проверил `railway` CLI — не установлен; Playwright → railway.com/dashboard → экран логина,
+  сессии нет).
+- **Что нужно (владельцу Railway/Cloudflare — Полат или кто держит доступ):**
+  1. Railway → Settings → Domains: подтвердить, что `maxsavdo.uz` + `www` реально привязаны к
+     сервису `landing` (не остался старый bind на `savdo-builder-sl`/web-seller).
+  2. Сделать свежий Deploy `landing` (новый build id обычно инвалидирует ISR/edge-кэш).
+  3. Cloudflare → Caching → Purge Cache (минимум для `/robots.txt`, `/sitemap.xml`, `/`, `/ru`)
+     на зоне maxsavdo.uz.
+  4. Перепроверить: `curl -I https://maxsavdo.uz/robots.txt` должен отдать `landing`-контент,
+     не 404.
+- **Отдельно (не блокер этого бага):** GSC/Yandex.Webmaster — их **вообще ни у одного из 7
+  сайтов компании нет** по внешнему аудиту. Это аккаунт-левел действие (верификация домена в
+  Google/Yandex через TXT-запись или meta-tag), требует доступ к аккаунту Bekzod aka/owner —
+  не код-задача, Claude не может это сделать сам.
+
+## [2026-07-16, доп.] [SEO-AUDIT-001] apex-баг — причина ПОДТВЕРЖДЕНА (Railway edge routing), фикс НЕ применён (owner попросил подождать)
+
+- **Уточнение к записи выше:** причина не "закэшированный 404", а **web-seller реально обслуживает
+  трафик apex/`www` maxsavdo.uz** — тело 404-ответа 1-в-1 совпадает с `apps/web-seller/src/app/
+  layout.tsx:19-27` (`title: "maxsavdo — Seller Dashboard"`, `description: "Управляй магазином
+  в Telegram"`, `lang="ru"`), не догадка, а точное совпадение строк кода.
+- **Проверено в Railway дашборде (TezCode Team → savdo builder, зашёл под azim.kurbanov.2000@mail.ru):**
+  - Domains у сервиса `landing`: `maxsavdo.uz` + `www.maxsavdo.uz` — оба привязаны правильно.
+  - Последний деплой `landing` — "LANDING-CORP-PAGE-001", 4 дня назад, **Deployment successful**,
+    соответствует текущему HEAD ветки `landing` (`ba1bd884`).
+  - Т.е. на уровне Railway Settings всё выглядит корректно.
+  - ⚠️ **Отдельная находка:** воркспейс `TezCode Team` (там же лежит `savdo builder`) превысил
+    Compute Usage Limit ($64/$60) — "All deployments are paused" до апгрейда лимита или
+    следующего billing-цикла. Значит редеплой сейчас всё равно не пройдёт, пока лимит не поднят.
+  - `nslookup` (read-only): `seller.maxsavdo.uz`→`imgm5990.up.railway.app`,
+    `shop.maxsavdo.uz`→`2hba0kzp.up.railway.app`, `www.maxsavdo.uz`→`ggnri8a2.up.railway.app`
+    (свой уникальный таргет), но `maxsavdo.uz` (apex) — голый A-record `69.46.46.66` без
+    CNAME-алиаса (у всех остальных виден `*.up.railway.app`).
+- **Рабочая гипотеза:** Railway edge (`railway-hikari`) держит устаревшую routing-запись для
+  apex+www — домены раньше (до 07.07) вероятно указывали на web-seller, и после переключения на
+  `landing` (см. `DEPLOY-DOMAIN-MAXSAVDO-001`) edge не обновил внутренний routing, хотя в
+  Settings UI показывает актуальное состояние.
+- **Предложенный безопасный фикс (НЕ применён — owner попросил подождать):** удалить и заново
+  добавить `maxsavdo.uz`/`www` как custom domain у сервиса `landing` в Railway — форсирует
+  Railway пересобрать routing-запись. Требует активного billing-лимита? Нет — привязка домена
+  не деплой, лимит компьюта не должен мешать. DNS в Cloudflare трогать не обязательно, если
+  Railway выдаст тот же CNAME-таргет.
+- **Статус:** 🔴 Открыто, ждём решения owner'а когда делать фикс.
+
+## [2026-07-18] [SEC-DEPS-001] pnpm audit: 7 moderate-уязвимостей в prod-зависимостях
+- **Статус:** ✅ Частично исправлено (5 из 7; 2 требуют мажорных апгрейдов — см. ниже)
+- **Что случилось:** `pnpm audit --prod` нашёл 7 moderate: js-yaml ReDoS (через
+  @nestjs/swagger), qs DoS (через express/body-parser, 35 путей), joi 18.0.2,
+  react-router 6.30.3 (apps/tma), @nestjs/core 10.4.22 (патч только в 11.1.18),
+  @opentelemetry/core 1.30.1 (через @sentry/node 8.x, патч только в 2.8.0).
+- **Что сделано:** bounded-override'ы в pnpm-workspace.yaml (js-yaml >=4.1.2 <5,
+  qs >=6.15.2 <7 — по правилу «не выпрыгивать за мажор» из NOTE 2026-07-12);
+  прямые бампы: joi ^18.2.1 (apps/api), react-router-dom ^6.30.4 (apps/tma).
+  Проверено: api build+test EXIT 0, admin build EXIT 0, tma build EXIT 0.
+- **Остаток (осознанно не трогаем в этой задаче):**
+  - `@nestjs/core` 10.4.22 → фикс требует Nest 11 (мажор всего фреймворка,
+    Express 5 в platform-express) — отдельная задача NEST-11-UPGRADE.
+  - `@opentelemetry/core` 1.30.1 → фикс требует @sentry/node 8→10 (мажор,
+    peer-цепочка из 44 путей) — отдельная задача SENTRY-10-UPGRADE.
+  Обе — moderate (DoS-класс), не критичные для немедленного фикса.

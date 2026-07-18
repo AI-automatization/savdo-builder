@@ -6,38 +6,57 @@ allowBuilds:
   '@nestjs/core': false
   '@prisma/client': false
   '@prisma/engines': false
+  '@sentry/profiling-node': false
+  esbuild: false
   msgpackr-extract: false
   prisma: false
   sharp: false
   unrs-resolver: false
 
+# NOTE: every override below is capped with an explicit upper (major) bound.
+# 2026-07-12 audit found several pre-existing uncapped overrides (open '>=x'
+# with no ceiling) had silently jumped multiple majors past their intended
+# fix once the lockfile was resynced — e.g. @nestjs/core forced 10.x -> 11.x
+# across all of apps/api (breaking the common/platform-express/websockets
+# 10.4.22 peers), glob 10.x -> 13.x, file-type 21.x -> 22.x, vite 6.x -> 8.x.
+# Keep every entry bounded to the major line it was written for.
+# uuid: original override forced 14.x, which ships an ESM-only dist-node
+# build that Jest can't parse (breaks apps/api: 10 suites / 9 tests via
+# @nestjs/schedule+bullmq). Bounded to the 11.x line instead — same major
+# that already resolves cleanly through Jest, patches GHSA buffer-bounds
+# moderate at 11.1.1, no ESM break.
 overrides:
-  '@nestjs/core@<=11.1.17': '>=11.1.18'
-  ajv@>=7.0.0-alpha.0 <8.18.0: '>=8.18.0'
-  axios@>=1.0.0 <1.15.0: '>=1.15.0'
-  brace-expansion@<1.1.13: '>=1.1.13'
-  brace-expansion@>=2.0.0 <2.0.3: '>=2.0.3'
-  fast-xml-parser@<5.7.0: '>=5.7.0'
-  file-type@>=13.0.0 <21.3.1: '>=21.3.1'
-  file-type@>=20.0.0 <=21.3.1: '>=21.3.2'
-  follow-redirects@<=1.15.11: '>=1.16.0'
-  glob@>=10.2.0 <10.5.0: '>=10.5.0'
-  handlebars@>=4.0.0 <4.7.9: '>=4.7.9'
-  handlebars@>=4.0.0 <=4.7.8: '>=4.7.9'
-  handlebars@>=4.6.0 <=4.7.8: '>=4.7.9'
-  lodash@<=4.17.23: '>=4.18.0'
-  lodash@>=4.0.0 <=4.17.22: '>=4.17.23'
-  lodash@>=4.0.0 <=4.17.23: '>=4.18.0'
-  multer@<2.1.0: '>=2.1.0'
-  multer@<2.1.1: '>=2.1.1'
-  next@>=16.0.0-beta.0 <16.2.3: '>=16.2.3'
-  path-to-regexp@<0.1.13: '>=0.1.13'
-  picomatch@<2.3.2: '>=2.3.2'
-  picomatch@>=4.0.0 <4.0.4: '>=4.0.4'
-  postcss@<8.5.10: '>=8.5.10'
-  tmp@<=0.2.3: '>=0.2.4'
-  uuid@<14.0.0: '>=14.0.0'
-  vite@<=6.4.1: '>=6.4.2'
-  vite@>=6.0.0 <=6.4.1: '>=6.4.2'
-  webpack@>=5.49.0 <5.104.0: '>=5.104.0'
-  webpack@>=5.49.0 <=5.104.0: '>=5.104.1'
+  '@nestjs/core@>=11.0.0 <=11.1.17': '>=11.1.18 <12.0.0'
+  ajv@>=7.0.0-alpha.0 <8.18.0: '>=8.18.0 <9.0.0'
+  axios@>=1.0.0 <1.16.0: '>=1.16.0 <2.0.0'
+  brace-expansion@<1.1.13: '>=1.1.13 <2.0.0'
+  brace-expansion@>=2.0.0 <2.0.3: '>=2.0.3 <3.0.0'
+  fast-uri@<3.1.2: '>=3.1.2 <4.0.0'
+  fast-xml-parser@<5.7.0: '>=5.7.0 <6.0.0'
+  file-type@>=13.0.0 <21.3.1: '>=21.3.1 <22.0.0'
+  file-type@>=20.0.0 <=21.3.1: '>=21.3.2 <22.0.0'
+  follow-redirects@<=1.15.11: '>=1.16.0 <2.0.0'
+  form-data@<4.0.6: '>=4.0.6 <5.0.0'
+  glob@>=10.2.0 <10.5.0: '>=10.5.0 <11.0.0'
+  handlebars@>=4.0.0 <4.7.9: '>=4.7.9 <5.0.0'
+  js-yaml@>=4.0.0 <4.1.2: '>=4.1.2 <5.0.0'
+  handlebars@>=4.0.0 <=4.7.8: '>=4.7.9 <5.0.0'
+  handlebars@>=4.6.0 <=4.7.8: '>=4.7.9 <5.0.0'
+  lodash@<=4.17.23: '>=4.18.0 <5.0.0'
+  lodash@>=4.0.0 <=4.17.22: '>=4.17.23 <5.0.0'
+  lodash@>=4.0.0 <=4.17.23: '>=4.18.0 <5.0.0'
+  multer@<2.2.0: '>=2.2.0 <3.0.0'
+  next@>=16.0.0-beta.0 <16.2.3: '>=16.2.3 <17.0.0'
+  path-to-regexp@<0.1.13: '>=0.1.13 <0.2.0'
+  picomatch@<2.3.2: '>=2.3.2 <3.0.0'
+  qs@>=6.11.1 <6.15.2: '>=6.15.2 <7.0.0'
+  picomatch@>=4.0.0 <4.0.4: '>=4.0.4 <5.0.0'
+  postcss@<8.5.10: '>=8.5.10 <9.0.0'
+  react-router@>=7.0.0 <7.15.1: '>=7.15.1 <8.0.0'
+  tmp@<=0.2.3: '>=0.2.4 <0.3.0'
+  uuid@<11.1.1: '>=11.1.1 <12.0.0'
+  vite@<=6.4.1: '>=6.4.2 <7.0.0'
+  vite@>=8.0.0 <=8.0.15: '>=8.0.16 <9.0.0'
+  webpack@>=5.49.0 <5.104.0: '>=5.104.0 <6.0.0'
+  webpack@>=5.49.0 <=5.104.0: '>=5.104.1 <6.0.0'
+  ws@<8.21.0: '>=8.21.0 <9.0.0'

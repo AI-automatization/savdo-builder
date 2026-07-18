@@ -97,6 +97,18 @@ export class StoresRepository {
     return { stores, total, page, limit };
   }
 
+  /**
+   * SEO-AUDIT-001: лёгкий фид для sitemap — только slug+updatedAt публичных
+   * магазинов (та же видимость, что findAllPublished, без include/пагинации).
+   */
+  async findAllPublishedForSitemap() {
+    return this.prisma.store.findMany({
+      where: { isPublic: true, isSuspendedByBilling: false, deletedAt: null, status: 'APPROVED' },
+      select: { slug: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
   // FEAT-001: case-insensitive поиск по публичным магазинам.
   // Используется в GET /storefront/search.
   // API-STORES-FILTER-SUSPENDED-001: status: APPROVED — SUSPENDED stores не
@@ -271,6 +283,42 @@ export class StoresRepository {
         telegramContactLink: true,
         autoPostProductsToChannel: true,
       },
+    });
+  }
+
+  // ─── SELLER-PAYMENT-REQUISITES-001 ─────────────────────────────────────────
+
+  private static readonly PAYMENT_REQUISITES_SELECT = {
+    paymentCardNumber: true,
+    paymentCardHolder: true,
+    paymentClickLink: true,
+    paymentPaymeLink: true,
+    acceptsCash: true,
+    acceptsCardTransfer: true,
+  } as const;
+
+  async findPaymentRequisites(storeId: string) {
+    return this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: StoresRepository.PAYMENT_REQUISITES_SELECT,
+    });
+  }
+
+  async updatePaymentRequisites(
+    storeId: string,
+    data: {
+      paymentCardNumber?: string | null;
+      paymentCardHolder?: string | null;
+      paymentClickLink?: string | null;
+      paymentPaymeLink?: string | null;
+      acceptsCash?: boolean;
+      acceptsCardTransfer?: boolean;
+    },
+  ) {
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data,
+      select: StoresRepository.PAYMENT_REQUISITES_SELECT,
     });
   }
 }
