@@ -5,6 +5,41 @@
 
 ---
 
+## 🔴 [TMA-BECOME-SELLER-GAP-001] TMA ProfilePage «Стать продавцом» — апгрейдит роль без создания магазина
+- **Домен:** apps/tma (Полат) · **Кто взял:** не назначено
+- **Контекст:** аудит онбординга 18.07.2026 (Азим/Claude) — расхождение между `ProfilePage.tsx:56-68`
+  и `SettingsPage.tsx:41-44`, оба реализуют кнопку «Стать продавцом» по-разному.
+  `ProfilePage.handleBecomeSeller` → `applyAsSeller()` (только role BUYER→SELLER) → `reauth()` →
+  `navigate('/seller')`, магазин НЕ создаёт. `SettingsPage.handleBecomeSeller` (как и web-buyer CTA
+  `(shop)/profile/page.tsx:287`) уводит в бот `t.me/maxsavdo_bot?start=become_seller`, где идёт полноценная
+  регистрация с созданием магазина (комментарий `TMA-HYBRID-SETTINGS-BECOMESELLER-012` в самом Settings
+  прямо описывает, что так и должно быть).
+- **Проблема:** `/seller` index-route (`DashboardPage.tsx`) не проверяет наличие магазина — только фетчит
+  `/seller/orders`+`/seller/products` через `Promise.allSettled`, ошибки глотаются молча. `SellerGuard`
+  (`App.tsx:86-92`) проверяет только `role`, не `hasStore`. Продавец без магазина попадает на пустой
+  дашборд без единой подсказки — форма создания магазина есть только на `/seller/store`
+  (`SellerStorePage.tsx`, рендерится при 404 фетча стора, поля name/city/telegram), но пользователя туда
+  никто не ведёт.
+- **Варианты фикса:** (а) убрать флоу из ProfilePage, оставить только bot-flow как в Settings;
+  (б) после `applyAsSeller()` делать `navigate('/seller/store')` вместо `/seller`; (в) добавить
+  `hasStore`-редирект в `DashboardPage`/`SellerLayout` — по образцу web-seller
+  `(dashboard)/layout.tsx:225` (`router.replace('/onboarding')` при 404 стора).
+- **Файлы:** `apps/tma/src/pages/buyer/ProfilePage.tsx`, `apps/tma/src/pages/seller/DashboardPage.tsx`,
+  `apps/tma/src/App.tsx` (SellerLayout/SellerGuard, строки 86-92, 113-136).
+
+## 🟡 [ONBOARD-SLUG-TRANSLIT-DEDUP-001] Транслитерация кириллицы в slug продублирована 2× (web-seller + бот)
+- **Домен:** apps/web-seller (Азим) + apps/api/telegram (Полат) — решение о централизации за Полатом
+- **Кто взял:** не назначено · **Приоритет:** 🟡 P2, не блокер
+- **Контекст:** аудит онбординга 18.07.2026. `toSlug()`/`cyrillicToLatin` в
+  `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` и `toLatinSlug()`/`CYRILLIC_MAP` в
+  `apps/api/src/modules/telegram/telegram-demo.handler.ts` — независимые копии одной логики. Уже
+  стреляло дважды: кириллический баг чинили отдельно в web (`ONBOARDING-AUDIT-AZIM-001` P0-1, 11.07)
+  и отдельно в боте (`P0-SYNC-003`, 25.06) — фикс в одном месте не подхватился в другом.
+- **Предложение:** вынести в общий пакет (`packages/types` или новый `packages/utils`), если Полат
+  считает оправданным для двух разных платформ (Next.js web + NestJS bot handler).
+
+---
+
 ## 🟡 [PARTNER-API-RAOS-001] RAOS-интеграция — КОД ГОТОВ 14.07 (см. done.md), остались орг-шаги
 - **Домен:** операционка (Полат) + RAOS-сторона
 - **✅ Код-комплит 14.07:** PartnerModule (`X-Api-Key` Guard, `POST /partner/products`,
