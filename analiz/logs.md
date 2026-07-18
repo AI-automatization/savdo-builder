@@ -2787,3 +2787,20 @@ P2: остальное.
   не деплой, лимит компьюта не должен мешать. DNS в Cloudflare трогать не обязательно, если
   Railway выдаст тот же CNAME-таргет.
 - **Статус:** 🔴 Открыто, ждём решения owner'а когда делать фикс.
+
+## [2026-07-18] [SEC-DEPS-001] pnpm audit: 7 moderate-уязвимостей в prod-зависимостях
+- **Статус:** ✅ Частично исправлено (5 из 7; 2 требуют мажорных апгрейдов — см. ниже)
+- **Что случилось:** `pnpm audit --prod` нашёл 7 moderate: js-yaml ReDoS (через
+  @nestjs/swagger), qs DoS (через express/body-parser, 35 путей), joi 18.0.2,
+  react-router 6.30.3 (apps/tma), @nestjs/core 10.4.22 (патч только в 11.1.18),
+  @opentelemetry/core 1.30.1 (через @sentry/node 8.x, патч только в 2.8.0).
+- **Что сделано:** bounded-override'ы в pnpm-workspace.yaml (js-yaml >=4.1.2 <5,
+  qs >=6.15.2 <7 — по правилу «не выпрыгивать за мажор» из NOTE 2026-07-12);
+  прямые бампы: joi ^18.2.1 (apps/api), react-router-dom ^6.30.4 (apps/tma).
+  Проверено: api build+test EXIT 0, admin build EXIT 0, tma build EXIT 0.
+- **Остаток (осознанно не трогаем в этой задаче):**
+  - `@nestjs/core` 10.4.22 → фикс требует Nest 11 (мажор всего фреймворка,
+    Express 5 в platform-express) — отдельная задача NEST-11-UPGRADE.
+  - `@opentelemetry/core` 1.30.1 → фикс требует @sentry/node 8→10 (мажор,
+    peer-цепочка из 44 путей) — отдельная задача SENTRY-10-UPGRADE.
+  Обе — moderate (DoS-класс), не критичные для немедленного фикса.
