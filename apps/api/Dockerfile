@@ -30,7 +30,10 @@ RUN pnpm --filter api build
 # ─────────────────────────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
 
-RUN apk add --no-cache openssl wget vips fftw
+# postgresql-client — pg_dump для BACKUP-001 (ежедневный бэкап в R2).
+# Ставится дефолтная для этого Alpine версия; мажор клиента должен быть
+# >= мажора сервера Railway Postgres, иначе pg_dump откажется (см. done.md).
+RUN apk add --no-cache openssl wget vips fftw postgresql-client
 RUN npm install -g pnpm@11.12.0
 
 WORKDIR /app

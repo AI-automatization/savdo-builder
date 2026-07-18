@@ -541,7 +541,10 @@ sidebar/login/onboarding). Backwards-compat regex parser принимает об
 
 - **Домен:** инфра (Полат)
 - **Кто берёт:** Полат
-- **Приоритет:** P2 — пока drill PASS, можно держать дампы локально / в Google Drive
+- **Приоритет:** P3 (понижен 18.07) — `BACKUP-001` (см. done.md) уже шлёт ежедневные
+  дампы в существующий `savdo-private/db-backups/` c retention 14. Отдельный bucket
+  + lifecycle-правила — опциональное усиление, не блокер.
+- **Приоритет (старый):** P2 — пока drill PASS, можно держать дампы локально / в Google Drive
   Полата. Off-platform хранение — следующий уровень защиты.
 - **Что сделать:**
   1. Cloudflare → R2 → создать bucket `savdo-backups` (region `auto`).
