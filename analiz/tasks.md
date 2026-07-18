@@ -5,6 +5,29 @@
 
 ---
 
+## 🟡 [TEST-WS-GATEWAYS-001] Тесты на WS-гейтвеи: seller-room ownership и chat.gateway
+- **Домен:** apps/api (Полат) · **Кто взял:** не назначено
+- **Контекст:** security-аудит 18.07.2026 подтвердил, что ownership-проверки в WS есть и fail-closed
+  (`orders.gateway.ts:67-98` — DB-lookup владения store при `join-seller-room`;
+  `chat.gateway.ts:73-103` — членство в треде через БД). Но: `orders.gateway.spec.ts` НЕ покрывает
+  `handleJoinSellerRoom`, а у `chat.gateway.ts` spec-файла нет вообще.
+- **Детали:** добавить spec-кейсы: свой store → join OK; чужой storeId → отказ; несуществующий тред /
+  не-участник треда → отказ; ошибка БД → отказ (fail-closed). Регресс-защита от снятия guard'ов.
+- **Файлы:** `apps/api/src/socket/orders.gateway.spec.ts`, `apps/api/src/socket/chat.gateway.spec.ts` (новый).
+
+## 🟡 [FRONT-SERVER-SEARCH-001] web-*: переключить поиск списков на серверный параметр `search`
+- **Домен:** apps/web-buyer, apps/web-seller (Азим) · **Кто взял:** не назначено
+- **Контекст:** PERF-API-001 (18.07.2026, Полат) — API теперь принимает `search` на списках,
+  фронт больше не должен фильтровать клиентом только загруженную страницу.
+- **Контракт (query-параметр `search`, insensitive contains, pg_trgm index-backed):**
+  - `GET /api/v1/seller/products?search=&limit=&status=&globalCategoryId=&storeCategoryId=` —
+    поиск по title; ответ `{products, total}`, `total` УЖЕ учитывает search. Default limit 200, cap 500.
+  - `GET /api/v1/admin/products?search=` — title/description (admin SPA — зона Полата, для справки).
+  - `GET /api/v1/admin/stores?search=` — name/slug.
+  - Storefront-поиск (`GET /storefront/search?q=`) существовал и раньше — там менять нечего.
+- **Что сделать:** в web-seller списке товаров дергать `search` вместо клиентского `.filter()`;
+  debounce ~300ms; при активном поиске пагинация/лимит сохраняются.
+
 ## 🔴 [TMA-BECOME-SELLER-GAP-001] TMA ProfilePage «Стать продавцом» — апгрейдит роль без создания магазина
 - **Домен:** apps/tma (Полат) · **Кто взял:** не назначено
 - **Контекст:** аудит онбординга 18.07.2026 (Азим/Claude) — расхождение между `ProfilePage.tsx:56-68`

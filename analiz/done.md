@@ -1,5 +1,35 @@
 # Done — Азим + Полат
 
+## 2026-07-18 (Fable 5) — PERF-API-001: серверный поиск + limit caps + индекс
+
+### ✅ [PERF-API-001] Server-side search, ограничение unbounded-списков, композитный индекс
+- **Важность:** 🟡
+- **Дата:** 18.07.2026
+- **Файлы:** `apps/api/src/modules/products/repositories/products.repository.ts` (+spec),
+  `apps/api/src/modules/products/products.controller.ts`,
+  `apps/api/src/modules/admin/admin-products.controller.ts`,
+  `apps/api/src/modules/admin/repositories/admin.repository.ts`,
+  `apps/api/src/modules/admin/dto/list-stores.dto.ts`,
+  `apps/api/src/modules/admin/use-cases/list-stores.use-case.ts`,
+  `apps/api/src/modules/chat/repositories/chat.repository.ts`,
+  `packages/db/prisma/schema.prisma`,
+  `packages/db/prisma/migrations/20260718000001_product_store_list_index/migration.sql`
+- **Что сделано:**
+  - `search` на списках: `GET /seller/products` (title; `total` считается с теми же фильтрами —
+    новый `countByStoreIdFiltered`), `GET /admin/products` (title/description),
+    `GET /admin/stores` (name/slug). Всё insensitive contains — pg_trgm индексы с 12.05 уже есть.
+  - Закрыт unbounded seller-список: `findByStoreId` раньше без limit тянул ВСЁ
+    (`take` появлялся только при явном limit) — теперь default 200 / cap 500
+    (те же границы, что findPublicByStoreId). `findAll` admin переведён на
+    `toPrismaPagination` (cap 100 в самом repo, не только в контроллере).
+  - Чат-треды: `findThreadsByBuyer/Seller` были unbounded — `take: 100`.
+  - Новый индекс ADD-only `products(storeId, deletedAt, createdAt DESC)` под hot path
+    списков одного магазина (раньше — одиночный storeId + сортировка в памяти).
+  - Тесты: `products.repository.spec.ts` (6 кейсов: caps, search, пустой search, total-фильтры).
+- **Проверено:** api `pnpm build` EXIT 0, `pnpm test` 72 suites / 920 passed.
+- **Для Азима:** контракт в `analiz/tasks.md → FRONT-SERVER-SEARCH-001`.
+- **N+1:** новых не найдено — горячие пути уже batch (API-N1-CHECKOUT-001, API-N1-PRODUCTS-LIST-001).
+
 ## 2026-07-18 (Fable 5) — BACKUP-001: автоматические ежедневные бэкапы прод-Postgres
 
 ### ✅ [BACKUP-001] Ежедневный pg_dump → R2 с retention 14

@@ -712,6 +712,10 @@ model Product {
   @@index([isVisible])
   // DB-AUDIT-001-03: hot path public storefront feed (sort by new)
   @@index([status, deletedAt, createdAt(sort: Desc)])
+  // PERF-API-001: hot path списков товаров ОДНОГО магазина (seller list,
+  // storefront магазина): WHERE storeId + deletedAt IS NULL ORDER BY createdAt DESC.
+  // Одиночный products_storeId_idx заставлял сортировать хвост в памяти.
+  @@index([storeId, deletedAt, createdAt(sort: Desc)])
   @@map("products")
 }
 
