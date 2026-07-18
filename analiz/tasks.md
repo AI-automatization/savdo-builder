@@ -5,6 +5,86 @@
 
 ---
 
+## 🔴 [TMA-BECOME-SELLER-GAP-001] TMA ProfilePage «Стать продавцом» — апгрейдит роль без создания магазина
+- **Домен:** apps/tma (Полат) · **Кто взял:** не назначено
+- **Контекст:** аудит онбординга 18.07.2026 (Азим/Claude) — расхождение между `ProfilePage.tsx:56-68`
+  и `SettingsPage.tsx:41-44`, оба реализуют кнопку «Стать продавцом» по-разному.
+  `ProfilePage.handleBecomeSeller` → `applyAsSeller()` (только role BUYER→SELLER) → `reauth()` →
+  `navigate('/seller')`, магазин НЕ создаёт. `SettingsPage.handleBecomeSeller` (как и web-buyer CTA
+  `(shop)/profile/page.tsx:287`) уводит в бот `t.me/maxsavdo_bot?start=become_seller`, где идёт полноценная
+  регистрация с созданием магазина (комментарий `TMA-HYBRID-SETTINGS-BECOMESELLER-012` в самом Settings
+  прямо описывает, что так и должно быть).
+- **Проблема:** `/seller` index-route (`DashboardPage.tsx`) не проверяет наличие магазина — только фетчит
+  `/seller/orders`+`/seller/products` через `Promise.allSettled`, ошибки глотаются молча. `SellerGuard`
+  (`App.tsx:86-92`) проверяет только `role`, не `hasStore`. Продавец без магазина попадает на пустой
+  дашборд без единой подсказки — форма создания магазина есть только на `/seller/store`
+  (`SellerStorePage.tsx`, рендерится при 404 фетча стора, поля name/city/telegram), но пользователя туда
+  никто не ведёт.
+- **Варианты фикса:** (а) убрать флоу из ProfilePage, оставить только bot-flow как в Settings;
+  (б) после `applyAsSeller()` делать `navigate('/seller/store')` вместо `/seller`; (в) добавить
+  `hasStore`-редирект в `DashboardPage`/`SellerLayout` — по образцу web-seller
+  `(dashboard)/layout.tsx:225` (`router.replace('/onboarding')` при 404 стора).
+- **Файлы:** `apps/tma/src/pages/buyer/ProfilePage.tsx`, `apps/tma/src/pages/seller/DashboardPage.tsx`,
+  `apps/tma/src/App.tsx` (SellerLayout/SellerGuard, строки 86-92, 113-136).
+
+## 🟡 [ONBOARD-SLUG-TRANSLIT-DEDUP-001] Транслитерация кириллицы в slug продублирована 2× (web-seller + бот)
+- **Домен:** apps/web-seller (Азим) + apps/api/telegram (Полат) — решение о централизации за Полатом
+- **Кто взял:** не назначено · **Приоритет:** 🟡 P2, не блокер
+- **Контекст:** аудит онбординга 18.07.2026. `toSlug()`/`cyrillicToLatin` в
+  `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` и `toLatinSlug()`/`CYRILLIC_MAP` в
+  `apps/api/src/modules/telegram/telegram-demo.handler.ts` — независимые копии одной логики. Уже
+  стреляло дважды: кириллический баг чинили отдельно в web (`ONBOARDING-AUDIT-AZIM-001` P0-1, 11.07)
+  и отдельно в боте (`P0-SYNC-003`, 25.06) — фикс в одном месте не подхватился в другом.
+- **Предложение:** вынести в общий пакет (`packages/types` или новый `packages/utils`), если Полат
+  считает оправданным для двух разных платформ (Next.js web + NestJS bot handler).
+
+## 🔴 [LANDING-DEPLOY-TOPOLOGY-001] apps/landing SEO-код досинхронизирован с main — Railway-фикс см. SEO-AUDIT-001 P0 (Азим, на паузе у owner)
+- **Домен:** код — закрыто (Fable 5). Railway-фикс — инфра, см. `SEO-AUDIT-001 → P0 НОВОЕ (16.07.2026)`
+  ниже в этом файле — **это Азимова находка, более авторитетная** (реальный Railway dashboard +
+  nslookup доступ, которого у меня в этой сессии нет). НЕ дублирую его диагноз, только дополняю.
+- **Кто взял:** код — Fable 5 (17-18.07, по запросу owner: "почему maxsavdo.uz не виден в Google/geo")
+- **Контекст:** независимо от Азимова apex-routing бага (см. ниже) я нашёл, что branch `landing` в
+  git содержит `apps/web-seller/railway.toml` с `dockerfilePath = "apps/web-seller/Dockerfile"` —
+  т.е. **на уровне репозитория** для сервиса `landing` в этой ветке есть конфиг-файл, указывающий на
+  `apps/web-seller`, не на `apps/landing`. Не факт, что Railway реально читает именно этот файл
+  (Root Directory обычно задаётся в дашборде, а не только файлом) — но это совпадает с тем, что
+  Азим независимо подтвердил через дашборд: последний успешный деплой `landing` (`ba1bd884`) —
+  коммит, трогавший именно `apps/web-seller`. Т.е. **два разных метода диагностики сошлись на одном
+  выводе**: живой `maxsavdo.uz` так или иначе получает контент из `apps/web-seller`, а не из
+  `apps/landing`. Азим относит это к edge-routing/DNS-кэшу (apex без CNAME-алиаса); я — до кучи
+  нашёл, что даже если routing почини­тся, конфиг **branch `landing`** всё равно указывает Root Directory
+  не туда. Оба фактора стоит проверить вместе при следующем заходе в Railway dashboard.
+- **Что сделано (код, безопасно — не трогает live-инфра):**
+  1. Cherry-picked 7 коммитов Азима (`apps/landing`-only, без примеси `apps/web-seller`) с `origin/landing`
+     на `main`: логотип/фавикон/цвета + `4589707a` (llms.txt, AI-crawler robots, честные даты sitemap —
+     это те самые правки из `SEO-AUDIT-001-P2 #10` в `done.md`, которые лежали только на branch `landing`
+     и не доезжали до `main`).
+  2. Добавлен JSON-LD в `apps/landing`, которого там по факту не было (см. поправку в `done.md` к
+     записи `SEO-AUDIT-001-P2 #10` — "landing уже имел это раньше" не подтвердилось при чтении кода):
+     Organization (root layout, sitewide) + per-locale `@graph` (WebSite, SoftwareApplication с
+     реальными Offer из тарифов, FAQPage из реального FAQ). Без LocalBusiness/адреса — физической
+     точки для покупателей нет, выдумывать по принципу `LANDING-HONEST-COPY-001` не стали.
+  3. Фикс `apps/landing/railway.toml`: `NEXT_PUBLIC_SITE_URL` default был `savdo.uz` (опечатка) →
+     `maxsavdo.uz`.
+  4. Проверено локально: `tsc --noEmit` чисто, `npm run build` чисто (8/8 страниц, `/robots.txt` +
+     `/sitemap.xml` генерятся), standalone-сборка поднята и curl-ом проверено — JSON-LD рендерится,
+     robots.txt отдаёт AI-crawler правила, sitemap.xml — честные даты, llms.txt — 200.
+  5. Смёржено в `main`, запушено (см. `done.md`).
+- **🔲 Осталось (Полат/owner, Railway dashboard — НЕ начинать без снятия "подождать"-холда владельца):**
+  1. Сначала — Азимов P0-фикс (remove+re-add custom domain, см. ниже). Проверить результат curl'ом.
+  2. Если после этого `maxsavdo.uz` всё ещё отдаёт web-seller-контент — значит дело не только в
+     edge-кэше, и нужно дополнительно свериться в Railway Settings, что Root Directory сервиса
+     `landing` реально указывает на `apps/landing` (branch `main`), а не на `apps/web-seller`
+     (branch `landing`). Если нет — переключить.
+  3. Проверить env vars сервиса: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_BOT_USERNAME`,
+     `NEXT_PUBLIC_SITE_URL=https://maxsavdo.uz`.
+  4. Постдеплой: Google Search Console + Bing Webmaster (ни одного из 7 сайтов компании там нет —
+     Азимова находка) + Google Business Profile / 2GIS / Yandex Business (SEO-AUDIT-001 §4.4).
+  5. Учесть Compute Usage Limit ($64/$60, деплои приостановлены) — редеплой не пройдёт, пока лимит
+     не поднят; сама привязка домена, по заметке Азима, деплоем не является и лимитом не блокируется.
+
+---
+
 ## 🟡 [PARTNER-API-RAOS-001] RAOS-интеграция — КОД ГОТОВ 14.07 (см. done.md), остались орг-шаги
 - **Домен:** операционка (Полат) + RAOS-сторона
 - **✅ Код-комплит 14.07:** PartnerModule (`X-Api-Key` Guard, `POST /partner/products`,
