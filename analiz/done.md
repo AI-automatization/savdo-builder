@@ -1,5 +1,32 @@
 # Done — Азим + Полат
 
+## 2026-07-19 (Fable 5) — UIUX-ADMIN-TMA-001: server search + skeletons + a11y (admin, tma)
+
+### ✅ [UIUX-ADMIN-TMA-001] Admin/TMA: серверный поиск, skeleton-загрузка, a11y модалов
+- **Важность:** 🟡
+- **Дата:** 19.07.2026
+- **Файлы:** `apps/admin/src/components/ui/skeleton.tsx` (новый), admin pages:
+  Stores/Products/Sellers/Users/Orders/Categories/Database/SellerDetail/ModerationDetail,
+  `apps/tma/src/pages/seller/StorePage.tsx`
+- **Что сделано:**
+  - **Server search (admin-часть FRONT-SERVER-SEARCH-001):** StoresPage и ProductsPage
+    переведены с клиентского `.filter()` (искал только в загруженной странице) на
+    `?search=` из PERF-API-001, debounce 300ms по паттерну SellersPage; `total`/пагинация
+    приходят с сервера. Sellers/Users уже были серверными; Orders оставлен клиентским —
+    у `GET /admin/orders` параметра `search` нет (admin.controller.ts:143, только
+    status/storeId/page/limit), кандидат на будущую API-задачу.
+  - **Skeletons:** `Skeleton` + `TableSkeletonRows` (admin, дизайн-токены var(--surface2)),
+    заменили текст «Загрузка…» в таблицах Stores(7 кол)/Products(6)/Sellers(6)/Users(6)/Orders(7).
+    TMA: seller/StorePage — Spinner → `ProfileBlockSkeleton` (остальные экраны TMA уже
+    покрыты пресетами, TMA-LOADING-SKELETONS-001).
+  - **A11y:** 9 raw-модалов → `DialogShell` (focus-trap + Escape + role="dialog" +
+    aria-labelledby): CategoriesPage ×3 (delete/create-edit/history), DatabasePage ×3
+    (edit/insert/delete), SellerDetailPage ×2 (ConfirmModal/create-store),
+    ModerationDetailPage ×1 (reject). Теперь ВСЕ admin-модалы на DialogShell/useFocusTrap.
+    aria-label добавлен на поисковые инпуты Stores/Products/Sellers.
+  - **Проверки:** admin `pnpm build` EXIT 0, tma `pnpm build` (tsc -b) EXIT 0.
+  - **Коммиты:** admin `722cd96`, tma `e9a98ee`.
+
 ## 2026-07-19 (Fable 5) — TEST-CORE-001 + TEST-WS-GATEWAYS-001: тесты критичных флоу
 
 ### ✅ [TEST-WS-GATEWAYS-001] Spec на WS-гейтвеи: seller-room ownership + chat.gateway

@@ -12,8 +12,9 @@
 - **Контракт (query-параметр `search`, insensitive contains, pg_trgm index-backed):**
   - `GET /api/v1/seller/products?search=&limit=&status=&globalCategoryId=&storeCategoryId=` —
     поиск по title; ответ `{products, total}`, `total` УЖЕ учитывает search. Default limit 200, cap 500.
-  - `GET /api/v1/admin/products?search=` — title/description (admin SPA — зона Полата, для справки).
-  - `GET /api/v1/admin/stores?search=` — name/slug.
+  - `GET /api/v1/admin/products?search=` — title/description (admin SPA ✅ сделано 19.07,
+    UIUX-ADMIN-TMA-001, коммит `722cd96` — осталась только web-* часть).
+  - `GET /api/v1/admin/stores?search=` — name/slug (admin SPA ✅ там же).
   - Storefront-поиск (`GET /storefront/search?q=`) существовал и раньше — там менять нечего.
 - **Что сделать:** в web-seller списке товаров дергать `search` вместо клиентского `.filter()`;
   debounce ~300ms; при активном поиске пагинация/лимит сохраняются.
