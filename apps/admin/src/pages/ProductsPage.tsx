@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 import { useTranslation } from '../lib/i18n/I18nProvider'
+import { TableSkeletonRows } from '@/components/ui/skeleton'
 
 interface ProductImage { url: string }
 interface ProductStoreRef { id: string; name: string }
@@ -42,6 +43,10 @@ function price(val: number, currency: string) {
 export default function ProductsPage() {
   const { t } = useTranslation()
   const [statusFilter, setStatusFilter] = useState('')
+  // FRONT-SERVER-SEARCH (18.07.2026): поиск ушёл на сервер (PERF-API-001,
+  // GET /admin/products?search= по title/description) — клиентский filter
+  // видел только загруженные 50 строк. Debounce-паттерн как в SellersPage.
+  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -58,18 +63,22 @@ export default function ProductsPage() {
 
   const STATUS_FILTERS = ['', 'ACTIVE', 'HIDDEN_BY_ADMIN', 'DRAFT', 'ARCHIVED'] as const
 
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 300)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
   const params: string[] = ['limit=50']
   if (statusFilter) params.push(`status=${statusFilter}`)
   if (includeDeleted) params.push('includeDeleted=true')
+  if (search) params.push(`search=${encodeURIComponent(search)}`)
   const query = params.join('&')
-  const { data, loading, error, refetch } = useFetch<ProductsResponse>(`/api/v1/admin/products?${query}`, [statusFilter, includeDeleted])
+  const { data, loading, error, refetch } = useFetch<ProductsResponse>(`/api/v1/admin/products?${query}`, [statusFilter, includeDeleted, search])
 
   const [localProducts, setLocalProducts] = useState<Product[]>([])
   useEffect(() => { setLocalProducts(data?.products ?? []) }, [data])
 
-  const products = localProducts.filter(p =>
-    !search || p.title.toLowerCase().includes(search.toLowerCase()) || p.id.includes(search)
-  )
+  const products = localProducts
 
   async function toggleHide(product: Product) {
     const isHidden = product.status === 'HIDDEN_BY_ADMIN'
@@ -160,9 +169,10 @@ export default function ProductsPage() {
         <div style={{ position: 'relative', flex: 1, minWidth: 200, maxWidth: 340 }}>
           <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
           <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
             placeholder={t('products.searchPlaceholder')}
+            aria-label={t('products.searchPlaceholder')}
             style={{ width: '100%', padding: '9px 12px 9px 32px', borderRadius: 8, boxSizing: 'border-box', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13, outline: 'none' }}
           />
         </div>
@@ -209,7 +219,7 @@ export default function ProductsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
+              <TableSkeletonRows rows={8} cols={6} />
             ) : products.length === 0 ? (
               <tr><td colSpan={6} style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>{t('products.noProducts')}</td></tr>
             ) : products.map(p => {
