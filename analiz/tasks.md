@@ -5,6 +5,20 @@
 
 ---
 
+## 🟡 [FRONT-SERVER-SEARCH-001] web-*: переключить поиск списков на серверный параметр `search`
+- **Домен:** apps/web-buyer, apps/web-seller (Азим) · **Кто взял:** не назначено
+- **Контекст:** PERF-API-001 (18.07.2026, Полат) — API теперь принимает `search` на списках,
+  фронт больше не должен фильтровать клиентом только загруженную страницу.
+- **Контракт (query-параметр `search`, insensitive contains, pg_trgm index-backed):**
+  - `GET /api/v1/seller/products?search=&limit=&status=&globalCategoryId=&storeCategoryId=` —
+    поиск по title; ответ `{products, total}`, `total` УЖЕ учитывает search. Default limit 200, cap 500.
+  - `GET /api/v1/admin/products?search=` — title/description (admin SPA ✅ сделано 19.07,
+    UIUX-ADMIN-TMA-001, коммит `722cd96` — осталась только web-* часть).
+  - `GET /api/v1/admin/stores?search=` — name/slug (admin SPA ✅ там же).
+  - Storefront-поиск (`GET /storefront/search?q=`) существовал и раньше — там менять нечего.
+- **Что сделать:** в web-seller списке товаров дергать `search` вместо клиентского `.filter()`;
+  debounce ~300ms; при активном поиске пагинация/лимит сохраняются.
+
 ## 🔴 [TMA-BECOME-SELLER-GAP-001] TMA ProfilePage «Стать продавцом» — апгрейдит роль без создания магазина
 - **Домен:** apps/tma (Полат) · **Кто взял:** не назначено
 - **Контекст:** аудит онбординга 18.07.2026 (Азим/Claude) — расхождение между `ProfilePage.tsx:56-68`
@@ -541,7 +555,10 @@ sidebar/login/onboarding). Backwards-compat regex parser принимает об
 
 - **Домен:** инфра (Полат)
 - **Кто берёт:** Полат
-- **Приоритет:** P2 — пока drill PASS, можно держать дампы локально / в Google Drive
+- **Приоритет:** P3 (понижен 18.07) — `BACKUP-001` (см. done.md) уже шлёт ежедневные
+  дампы в существующий `savdo-private/db-backups/` c retention 14. Отдельный bucket
+  + lifecycle-правила — опциональное усиление, не блокер.
+- **Приоритет (старый):** P2 — пока drill PASS, можно держать дампы локально / в Google Drive
   Полата. Off-platform хранение — следующий уровень защиты.
 - **Что сделать:**
   1. Cloudflare → R2 → создать bucket `savdo-backups` (region `auto`).

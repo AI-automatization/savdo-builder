@@ -10,6 +10,7 @@ import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { PageHeader } from '../components/admin/PageHeader'
 import { Panel } from '../components/admin/Panel'
+import { DialogShell } from '../components/admin/DialogShell'
 import { InfoRow } from '../components/admin/InfoRow'
 import { ActionPanel } from '../components/admin/ActionPanel'
 import { StatusBadge } from '../components/admin/StatusBadge'
@@ -408,24 +409,11 @@ export default function ModerationDetailPage() {
         </ActionPanel>
       </div>
 
-      {/* Reject Modal */}
+      {/* Reject Modal — A11Y (UIUX-ADMIN-TMA-001): DialogShell (focus-trap + Escape + role="dialog") */}
       {rejectOpen && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-[200]"
-          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
-          onClick={() => { setRejectOpen(false); setComment('') }}
-        >
-          <div
-            className="rounded-2xl p-7 w-[440px] max-w-[90vw]"
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
+        <DialogShell onClose={() => { setRejectOpen(false); setComment('') }} width={440} ariaLabelledBy="mod-reject-title">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="m-0 text-[18px] font-bold" style={{ color: 'var(--text)' }}>{t('moderationDetail.rejectTitle')}</h3>
+              <h3 id="mod-reject-title" className="m-0 text-[18px] font-bold" style={{ color: 'var(--text)' }}>{t('moderationDetail.rejectTitle')}</h3>
               <button
                 onClick={() => { setRejectOpen(false); setComment('') }}
                 className="p-0"
@@ -484,8 +472,7 @@ export default function ModerationDetailPage() {
                 {isLoading('REJECT') ? t('moderation.sending') : t('moderation.reject')}
               </button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
     </div>
   )

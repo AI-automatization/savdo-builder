@@ -1,5 +1,126 @@
 # Done — Азим + Полат
 
+## 2026-07-19 (Fable 5) — UIUX-ADMIN-TMA-001: server search + skeletons + a11y (admin, tma)
+
+### ✅ [UIUX-ADMIN-TMA-001] Admin/TMA: серверный поиск, skeleton-загрузка, a11y модалов
+- **Важность:** 🟡
+- **Дата:** 19.07.2026
+- **Файлы:** `apps/admin/src/components/ui/skeleton.tsx` (новый), admin pages:
+  Stores/Products/Sellers/Users/Orders/Categories/Database/SellerDetail/ModerationDetail,
+  `apps/tma/src/pages/seller/StorePage.tsx`
+- **Что сделано:**
+  - **Server search (admin-часть FRONT-SERVER-SEARCH-001):** StoresPage и ProductsPage
+    переведены с клиентского `.filter()` (искал только в загруженной странице) на
+    `?search=` из PERF-API-001, debounce 300ms по паттерну SellersPage; `total`/пагинация
+    приходят с сервера. Sellers/Users уже были серверными; Orders оставлен клиентским —
+    у `GET /admin/orders` параметра `search` нет (admin.controller.ts:143, только
+    status/storeId/page/limit), кандидат на будущую API-задачу.
+  - **Skeletons:** `Skeleton` + `TableSkeletonRows` (admin, дизайн-токены var(--surface2)),
+    заменили текст «Загрузка…» в таблицах Stores(7 кол)/Products(6)/Sellers(6)/Users(6)/Orders(7).
+    TMA: seller/StorePage — Spinner → `ProfileBlockSkeleton` (остальные экраны TMA уже
+    покрыты пресетами, TMA-LOADING-SKELETONS-001).
+  - **A11y:** 9 raw-модалов → `DialogShell` (focus-trap + Escape + role="dialog" +
+    aria-labelledby): CategoriesPage ×3 (delete/create-edit/history), DatabasePage ×3
+    (edit/insert/delete), SellerDetailPage ×2 (ConfirmModal/create-store),
+    ModerationDetailPage ×1 (reject). Теперь ВСЕ admin-модалы на DialogShell/useFocusTrap.
+    aria-label добавлен на поисковые инпуты Stores/Products/Sellers.
+  - **Проверки:** admin `pnpm build` EXIT 0, tma `pnpm build` (tsc -b) EXIT 0.
+  - **Коммиты:** admin `722cd96`, tma `e9a98ee`.
+
+## 2026-07-19 (Fable 5) — TEST-CORE-001 + TEST-WS-GATEWAYS-001: тесты критичных флоу
+
+### ✅ [TEST-WS-GATEWAYS-001] Spec на WS-гейтвеи: seller-room ownership + chat.gateway
+- **Важность:** 🟡
+- **Дата:** 19.07.2026
+- **Файлы:** `apps/api/src/socket/orders.gateway.spec.ts` (расширен),
+  `apps/api/src/socket/chat.gateway.spec.ts` (новый)
+- **Что сделано:**
+  - `handleJoinSellerRoom` (API-WS-AUDIT-001): не-SELLER → disconnect; невалидный storeId → отказ
+    без DB; JWT match → join без DB; DB-verified ownership → join; чужой store / нет seller /
+    ошибка DB → отказ (fail-closed). 7 кейсов.
+  - `chat.gateway.spec.ts` полностью новый: handleConnection (no/invalid token → disconnect,
+    valid → auto-join `user:{sub}`), handleJoinChatRoom (участник buyer/seller → join;
+    не участник / thread not found / DB error → fail-closed отказ), chat:typing anti-spoof
+    (не в room → игнор; роль SELLER/BUYER; isTyping → boolean). 14 кейсов.
+
+### ✅ [TEST-CORE-001] Денежные флоу: INV-O04 списание/восстановление stock на repo-уровне
+- **Важность:** 🔴
+- **Дата:** 19.07.2026
+- **Файлы:** `apps/api/src/modules/checkout/repositories/checkout.repository.spec.ts` (новый),
+  `apps/api/src/modules/orders/repositories/orders.repository.spec.ts` (новый)
+- **Что сделано:**
+  - `CheckoutRepository.createOrder` (INV-O04 forward + API-STOCK-RACE-OVERSELL-001): happy-path
+    variant/non-variant (order + items + history null→PENDING + движение ORDER_DEDUCTED);
+    oversell → CHECKOUT_STOCK_INSUFFICIENT (guard в raw UPDATE / updateMany gte); невалидный UUID
+    product/variant → отказ ДО raw SQL (API-CHECKOUT-CONFIRM-500-001); частичный fail на 2-м item →
+    throw из транзакции. 7 кейсов.
+  - `OrdersRepository.updateStatus` (INV-O04 reverse): PENDING/CONFIRMED/PROCESSING → CANCELLED =
+    инкремент stock по каждому варианту + ORDER_RELEASED; обычный переход и SHIPPED→CANCELLED —
+    stock не трогается; null variantId/productId — guard. 6 кейсов (+history-запись).
+  - Уже было покрыто (не дублировал): use-case слой checkout — `confirm-checkout.use-case.spec.ts`
+    (29 кейсов: preconditions, delivery fee, side effects), недостаточный stock на валидации —
+    `validate-cart-items.service.spec.ts:159`, `preview-checkout.use-case.spec.ts:136`,
+    `create-direct-order.use-case.spec.ts:153`; переходы статусов (state machine + ownership) —
+    `update-order-status.use-case.spec.ts`; refund restock — `refund-order.use-case.spec.ts:232`;
+    subscription-флоу — start-trial/cancel/extend-trial/expire/mark-paid `.spec.ts` все существуют.
+- **Проверено:** api `pnpm build` EXIT 0, `pnpm test` **75 suites / 956 passed** (было 72/920).
+
+## 2026-07-18 (Fable 5) — PERF-API-001: серверный поиск + limit caps + индекс
+
+### ✅ [PERF-API-001] Server-side search, ограничение unbounded-списков, композитный индекс
+- **Важность:** 🟡
+- **Дата:** 18.07.2026
+- **Файлы:** `apps/api/src/modules/products/repositories/products.repository.ts` (+spec),
+  `apps/api/src/modules/products/products.controller.ts`,
+  `apps/api/src/modules/admin/admin-products.controller.ts`,
+  `apps/api/src/modules/admin/repositories/admin.repository.ts`,
+  `apps/api/src/modules/admin/dto/list-stores.dto.ts`,
+  `apps/api/src/modules/admin/use-cases/list-stores.use-case.ts`,
+  `apps/api/src/modules/chat/repositories/chat.repository.ts`,
+  `packages/db/prisma/schema.prisma`,
+  `packages/db/prisma/migrations/20260718000001_product_store_list_index/migration.sql`
+- **Что сделано:**
+  - `search` на списках: `GET /seller/products` (title; `total` считается с теми же фильтрами —
+    новый `countByStoreIdFiltered`), `GET /admin/products` (title/description),
+    `GET /admin/stores` (name/slug). Всё insensitive contains — pg_trgm индексы с 12.05 уже есть.
+  - Закрыт unbounded seller-список: `findByStoreId` раньше без limit тянул ВСЁ
+    (`take` появлялся только при явном limit) — теперь default 200 / cap 500
+    (те же границы, что findPublicByStoreId). `findAll` admin переведён на
+    `toPrismaPagination` (cap 100 в самом repo, не только в контроллере).
+  - Чат-треды: `findThreadsByBuyer/Seller` были unbounded — `take: 100`.
+  - Новый индекс ADD-only `products(storeId, deletedAt, createdAt DESC)` под hot path
+    списков одного магазина (раньше — одиночный storeId + сортировка в памяти).
+  - Тесты: `products.repository.spec.ts` (6 кейсов: caps, search, пустой search, total-фильтры).
+- **Проверено:** api `pnpm build` EXIT 0, `pnpm test` 72 suites / 920 passed.
+- **Для Азима:** контракт в `analiz/tasks.md → FRONT-SERVER-SEARCH-001`.
+- **N+1:** новых не найдено — горячие пути уже batch (API-N1-CHECKOUT-001, API-N1-PRODUCTS-LIST-001).
+
+## 2026-07-18 (Fable 5) — BACKUP-001: автоматические ежедневные бэкапы прод-Postgres
+
+### ✅ [BACKUP-001] Ежедневный pg_dump → R2 с retention 14
+- **Важность:** 🔴
+- **Дата:** 18.07.2026
+- **Файлы:** `apps/api/src/queues/processors/db-backup.processor.ts` (+spec, +module),
+  `apps/api/src/modules/media/services/r2-storage.service.ts` (listObjects, getPrivateBucket),
+  `apps/api/src/app.module.ts`, `apps/api/src/config/env.validation.ts`,
+  `apps/api/.env.example`, `apps/api/Dockerfile` (postgresql-client)
+- **Что сделано:** cron `@nestjs/schedule` (конвенция single-instance, как
+  PurgeDeletedUsersProcessor) в 22:00 UTC (03:00 Ташкент): `pg_dump -Fc
+  --no-owner --no-privileges` → upload в `savdo-private/db-backups/savdo-<ISO>.dump`,
+  retention — последние 14, старые удаляются (чужие ключи под префиксом не трогаем).
+  Kill-switch `DB_BACKUP_ENABLED` (default false). Sentry capture при сбое.
+  Restore: `pg_restore --clean --if-exists -d $DATABASE_URL <file>.dump`.
+- **⚙️ ЧТОБЫ ЗАРАБОТАЛО (Полат, Railway):** добавить `DB_BACKUP_ENABLED=true` в env
+  savdo-api. Больше ничего — STORAGE_* уже настроены (тот же R2, что и медиа).
+- **✅ Первый прогон проверен 19.07.2026:** Railway deploy logs — `DbBackup done in
+  2009ms: db-backups/savdo-2026-07-18T22-00-00-005Z.dump (258116 bytes), retained=1,
+  pruned=0`. Version mismatch не случился, Sentry-ошибок нет. Плюс нативный Railway
+  «Backup created on schedule» на postgres-volume — два независимых слоя бэкапов.
+- **Связь с задачами:** `INFRA-BACKUP-R2-SETUP-001` (отдельный bucket + lifecycle)
+  становится опциональным — off-site дампы теперь едут автоматически в существующий
+  private-bucket; `INFRA-BACKUP-DRILL-FIRST-RUN-001` (restore drill) остаётся
+  обязательным и упрощается: свежий дамп можно брать прямо из R2.
+
 ## 2026-07-17/18 (Fable 5) — apps/landing SEO-код синхронизирован с main (см. LANDING-DEPLOY-TOPOLOGY-001)
 
 ### ✅ [LANDING-DEPLOY-TOPOLOGY-001] (код-часть) — apps/landing SEO в main, Railway-фикс НЕ трогали
