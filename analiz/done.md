@@ -1,5 +1,43 @@
 # Done — Азим + Полат
 
+## 2026-07-19 (Fable 5) — TEST-CORE-001 + TEST-WS-GATEWAYS-001: тесты критичных флоу
+
+### ✅ [TEST-WS-GATEWAYS-001] Spec на WS-гейтвеи: seller-room ownership + chat.gateway
+- **Важность:** 🟡
+- **Дата:** 19.07.2026
+- **Файлы:** `apps/api/src/socket/orders.gateway.spec.ts` (расширен),
+  `apps/api/src/socket/chat.gateway.spec.ts` (новый)
+- **Что сделано:**
+  - `handleJoinSellerRoom` (API-WS-AUDIT-001): не-SELLER → disconnect; невалидный storeId → отказ
+    без DB; JWT match → join без DB; DB-verified ownership → join; чужой store / нет seller /
+    ошибка DB → отказ (fail-closed). 7 кейсов.
+  - `chat.gateway.spec.ts` полностью новый: handleConnection (no/invalid token → disconnect,
+    valid → auto-join `user:{sub}`), handleJoinChatRoom (участник buyer/seller → join;
+    не участник / thread not found / DB error → fail-closed отказ), chat:typing anti-spoof
+    (не в room → игнор; роль SELLER/BUYER; isTyping → boolean). 14 кейсов.
+
+### ✅ [TEST-CORE-001] Денежные флоу: INV-O04 списание/восстановление stock на repo-уровне
+- **Важность:** 🔴
+- **Дата:** 19.07.2026
+- **Файлы:** `apps/api/src/modules/checkout/repositories/checkout.repository.spec.ts` (новый),
+  `apps/api/src/modules/orders/repositories/orders.repository.spec.ts` (новый)
+- **Что сделано:**
+  - `CheckoutRepository.createOrder` (INV-O04 forward + API-STOCK-RACE-OVERSELL-001): happy-path
+    variant/non-variant (order + items + history null→PENDING + движение ORDER_DEDUCTED);
+    oversell → CHECKOUT_STOCK_INSUFFICIENT (guard в raw UPDATE / updateMany gte); невалидный UUID
+    product/variant → отказ ДО raw SQL (API-CHECKOUT-CONFIRM-500-001); частичный fail на 2-м item →
+    throw из транзакции. 7 кейсов.
+  - `OrdersRepository.updateStatus` (INV-O04 reverse): PENDING/CONFIRMED/PROCESSING → CANCELLED =
+    инкремент stock по каждому варианту + ORDER_RELEASED; обычный переход и SHIPPED→CANCELLED —
+    stock не трогается; null variantId/productId — guard. 6 кейсов (+history-запись).
+  - Уже было покрыто (не дублировал): use-case слой checkout — `confirm-checkout.use-case.spec.ts`
+    (29 кейсов: preconditions, delivery fee, side effects), недостаточный stock на валидации —
+    `validate-cart-items.service.spec.ts:159`, `preview-checkout.use-case.spec.ts:136`,
+    `create-direct-order.use-case.spec.ts:153`; переходы статусов (state machine + ownership) —
+    `update-order-status.use-case.spec.ts`; refund restock — `refund-order.use-case.spec.ts:232`;
+    subscription-флоу — start-trial/cancel/extend-trial/expire/mark-paid `.spec.ts` все существуют.
+- **Проверено:** api `pnpm build` EXIT 0, `pnpm test` **75 suites / 956 passed** (было 72/920).
+
 ## 2026-07-18 (Fable 5) — PERF-API-001: серверный поиск + limit caps + индекс
 
 ### ✅ [PERF-API-001] Server-side search, ограничение unbounded-списков, композитный индекс
@@ -47,9 +85,10 @@
   Restore: `pg_restore --clean --if-exists -d $DATABASE_URL <file>.dump`.
 - **⚙️ ЧТОБЫ ЗАРАБОТАЛО (Полат, Railway):** добавить `DB_BACKUP_ENABLED=true` в env
   savdo-api. Больше ничего — STORAGE_* уже настроены (тот же R2, что и медиа).
-- **⚠️ Проверить после первого прогона:** мажор pg_dump (alpine postgresql-client)
-  ≥ мажора Railway Postgres — иначе pg_dump упадёт с version mismatch (будет
-  видно в Sentry/логах в первую же ночь).
+- **✅ Первый прогон проверен 19.07.2026:** Railway deploy logs — `DbBackup done in
+  2009ms: db-backups/savdo-2026-07-18T22-00-00-005Z.dump (258116 bytes), retained=1,
+  pruned=0`. Version mismatch не случился, Sentry-ошибок нет. Плюс нативный Railway
+  «Backup created on schedule» на postgres-volume — два независимых слоя бэкапов.
 - **Связь с задачами:** `INFRA-BACKUP-R2-SETUP-001` (отдельный bucket + lifecycle)
   становится опциональным — off-site дампы теперь едут автоматически в существующий
   private-bucket; `INFRA-BACKUP-DRILL-FIRST-RUN-001` (restore drill) остаётся
