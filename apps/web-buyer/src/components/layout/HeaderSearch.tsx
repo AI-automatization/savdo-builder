@@ -168,7 +168,7 @@ export default function HeaderSearch() {
                       <div className="flex-1 min-w-0">
                         <div className="text-[13px] truncate" style={{ color: colors.textStrong }}>{p.title}</div>
                         <div className="text-[11px] truncate" style={{ color: colors.textMuted }}>
-                          {p.store?.name ?? '—'} · {Number(p.basePrice).toLocaleString('ru-RU')} сум
+                          {p.store?.name ?? '—'} · {Number(p.basePrice).toLocaleString('ru-RU')} {t('common.currency')}
                         </div>
                       </div>
                     </Link>

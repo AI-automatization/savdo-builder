@@ -5,6 +5,18 @@
 
 ---
 
+## 🟠 [FULL-AUDIT-WB-2026-07-20] Аудит 20.07.2026 — регрессия кэша заказа + i18n «сум»
+
+- **Домен:** `apps/web-buyer` (Азим).
+- **Кто берёт:** Азим.
+- **Приоритет:** 🟠 P2 — не блокер прод (skeleton вместо ошибки), но защита от read-after-write гонки снята.
+- **Что:** полный отчёт — `analiz/logs.md` → `[FULL-AUDIT-2026-07-20]`.
+  1. `hooks/use-checkout.ts` — вернуть `queryClient.setQueryData(orderKeys.detail(order.id), order)` в `onSuccess`, сузить invalidate с `orderKeys.all` до `orderKeys.list()`.
+  2. Захардкоженное «сум» (не через `t()`) в ~10 местах (cart/checkout/wishlist/orders/ProductCard/HeaderSearch/chats) — завести `t('common.currency')` или `formatMoney()` хелпер, заменить.
+- **Файлы:** `apps/web-buyer/src/hooks/use-checkout.ts`, `cart/page.tsx`, `checkout/page.tsx`, `wishlist/page.tsx`, `orders/page.tsx`, `orders/[id]/page.tsx`, `ProductCard.tsx`, `HeaderSearch.tsx`, `chats/page.tsx`.
+
+---
+
 ## 🔴 [BRAND-LOGO-SVG-CREATE-001] Создать SVG-исходники логотипа maxsavdo
 
 - **Домен:** brand assets (Полат + Азим — сами).

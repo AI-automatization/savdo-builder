@@ -292,7 +292,7 @@ function OrdersList() {
                   {formatDate(order.createdAt)}
                 </div>
                 <div className="text-sm font-bold mt-1.5" style={{ color: colors.textStrong }}>
-                  {formatPrice(order.totalAmount)} сум
+                  {formatPrice(order.totalAmount)} {t('common.currency')}
                 </div>
               </Link>
             );

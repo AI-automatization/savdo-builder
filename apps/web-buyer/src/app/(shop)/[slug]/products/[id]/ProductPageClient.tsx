@@ -470,7 +470,7 @@ export default function ProductPageClient({ initialProduct }: { initialProduct?:
                       <span className="text-xl md:text-2xl font-bold" style={{ color: colors.textStrong }}>
                         {fmt(displayPrice)}
                       </span>
-                      <span className="text-sm" style={{ color: colors.textMuted }}>сум</span>
+                      <span className="text-sm" style={{ color: colors.textMuted }}>{t('common.currency')}</span>
                     </div>
 
                     {/* Stock */}
@@ -638,7 +638,7 @@ export default function ProductPageClient({ initialProduct }: { initialProduct?:
                         >
                           {v.titleOverride ?? v.sku}
                           {v.priceOverride && (
-                            <span className="ml-1.5 opacity-70">{fmt(v.priceOverride)} сум</span>
+                            <span className="ml-1.5 opacity-70">{fmt(v.priceOverride)} {t('common.currency')}</span>
                           )}
                         </button>
                       ))}

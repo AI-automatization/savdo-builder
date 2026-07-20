@@ -360,7 +360,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
               >
                 <span className="text-sm font-bold" style={{ color: colors.textStrong }}>{t('orders.detail.toPay')}</span>
                 <span className="text-base font-bold" style={{ color: colors.textStrong }}>
-                  {formatPrice(order.totalAmount)} сум
+                  {formatPrice(order.totalAmount)} {t('common.currency')}
                 </span>
               </div>
             </div>

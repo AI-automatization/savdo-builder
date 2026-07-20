@@ -186,7 +186,7 @@ function WishlistCard({ item }: { item: WishlistItem }) {
           const n = Number(product.basePrice);
           return (Number.isFinite(n) ? n : 0).toLocaleString("ru-RU");
         })()}
-        <span className="text-[11px] font-normal ml-1" style={{ color: colors.textMuted }}>сум</span>
+        <span className="text-[11px] font-normal ml-1" style={{ color: colors.textMuted }}>{t('common.currency')}</span>
       </div>
     </Link>
   );

@@ -1,5 +1,15 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-20] [FULL-AUDIT-2026-07-20] Плановый аудит web-buyer — 1 регрессия + i18n-пробелы
+- **Статус:** 🟠 Найдено, не исправлено (аудит по запросу владельца, домены web-buyer/web-seller/landing).
+- **Метод:** параллельный агент — сверка с analiz/tasks.md+logs.md (все 26 находок `WEB-BUYER-AUDIT-2026-05-05` подтверждены закрытыми, регрессий не найдено кроме одной ниже) + `tsc --noEmit` (чисто, 0 ошибок) + чтение checkout/cart/auth/i18n/a11y.
+- **Находки:**
+  - 🟠 **Регрессия `use-checkout.ts`.** `onSuccess` больше не делает `queryClient.setQueryData(orderKeys.detail(order.id), order)`, вместо этого `invalidateQueries({queryKey: orderKeys.all})` — инвалидирует всё дерево заказов, включая только что созданный detail. Защита read-after-write из `WEB-BUYER-CHECKOUT-REDIRECT-FAIL-001` (21.04.2026) потеряна: при повторном лаге бэкенда после `router.replace('/orders/{id}')` вернётся skeleton/ошибка вместо мгновенного рендера из кэша.
+  - 🟡 **«сум» захардкожен вне i18n** в ~10 местах: `checkout/page.tsx:809` (сайдбар), `cart/page.tsx:193,410,426,460,476`, `wishlist/page.tsx:189`, `orders/page.tsx:295`, `orders/[id]/page.tsx:363`, `ProductCard.tsx:196,205`, `ProductPageClient.tsx:473,641`, `HeaderSearch.tsx:171`, `chats/page.tsx:123`, `products/[id]/layout.tsx:92` (OG). При UZ-локали должно быть «soʻm» — паттерн `t('...WithAmount')` уже применён частично (`cart.checkoutWithAmount` и т.п.), но пропущен в перечисленных местах.
+  - 🟢 Wishlist не показывает `salePrice` — тип `WishlistItem.product` (Pick в `packages/types/src/api/wishlist.ts:14-16`) не содержит `salePrice/isSale/oldPrice`. Не фронт-фикс — тикет Полату.
+  - 🟢 Пустые `alt=""` на миниатюрах галереи товара (`ProductPageClient.tsx:410,433`) — лучше `alt={product.title}`.
+- **Что сделано:** только залогировано (аудит-режим), тикет — `analiz/tasks.md` → `FULL-AUDIT-WB-2026-07-20`.
+
 ## [2026-05-21] [STOREFRONT-STOCK-LIST-VS-DETAIL-001] 🟡→🟢 Реклассифицировано 24.05.2026
 - **Статус:** 🟢 Root cause найден; frontend-фикс применён локально (uncommitted), backend-тикет заведён.
 - **Замечен:** через Playwright MCP в ходе `VERIFY-CHECKOUT-CONFIRM-500-001` (21.05.2026)

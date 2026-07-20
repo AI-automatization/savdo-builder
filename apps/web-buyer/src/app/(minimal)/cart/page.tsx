@@ -190,7 +190,7 @@ function CartItemRow({ item, storeId }: { item: CartItem; storeId: string }) {
                 </button>
               </div>
               <div className="text-[13px] md:text-sm font-bold" style={{ color: colors.textStrong }}>
-                {fmt(itemSubtotal(item))} сум
+                {fmt(itemSubtotal(item))} {t('common.currency')}
               </div>
             </>
           )}
@@ -407,7 +407,7 @@ export default function CartPage() {
                 </div>
                 <div className="flex justify-between text-xs mb-1.5" style={{ color: colors.textMuted }}>
                   <span>{t('cart.subtotal')}</span>
-                  <span>{fmt(subtotal)} сум</span>
+                  <span>{fmt(subtotal)} {t('common.currency')}</span>
                 </div>
                 <div className="flex justify-between text-xs mb-1.5" style={{ color: colors.textMuted }}>
                   <span>{t('cart.delivery')}</span>
@@ -423,7 +423,7 @@ export default function CartPage() {
                   }}
                 >
                   <span>{t('cart.total')}</span>
-                  <span>{fmt(total)} сум</span>
+                  <span>{fmt(total)} {t('common.currency')}</span>
                 </div>
 
                 {/* Desktop CTA (hidden on mobile) */}
@@ -457,7 +457,7 @@ export default function CartPage() {
             </div>
             <div className="flex justify-between text-xs mb-1.5" style={{ color: colors.textMuted }}>
               <span>{t('cart.subtotal')}</span>
-              <span>{fmt(subtotal)} сум</span>
+              <span>{fmt(subtotal)} {t('common.currency')}</span>
             </div>
             <div className="flex justify-between text-xs mb-1.5" style={{ color: colors.textMuted }}>
               <span>{t('cart.delivery')}</span>
@@ -473,7 +473,7 @@ export default function CartPage() {
               }}
             >
               <span>{t('cart.total')}</span>
-              <span>{fmt(total)} сум</span>
+              <span>{fmt(total)} {t('common.currency')}</span>
             </div>
           </div>
         </>

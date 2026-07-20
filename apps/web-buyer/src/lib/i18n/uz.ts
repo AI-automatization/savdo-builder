@@ -13,6 +13,7 @@ export const uz: Translations = {
   'common.retry': 'Qayta urinish',
   'common.error': 'Nimadir xato ketdi',
   'common.empty': 'Hech narsa topilmadi',
+  'common.currency': 'soʻm',
   'settings.title': 'Sozlamalar',
   'settings.language': 'Interfeys tili',
 

@@ -193,7 +193,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
               <span className="flex items-baseline gap-1.5 flex-wrap">
                 <span style={{ color: colors.danger }}>
                   {fmt(product.salePrice)}{" "}
-                  <span className="font-normal text-[11px]">сум</span>
+                  <span className="font-normal text-[11px]">{t('common.currency')}</span>
                 </span>
                 <span className="font-normal text-[11px] line-through" style={{ color: colors.textMuted }}>
                   {fmt(product.oldPrice ?? product.basePrice)}
@@ -202,7 +202,7 @@ export default function ProductCard({ product, storeSlug }: Props) {
             ) : (
               <span style={{ color: colors.textStrong }}>
                 {fmt(product.basePrice)}{" "}
-                <span className="font-normal text-[11px]" style={{ color: colors.textMuted }}>сум</span>
+                <span className="font-normal text-[11px]" style={{ color: colors.textMuted }}>{t('common.currency')}</span>
               </span>
             )}
           </div>

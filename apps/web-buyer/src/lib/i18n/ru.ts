@@ -14,6 +14,7 @@ export const ru: Translations = {
   'common.retry': 'Повторить',
   'common.error': 'Что-то пошло не так',
   'common.empty': 'Ничего не найдено',
+  'common.currency': 'сум',
   // settings — секция настроек в /profile
   'settings.title': 'Настройки',
   'settings.language': 'Язык интерфейса',

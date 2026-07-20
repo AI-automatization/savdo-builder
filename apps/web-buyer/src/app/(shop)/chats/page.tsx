@@ -120,7 +120,7 @@ function PinnedProductStrip({ thread }: { thread: ChatThread }) {
   const href = thread.storeSlug ? `/${thread.storeSlug}/products/${thread.productId}` : null;
   const priceLabel =
     typeof thread.productPrice === "number"
-      ? `${Number(thread.productPrice).toLocaleString("ru-RU")} сум`
+      ? `${Number(thread.productPrice).toLocaleString("ru-RU")} ${t('common.currency')}`
       : null;
   const title = thread.productTitle ?? t('chat.threadFallback');
 

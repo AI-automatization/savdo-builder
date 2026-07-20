@@ -806,7 +806,7 @@ export default function CheckoutPage() {
                 }}
               >
                 <span>{t('cart.total')}</span>
-                <span>{fmt(total)} сум</span>
+                <span>{fmt(total)} {t('common.currency')}</span>
               </div>
 
               {/* Desktop submit */}
