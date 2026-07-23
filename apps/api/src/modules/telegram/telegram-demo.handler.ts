@@ -5,7 +5,6 @@ import { PrismaService } from '../../database/prisma.service';
 import { escapeTgHtml } from '../../shared/telegram-html';
 import { maskPhone } from '../../shared/pii';
 import { BotKey, BotLang, t, normalizeBotLang } from './telegram-bot-i18n';
-import { toLatinSlug } from 'types';
 
 // ── Redis keys ────────────────────────────────────────────────────────────────
 const TTL_LONG  = 365 * 24 * 60 * 60; // 1 год — привязка телефона
@@ -30,6 +29,30 @@ function storeUrl(slug: string): string {
 // TG-BOT-SELLER-TERMS-001: публичная оферта продавца живёт на web-buyer.
 function offerUrl(): string {
   return `${buyerBaseUrl()}/offer`;
+}
+
+// ── Транслитерация кириллицы для slug-генерации ───────────────────────────────
+// INFRA-TYPES-PKG-RUNTIME-001 (23.07.2026): держим копию локально, а не
+// `import from 'types'` — packages/types не собирается в JS (package.json
+// main указывает на raw .ts), и NestJS-рантайм (`node dist/src/main`, plain
+// CommonJS require, без ts-node) не может его загрузить в проде. Логика
+// зеркалит `packages/types/src/slug.ts` (для web-* апов, которые бандлят TS
+// через Next.js — там раздельная копия не нужна).
+const CYRILLIC_MAP: Record<string, string> = {
+  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'j',к:'k',
+  л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',
+  ч:'ch',ш:'sh',щ:'shch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',
+};
+
+function toLatinSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[а-яё]/g, (c) => CYRILLIC_MAP[c] ?? '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 40);
 }
 
 // ── Статусы заказов (BOT-I18N-FULL-001: лейблы в словаре ru/uz) ──────────────
