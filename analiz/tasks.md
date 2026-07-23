@@ -5,6 +5,21 @@
 
 ---
 
+## 🔴 [WEB-SELLER-ONBOARDING-TERMS-001] web-seller онбординг создания магазина — нет чекбокса согласия с офертой
+- **Домен:** apps/web-seller (Азим) · **Кто взял:** не назначено
+- **Контекст:** 23.07.2026 owner заметил отсутствие consent-шага в TG-боте (см.
+  `TG-BOT-SELLER-TERMS-001` в done.md — там уже закрыто). При проверке оказалось, что
+  `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` тоже не содержит ни ссылки на
+  оферту, ни чекбокса согласия — та же дыра, вторая платформа (grep по `oferta|terms|соглаш`
+  в `apps/web-seller/src/app` — 0 совпадений).
+- **Что сделать:** добавить обязательный чекбокс «Принимаю условия использования платформы»
+  со ссылкой на `apps/web-buyer/src/app/offer/page.tsx` (`{BUYER_URL}/offer`) на шаге создания
+  магазина, блокировать submit без галочки. Если нужно — сохранять факт согласия (аналог
+  `Seller.termsAcceptedAt`, уже добавлено в схему API-стороной, миграция
+  `20260723000001_seller_terms_accepted_at`) через существующий `PATCH`/`POST` эндпоинт
+  создания продавца/магазина (уточнить у Полата, нужен ли API-эндпоинт для проставления
+  этого поля с веб-флоу — сейчас его выставляет только бот).
+
 ## 🟡 [FRONT-SERVER-SEARCH-001] web-*: переключить поиск списков на серверный параметр `search`
 - **Домен:** apps/web-buyer, apps/web-seller (Азим) · **Кто взял:** не назначено
 - **Контекст:** PERF-API-001 (18.07.2026, Полат) — API теперь принимает `search` на списках,
@@ -41,16 +56,19 @@
 - **Файлы:** `apps/tma/src/pages/buyer/ProfilePage.tsx`, `apps/tma/src/pages/seller/DashboardPage.tsx`,
   `apps/tma/src/App.tsx` (SellerLayout/SellerGuard, строки 86-92, 113-136).
 
-## 🟡 [ONBOARD-SLUG-TRANSLIT-DEDUP-001] Транслитерация кириллицы в slug продублирована 2× (web-seller + бот)
-- **Домен:** apps/web-seller (Азим) + apps/api/telegram (Полат) — решение о централизации за Полатом
-- **Кто взял:** не назначено · **Приоритет:** 🟡 P2, не блокер
-- **Контекст:** аудит онбординга 18.07.2026. `toSlug()`/`cyrillicToLatin` в
-  `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx` и `toLatinSlug()`/`CYRILLIC_MAP` в
-  `apps/api/src/modules/telegram/telegram-demo.handler.ts` — независимые копии одной логики. Уже
-  стреляло дважды: кириллический баг чинили отдельно в web (`ONBOARDING-AUDIT-AZIM-001` P0-1, 11.07)
-  и отдельно в боте (`P0-SYNC-003`, 25.06) — фикс в одном месте не подхватился в другом.
-- **Предложение:** вынести в общий пакет (`packages/types` или новый `packages/utils`), если Полат
-  считает оправданным для двух разных платформ (Next.js web + NestJS bot handler).
+## 🟡 [ONBOARD-SLUG-TRANSLIT-DEDUP-001] Транслитерация кириллицы в slug — API-сторона закрыта 23.07, ждёт web-seller (Азим)
+- **Домен:** apps/web-seller (Азим) + apps/api/telegram (✅ Полат/Claude, 23.07)
+- **✅ 23.07.2026 сделано:** вынес `toLatinSlug()` в общий `packages/types/src/slug.ts`
+  (экспорт из `index.ts`), сигнатура `toLatinSlug(name, maxLength = 40)` — поведение 1-в-1 со
+  старой копией бота (сама функция была источником правды, т.к. уже в проде). Удалены локальные
+  `CYRILLIC_MAP`/`toLatinSlug` из `apps/api/src/modules/telegram/telegram-demo.handler.ts`, теперь
+  `import { toLatinSlug } from 'types'`. `pnpm --filter api build` EXIT 0, тесты 75/75 сьютов
+  (956/956) зелёные.
+- **🔲 Осталось (Азим, вне моей зоны — apps/web-seller):** `apps/web-seller/src/app/(onboarding)/
+  onboarding/page.tsx:18-33` (`CYRILLIC`/`toSlug`) — заменить на `import { toLatinSlug } from 'types'`.
+  ⚠️ Разница поведения при миграции: старый web-seller `toSlug` разрешал `\w` (подчёркивание) и
+  резал до 60 символов, а не 40 — если это осознанно, вызывать `toLatinSlug(name, 60)` (maxLength
+  параметризован специально под этот кейс), иначе `toLatinSlug(name)` (default 40, как в API).
 
 ## 🔴 [LANDING-DEPLOY-TOPOLOGY-001] apps/landing SEO-код досинхронизирован с main — Railway-фикс см. SEO-AUDIT-001 P0 (Азим, на паузе у owner)
 - **Домен:** код — закрыто (Fable 5). Railway-фикс — инфра, см. `SEO-AUDIT-001 → P0 НОВОЕ (16.07.2026)`

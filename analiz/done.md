@@ -1,5 +1,40 @@
 # Done — Азим + Полат
 
+## 2026-07-23 (Claude) — TG-BOT-SELLER-TERMS-001 + ONBOARD-SLUG-TRANSLIT-DEDUP-001 (API-часть)
+
+### ✅ [TG-BOT-SELLER-TERMS-001] TG-бот: регистрация продавца без согласия с офертой — фикс
+- **Важность:** 🔴
+- **Дата:** 23.07.2026
+- **Контекст:** owner заметил, что бот вообще не спрашивает согласие с условиями платформы
+  перед созданием магазина. Прочитал `telegram-demo.handler.ts:403-528` — подтверждено: флоу
+  был name→storeName→description→**сразу create**, шага consent не было ни разу.
+- **Файлы:** `apps/api/src/modules/telegram/telegram-demo.handler.ts`,
+  `apps/api/src/modules/telegram/telegram-webhook.controller.ts`,
+  `apps/api/src/modules/telegram/telegram-bot-i18n.ts` (ru+uz),
+  `packages/db/prisma/schema.prisma` + миграция `20260723000001_seller_terms_accepted_at`.
+- **Что сделано:**
+  - Новый шаг 4/4 в регистрации продавца: `askSellerTerms()` — сообщение со ссылкой на
+    уже существующую публичную оферту (`apps/web-buyer/src/app/offer/page.tsx`, ссылка
+    `{BUYER_URL}/offer`) + инлайн-кнопки «Принимаю условия» / «Отмена».
+  - `finishSellerRegistration()` больше не вызывается напрямую из шага описания — только
+    после `seller_reg_terms_accept`; описание теперь читается из tmp (`sellerDescription`),
+    не передаётся параметром.
+  - `declineSellerRegistration()` — новый метод, чистит state, показывает сообщение об отмене.
+  - Schema: `Seller.termsAcceptedAt DateTime?` (ADD-only, nullable — старые продавцы без
+    согласия остаются NULL, историю не подделываем). `sellerNested.termsAcceptedAt = new Date()`
+    проставляется в момент создания.
+  - `pnpm db:generate` + `pnpm --filter api build` EXIT 0, `pnpm --filter api test`:
+    75/75 сьютов, 956/956 тестов зелёные (без регрессий).
+- **🔲 Не в этой сессии (owner/бизнес):** реальные реквизиты юрлица в `/offer` — placeholder
+  (ждёт регистрации ИП/ООО, см. `LEGAL-OFFER-REQUISITES-001` в readiness-доке) — согласие
+  ссылается на документ, который сам по себе пока не юридически полный; это отдельный блокер,
+  не относится к самому факту наличия consent-шага.
+- **🔲 Азим (web-seller, не мой домен):** у `apps/web-seller` онбординга (форма создания
+  магазина на вебе) тоже нет чекбокса согласия с офертой — та же дыра, другая платформа.
+  Завести отдельным пунктом при следующем заходе в web-seller онбординг.
+
+### ✅ [ONBOARD-SLUG-TRANSLIT-DEDUP-001] API-часть — см. запись в `analiz/tasks.md`, детали не дублирую здесь.
+
 ## 2026-07-19 (Fable 5) — UIUX-ADMIN-TMA-001: server search + skeletons + a11y (admin, tma)
 
 ### ✅ [UIUX-ADMIN-TMA-001] Admin/TMA: серверный поиск, skeleton-загрузка, a11y модалов
