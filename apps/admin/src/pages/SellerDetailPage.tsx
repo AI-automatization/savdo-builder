@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Store, Phone, Ca
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 import { SellerVerificationPanel } from '../components/admin/SellerVerificationPanel'
+import { DialogShell } from '../components/admin/DialogShell'
 import { ActivityLogPanel } from '../components/admin/ActivityLogPanel'
 import { useTranslation } from '../lib/i18n'
 
@@ -63,10 +64,10 @@ function ConfirmModal({
 }) {
   const [reason, setReason] = useState('')
   const { t } = useTranslation()
+  // A11Y (UIUX-ADMIN-TMA-001): raw div → DialogShell (focus-trap + Escape + role="dialog")
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 440, maxWidth: '90vw' }}>
-        <h3 style={{ margin: '0 0 8px', color: 'var(--text)', fontSize: 18, fontWeight: 700 }}>{title}</h3>
+    <DialogShell onClose={onCancel} width={440} ariaLabelledBy="seller-confirm-title">
+        <h3 id="seller-confirm-title" style={{ margin: '0 0 8px', color: 'var(--text)', fontSize: 18, fontWeight: 700 }}>{title}</h3>
         <p style={{ margin: '0 0 20px', color: 'var(--text-muted)', fontSize: 14 }}>{description}</p>
         {requireReason && (
           <textarea
@@ -88,8 +89,7 @@ function ConfirmModal({
             {loading ? t('common.loading') : actionLabel}
           </button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   )
 }
 
@@ -441,12 +441,11 @@ export default function SellerDetailPage() {
         />
       )}
 
-      {/* Create Store Modal */}
+      {/* Create Store Modal — A11Y: DialogShell (focus-trap + Escape) */}
       {showCreateStore && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
+        <DialogShell onClose={() => setShowCreateStore(false)} width={480} zIndex={300} ariaLabelledBy="create-store-title">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('sellerDetail.createStore')}</h3>
+              <h3 id="create-store-title" style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('sellerDetail.createStore')}</h3>
               <button onClick={() => setShowCreateStore(false)} aria-label={t('sellerDetail.close')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 18, padding: '8px 12px', background: 'rgba(16,185,129,0.06)', borderRadius: 8, borderLeft: '3px solid #10B981' }}>
@@ -480,8 +479,7 @@ export default function SellerDetailPage() {
                 <Store size={14} /> {createStoreLoading ? t('sellerDetail.creating') : t('sellerDetail.create')}
               </button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
     </div>
   )

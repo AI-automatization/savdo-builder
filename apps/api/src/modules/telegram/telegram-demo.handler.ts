@@ -5,6 +5,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { escapeTgHtml } from '../../shared/telegram-html';
 import { maskPhone } from '../../shared/pii';
 import { BotKey, BotLang, t, normalizeBotLang } from './telegram-bot-i18n';
+import { toLatinSlug } from 'types';
 
 // ── Redis keys ────────────────────────────────────────────────────────────────
 const TTL_LONG  = 365 * 24 * 60 * 60; // 1 год — привязка телефона
@@ -26,22 +27,9 @@ function storeUrl(slug: string): string {
   return `${buyerBaseUrl()}/${slug}`;
 }
 
-// ── Транслитерация кириллицы для slug-генерации ───────────────────────────────
-const CYRILLIC_MAP: Record<string, string> = {
-  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'j',к:'k',
-  л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',
-  ч:'ch',ш:'sh',щ:'shch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',
-};
-
-function toLatinSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[а-яё]/g, (c) => CYRILLIC_MAP[c] ?? '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 40);
+// TG-BOT-SELLER-TERMS-001: публичная оферта продавца живёт на web-buyer.
+function offerUrl(): string {
+  return `${buyerBaseUrl()}/offer`;
 }
 
 // ── Статусы заказов (BOT-I18N-FULL-001: лейблы в словаре ru/uz) ──────────────
@@ -425,7 +413,29 @@ export class TelegramDemoHandler {
     );
   }
 
-  async finishSellerRegistration(chatId: string, description?: string): Promise<void> {
+  // TG-BOT-SELLER-TERMS-001: обязательное согласие с офертой перед созданием магазина.
+  async askSellerTerms(chatId: string, description?: string): Promise<void> {
+    const lang = await this.getLang(chatId);
+    await this.setTmp(chatId, 'sellerDescription', description?.trim() ?? '');
+    await this.setState(chatId, 'seller_reg_terms');
+    await this.bot.sendInlineKeyboard(
+      chatId,
+      t(lang, 'reg.step4', { url: offerUrl() }),
+      [
+        [{ text: t(lang, 'btn.acceptTerms'), callback_data: 'seller_reg_terms_accept' }],
+        [{ text: t(lang, 'btn.declineTerms'), callback_data: 'seller_reg_terms_decline' }],
+      ],
+      'HTML',
+    );
+  }
+
+  async declineSellerRegistration(chatId: string): Promise<void> {
+    await this.clearState(chatId);
+    const lang = await this.getLang(chatId);
+    await this.bot.sendMessage(chatId, t(lang, 'reg.termsDeclined'));
+  }
+
+  async finishSellerRegistration(chatId: string): Promise<void> {
     await this.clearState(chatId);
 
     const lang      = await this.getLang(chatId);
@@ -434,6 +444,7 @@ export class TelegramDemoHandler {
     const username  = await this.getTmp(chatId, 'username');
     const sellerName = await this.getTmp(chatId, 'sellerName');
     const storeName  = await this.getTmp(chatId, 'storeName');
+    const description = await this.getTmp(chatId, 'sellerDescription');
 
     if (!phone || !sellerName || !storeName) {
       await this.bot.sendMessage(chatId, t(lang, 'reg.error'));
@@ -456,6 +467,7 @@ export class TelegramDemoHandler {
         telegramUsername: username || '',
         telegramChatId: BigInt(chatId),
         telegramNotificationsActive: true,
+        termsAcceptedAt: new Date(),
         store: {
           create: {
             name: storeName,

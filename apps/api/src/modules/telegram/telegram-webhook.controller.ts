@@ -172,7 +172,7 @@ export class TelegramWebhookController {
         case 'seller_create_store_name': await this.demo.handleCreateStoreName(chatId, msg.text);  return;
         case 'seller_reg_name':          await this.demo.handleSellerRegName(chatId, msg.text);    return;
         case 'seller_reg_store_name':    await this.demo.handleSellerRegStoreName(chatId, msg.text); return;
-        case 'seller_reg_store_desc':    await this.demo.finishSellerRegistration(chatId, msg.text); return;
+        case 'seller_reg_store_desc':    await this.demo.askSellerTerms(chatId, msg.text);           return;
       }
     }
 
@@ -196,7 +196,9 @@ export class TelegramWebhookController {
     // Регистрация
     if (data === 'reg_buyer')  { await this.demo.registerAsBuyer(chatId);         return; }
     if (data === 'reg_seller') { await this.demo.startSellerRegistration(chatId); return; }
-    if (data === 'seller_reg_skip_desc') { await this.demo.finishSellerRegistration(chatId); return; }
+    if (data === 'seller_reg_skip_desc') { await this.demo.askSellerTerms(chatId);            return; }
+    if (data === 'seller_reg_terms_accept')  { await this.demo.finishSellerRegistration(chatId);     return; }
+    if (data === 'seller_reg_terms_decline') { await this.demo.declineSellerRegistration(chatId);    return; }
     if (data === 'seller_rename_store')  { await this.demo.handleRenameStoreStart(chatId);   return; }
 
     // Продавец

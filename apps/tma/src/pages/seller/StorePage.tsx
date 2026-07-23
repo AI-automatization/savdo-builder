@@ -7,7 +7,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Spinner } from '@/components/ui/Spinner';
+import { ProfileBlockSkeleton } from '@/components/ui/Skeleton';
 import { StoreDirectionsPicker } from '@/components/seller/StoreDirectionsPicker';
 import { useTranslation } from '@/lib/i18n';
 import { glass } from '@/lib/styles';
@@ -192,8 +192,9 @@ export default function SellerStorePage() {
     }
   };
 
+  // UIUX-ADMIN-TMA-001: skeleton вместо центрального спиннера — layout не прыгает
   if (loading) {
-    return <div className="flex justify-center py-10"><Spinner size={32} /></div>;
+    return <div className="px-4 py-4"><ProfileBlockSkeleton /></div>;
   }
 
   if (fetchError) {

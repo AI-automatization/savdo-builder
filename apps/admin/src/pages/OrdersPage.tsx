@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DialogShell } from '../components/admin/DialogShell'
 import { Input } from '@/components/ui/input'
+import { TableSkeletonRows } from '@/components/ui/skeleton'
 import { PaginationBar } from '../components/admin/PaginationBar'
 
 interface Store { id: string; name: string; slug: string }
@@ -174,7 +175,7 @@ export default function OrdersPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
+              <TableSkeletonRows rows={8} cols={7} />
             ) : orders.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-12 text-center" style={{ color: 'var(--text-muted)' }}>
