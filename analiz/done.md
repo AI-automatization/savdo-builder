@@ -33,7 +33,11 @@
   магазина на вебе) тоже нет чекбокса согласия с офертой — та же дыра, другая платформа.
   Завести отдельным пунктом при следующем заходе в web-seller онбординг.
 
-### ✅ [ONBOARD-SLUG-TRANSLIT-DEDUP-001] API-часть — см. запись в `analiz/tasks.md`, детали не дублирую здесь.
+### ⚠️ [ONBOARD-SLUG-TRANSLIT-DEDUP-001] API-часть — ОТКАЧЕНА тем же днём, сломала прод-деплой
+Изначальный вариант (`import { toLatinSlug } from 'types'` в боте) уронил healthcheck на Railway —
+`packages/types` не собирается в JS, NestJS-прод-рантайм не может require'ить raw `.ts`. Откачено
+на локальную копию функции в тот же день. Полный разбор — `analiz/logs.md → INFRA-TYPES-PKG-
+RUNTIME-001`, текущий статус задачи — `analiz/tasks.md`.
 
 ## 2026-07-19 (Fable 5) — UIUX-ADMIN-TMA-001: server search + skeletons + a11y (admin, tma)
 

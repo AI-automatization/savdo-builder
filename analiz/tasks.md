@@ -56,19 +56,24 @@
 - **Файлы:** `apps/tma/src/pages/buyer/ProfilePage.tsx`, `apps/tma/src/pages/seller/DashboardPage.tsx`,
   `apps/tma/src/App.tsx` (SellerLayout/SellerGuard, строки 86-92, 113-136).
 
-## 🟡 [ONBOARD-SLUG-TRANSLIT-DEDUP-001] Транслитерация кириллицы в slug — API-сторона закрыта 23.07, ждёт web-seller (Азим)
-- **Домен:** apps/web-seller (Азим) + apps/api/telegram (✅ Полат/Claude, 23.07)
-- **✅ 23.07.2026 сделано:** вынес `toLatinSlug()` в общий `packages/types/src/slug.ts`
-  (экспорт из `index.ts`), сигнатура `toLatinSlug(name, maxLength = 40)` — поведение 1-в-1 со
-  старой копией бота (сама функция была источником правды, т.к. уже в проде). Удалены локальные
-  `CYRILLIC_MAP`/`toLatinSlug` из `apps/api/src/modules/telegram/telegram-demo.handler.ts`, теперь
-  `import { toLatinSlug } from 'types'`. `pnpm --filter api build` EXIT 0, тесты 75/75 сьютов
-  (956/956) зелёные.
+## 🟡 [ONBOARD-SLUG-TRANSLIT-DEDUP-001] Транслитерация кириллицы в slug — API-сторона ОТКАЧЕНА (сломала прод), ждёт web-seller (Азим)
+- **Домен:** apps/web-seller (Азим) + apps/api/telegram (Полат/Claude)
+- **⚠️ 23.07.2026 — откачено:** изначально вынес `toLatinSlug()` в `packages/types/src/slug.ts` и
+  заменил локальную копию в боте на `import { toLatinSlug } from 'types'`. Локальный `tsc`-билд
+  проходил чисто, но на Railway деплой **падал на healthcheck** — `packages/types` не имеет
+  build-шага (`main` → raw `.ts`), NestJS-прод-рантайм (`node dist/src/main`, plain CommonJS
+  require) не может его загрузить → `Cannot find module '.../node_modules/types/src/index.ts'`,
+  процесс падал на старте. Подробности и урок на будущее — `analiz/logs.md → INFRA-TYPES-PKG-
+  RUNTIME-001`. Откатил на локальную копию `CYRILLIC_MAP`/`toLatinSlug` в
+  `telegram-demo.handler.ts` (23.07, коммит `112adc1`/`926c0ab`) — задеплоено, health 200,
+  подтверждено в Railway deploy logs.
+- **`packages/types/src/slug.ts` оставлен** — годится для web-* апов (Next.js бандлит TS сам,
+  проблемы рантайм-require там нет).
 - **🔲 Осталось (Азим, вне моей зоны — apps/web-seller):** `apps/web-seller/src/app/(onboarding)/
-  onboarding/page.tsx:18-33` (`CYRILLIC`/`toSlug`) — заменить на `import { toLatinSlug } from 'types'`.
-  ⚠️ Разница поведения при миграции: старый web-seller `toSlug` разрешал `\w` (подчёркивание) и
-  резал до 60 символов, а не 40 — если это осознанно, вызывать `toLatinSlug(name, 60)` (maxLength
-  параметризован специально под этот кейс), иначе `toLatinSlug(name)` (default 40, как в API).
+  onboarding/page.tsx:18-33` (`CYRILLIC`/`toSlug`) — можно заменить на
+  `import { toLatinSlug } from 'types'` (для Next.js это безопасно). ⚠️ Разница поведения: старый
+  web-seller `toSlug` разрешал `\w` (подчёркивание) и резал до 60 символов, а не 40 — если это
+  осознанно, вызывать `toLatinSlug(name, 60)`, иначе `toLatinSlug(name)` (default 40).
 
 ## 🔴 [LANDING-DEPLOY-TOPOLOGY-001] apps/landing SEO-код досинхронизирован с main — Railway-фикс см. SEO-AUDIT-001 P0 (Азим, на паузе у owner)
 - **Домен:** код — закрыто (Fable 5). Railway-фикс — инфра, см. `SEO-AUDIT-001 → P0 НОВОЕ (16.07.2026)`

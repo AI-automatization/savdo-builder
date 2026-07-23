@@ -1,5 +1,32 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-23] [INFRA-TYPES-PKG-RUNTIME-001] Прод-деплой api падал на healthcheck — `types` пакет не собирается в JS
+- **Статус:** ✅ Исправлено и подтверждено на проде (health 200)
+- **Что случилось:** в рамках ONBOARD-SLUG-TRANSLIT-DEDUP-001 вынес `toLatinSlug` в
+  `packages/types/src/slug.ts` и заменил локальную копию в `telegram-demo.handler.ts` на
+  `import { toLatinSlug } from 'types'`. Локально `pnpm --filter api build` (tsc) проходил чисто —
+  tsc резолвит `.ts` файлы напрямую, ему всё равно, как это будет грузиться в рантайме.
+  На Railway деплой падал на **Network > Healthcheck** — реальная причина видна только в Deploy Logs:
+  `Error: Cannot find module '/app/apps/api/node_modules/types/src/index.ts'`. `packages/types/
+  package.json` имеет `"main": "./src/index.ts"` — без build-шага в JS. Next.js апы (web-buyer/
+  web-seller) это переживают, потому что их бандлер (webpack) сам транспилирует TS при импорте.
+  NestJS-прод-рантайм — это plain `node dist/src/main.js` (CommonJS `require`, без ts-node) —
+  требовать `.ts` файл он не может, процесс падал на старте ещё до открытия порта → healthcheck
+  закономерно валился. Старая (вчерашняя) версия осталась ACTIVE, новый код (включая
+  TG-BOT-SELLER-TERMS-001) на прод не попал, хотя выглядело так, будто пуш прошёл нормально.
+- **Что сделано:** откатил runtime-импорт в `telegram-demo.handler.ts` — вернул локальную копию
+  `CYRILLIC_MAP`/`toLatinSlug` (идентичную по логике `packages/types/src/slug.ts`, maxLength=40).
+  `packages/types/src/slug.ts` оставлен как есть — годится для web-* апов при будущей миграции
+  Азимом (у них TS резолвится через бандлер, не через голый Node require). Проверено локально:
+  build EXIT 0, смоук-запуск `node dist/src/main.js` с фейковыми env — падает уже на штатной
+  Nest config-валидации (APP_URL/JWT_ACCESS_SECRET), а не на MODULE_NOT_FOUND. Задеплоено
+  (`api` ветка, `926c0ab`), Railway "Deployment successful", `api.maxsavdo.uz/api/v1/health` → 200.
+- **Урок на будущее:** `packages/types` (и любой workspace-пакет без build-шага, main → raw `.ts`)
+  **нельзя импортировать в рантайме из apps/api** (или любого другого plain-Node/NestJS сервиса).
+  Безопасно только для апов, которые бандлят TS сами (web-buyer/web-seller через Next.js). Если
+  когда-нибудь понадобится расшарить рантайм-логику с api — сначала завести build-шаг
+  (`tsup`/`tsc` → `dist/`) в `packages/types`, поменять `main` на скомпилированный JS.
+
 ## [2026-07-16] [MODERATION-ORPHANS-001] Сироты в очереди модерации после hard-delete
 - **Статус:** ✅ Исправлено (чистка прода + фикс в purge-коде)
 - **Что случилось:** при чистке прод-базы в очереди модерации остались 3 OPEN-кейса
