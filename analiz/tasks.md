@@ -5,6 +5,31 @@
 
 ---
 
+## 🟡 [FULL-AUDIT-LANDING-2026-07-20] JSON-LD не в проде + бренд-нестыковки — большинство закрыто 25.07 (на main, не на этой ветке)
+
+- **⚠️ Важно:** этот тикет писался против ветки `landing`, которая **перестала быть источником
+  деплоя 25.07.2026** — Railway-сервис `landing` переключён на сборку из `apps/landing`, ветка
+  `main` (см. `LANDING-DEPLOY-TOPOLOGY-001` в `analiz/tasks.md` на main). Дальнейшая работа над
+  `apps/landing` — на `main`/`.worktrees/landing` только для истории, не для деплоя.
+- **✅ Закрыто как побочный эффект переключения на main (проверено 25.07):**
+  1. 🔴 JSON-LD — на `main` подключён и работает (`lib/jsonld.ts`, используется в `layout.tsx`/
+     `page.tsx`), не тот мёртвый `JsonLd.tsx` компонент что видел этот аудит на ветке `landing`.
+  2. 🔴 `railway.toml` `NEXT_PUBLIC_SITE_URL` на `main` уже `https://maxsavdo.uz` (Fable 5,
+     до этого аудита) + сама Railway Variable `NEXT_PUBLIC_SITE_URL` явно задана в дашборде.
+  6. 🟡 Канал `t.me/savdobuilder` в футере — убран целиком (`LANDING-STALE-BOT-USERNAME-001`,
+     25.07): не было смысла чинить нейминг несуществующего канала, вместо этого сняли ссылку.
+- **✅ Закрыто кодом 25.07 (коммит `bb50e00e` на main), проверено что реально живые баги на main:**
+  4. 🟠 Free-тариф «20 товаров»/«10 товаров» — рассинхрон подтвердился и на `main` (не только на
+     `landing`), исправлено на реальный лимит 50 (`plan-config.ts`), ru+uz, оба места.
+  5. 🟠 `FeaturedStores.tsx` хардкод railway-домена — подтвердился и на `main`, исправлен на
+     `shop.maxsavdo.uz`.
+- **🔲 Осталось (не блокер, не проверено на main — при желании сверить заново):**
+  3. 🟠 OG-картинка «14 kun bepul» (противоречит FAQ) + синяя палитра вместо амбер-бренда.
+  7. 🟡 `hello@maxsavdo.uz` — не подтверждено что ящик существует (ждёт регистрации юрлица).
+  8. 🟡 `.env.example` — `NEXT_PUBLIC_BOT_USERNAME=savdobuilderBOT` опечатка, не читается в src/.
+
+---
+
 ## 🟡 [BILLING-TIER-ENUM-SYNC-001] Синхронизировать tier-enum билл-машины с pricing v2
 
 - **Домен:** `packages/db` + `packages/types` + `apps/api` (Полат) · спека `docs/business/` (Азим — обновит).

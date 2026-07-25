@@ -1,5 +1,21 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-20] [FULL-AUDIT-2026-07-20] Плановый аудит apps/landing — JSON-LD не задеплоен + бренд-нестыковки
+- **Статус:** 🔴 2 находки требуют действия перед публичным запуском + 6 поменьше.
+- **Метод:** параллельный агент — analiz/tasks.md и logs.md не содержат прямых issue по apps/landing (общие файлы описывают api/tma/admin/web-buyer) + `tsc --noEmit` чисто + `next build` успешен + чтение hero/CTA/pricing/OG/JSON-LD/env.
+- **Находки:**
+  - 🔴 **JSON-LD не в проде.** Коммит `e0a97d5d` (17.07.2026, «add JSON-LD structured data») существует только на `main` — подтверждено `git merge-base --is-ancestor` (NOT_ANCESTOR для ветки `landing`). Прод лендинга деплоится с ветки `landing`, не с `main` (архитектура — см. project memory), поэтому реальный сайт **не отдаёт JSON-LD вообще**; `src/components/JsonLd.tsx` на ветке `landing` существует, но нигде не импортируется — мёртвый код.
+  - 🔴 `railway.toml:15` — `NEXT_PUBLIC_SITE_URL="https://savdo.uz"` (мёртвый домен, curl → нет ответа) вместо `https://maxsavdo.uz`. Это дефолт-фолбэк для Railway-деплоя — риск если env-var в дашборде когда-нибудь сбросится или для нового окружения (preview/staging).
+  - 🟠 OG-картинка (`opengraph-image.tsx:100`) обещает «14 kun bepul» (14 дней бесплатно), но FAQ на той же странице (`i18n.ts:236,413`) говорит что Free-тариф без ограничения по времени — прямое противоречие в контенте.
+  - 🟠 OG-картинка использует синюю палитру (`#0F172A→#1E293B→#0EA5E9`), весь остальной сайт — амбер (`#E8A552`/`#D4922E`) — визуальный разрыв бренда при шаринге ссылки в TG/соцсетях.
+  - 🟠 Free-тариф: лимит «20 товаров» в pricing-блоке vs «10 товаров» в FAQ (`i18n.ts`, оба места — ru И uz) — одна страница обещает два разных числа одновременно.
+  - 🟠 `FeaturedStores.tsx:54` — хардкод `https://savdo-builder-by-production.up.railway.app/${slug}` вместо `shop.maxsavdo.uz` (уже рабочий прод-домен, `public/llms.txt` использует его как канон) — клик «Открыть магазин» ведёт на внутренний Railway service-домен.
+  - 🟡 Footer TG-канал `t.me/savdobuilder` (без `_`) не совпадает с ботом `savdo_builderBOT` (с `_`) — не битая ссылка, но несогласованный нейминг, возможно устаревший (сверить с `SUPPORT-CHANNEL-001`).
+  - 🟡 `hello@maxsavdo.uz` в Footer/JsonLd/llms.txt — не подтверждено что ящик реально существует (по `LANDING-CORP-PAGE-001` официальные адреса появятся только после регистрации юрлица).
+  - 🟡 `.env.example` — `NEXT_PUBLIC_BOT_USERNAME=savdobuilderBOT` (без `_`, опечатка) + переменная нигде не читается в `src/` — мёртвый env, вводит в заблуждение при онбординге.
+- **Хорошо:** JSON-LD/robots/sitemap-архитектура (когда задеплоена) продумана правильно (AI-crawlers whitelist, lastModified по коммиту контента), a11y на FAQ-аккордеоне корректна, TODO/console.log/lorem — не найдено нигде в `src/`.
+- **Что сделано:** только залогировано. Тикет — `analiz/tasks.md` → `FULL-AUDIT-LANDING-2026-07-20`. Первый приоритет — cherry-pick `e0a97d5d`, дальше `railway.toml` домен.
+
 ## [2026-06-08] [TMA-MOBILE-OVERFLOW-001] ✅ ЗАКРЫТО — карточки товаров уезжают за viewport на mobile
 - **Статус:** ✅ Исправлено (08.06.2026)
 - **Симптом:** На mobile (320–480px) в TMA buyer на StoresPage (tab "Товары") и StorePage карточки обрезались слева ('...личии' вместо 'В наличии'), скрытый horizontal scroll.
