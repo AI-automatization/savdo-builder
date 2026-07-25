@@ -71,6 +71,12 @@ export const ru: Translations = {
   'store.pager.next': 'Далее →',
   'store.pager.pageOf': 'Страница {page} из {total}',
 
+  // SELLER-PAYMENT-REQUISITES-001
+  'store.payment.title': 'Перевод на карту',
+  'store.payment.hint': 'Продавец принимает оплату переводом на карту — реквизиты ниже.',
+  'store.payment.cardNumber': 'Номер карты',
+  'store.payment.cardHolder': 'Получатель',
+
   // product — страница товара
   'product.notFound': 'Товар не найден',
   'product.notFoundDesc': 'Возможно, продавец его удалил или скрыл',

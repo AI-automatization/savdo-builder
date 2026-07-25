@@ -69,6 +69,12 @@ export const uz: Translations = {
   'store.pager.next': 'Keyingisi →',
   'store.pager.pageOf': '{page}-sahifa, jami {total}',
 
+  // SELLER-PAYMENT-REQUISITES-001
+  'store.payment.title': 'Kartaga oʻtkazma',
+  'store.payment.hint': 'Sotuvchi kartaga oʻtkazma orqali toʻlovni qabul qiladi — rekvizitlar quyida.',
+  'store.payment.cardNumber': 'Karta raqami',
+  'store.payment.cardHolder': 'Qabul qiluvchi',
+
   // product — mahsulot sahifasi
   'product.notFound': 'Mahsulot topilmadi',
   'product.notFoundDesc': 'Ehtimol, sotuvchi uni oʻchirgan yoki yashirgan',

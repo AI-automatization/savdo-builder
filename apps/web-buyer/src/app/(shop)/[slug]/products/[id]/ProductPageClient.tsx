@@ -13,6 +13,7 @@ import { ArrowLeft, Search, ShoppingBag, Share2, Check, MessageSquare, Heart, Mi
 import ChatComposerModal from "@/components/chat/ChatComposerModal";
 import ProductCard from "@/components/store/ProductCard";
 import { ProductReviews } from "@/components/store/ProductReviews";
+import type { ProductReviewsResponse } from "@/lib/api/storefront.api";
 import { SellerCard } from "@/components/store/SellerCard";
 import { colors } from "@/lib/styles";
 import { useAuth } from "@/lib/auth/context";
@@ -77,7 +78,13 @@ function QtyStepper({ qty, onDec, onInc }: { qty: number; onDec: () => void; onI
   );
 }
 
-export default function ProductPageClient({ initialProduct }: { initialProduct?: Product }) {
+export default function ProductPageClient({
+  initialProduct,
+  initialReviews,
+}: {
+  initialProduct?: Product;
+  initialReviews?: ProductReviewsResponse;
+}) {
   const router = useRouter();
   const params = useParams();
   const slug = params.slug as string;
@@ -751,7 +758,9 @@ export default function ProductPageClient({ initialProduct }: { initialProduct?:
             )}
 
             {/* Reviews */}
-            {!isLoading && product && <ProductReviews productId={product.id} />}
+            {!isLoading && product && (
+              <ProductReviews productId={product.id} initialReviews={initialReviews} />
+            )}
 
             {/* «Из этого магазина» — секция скрыта, если других товаров нет */}
             {!isLoading && product && relatedProducts.length > 0 && (

@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Star } from 'lucide-react';
 import { useProductReviews } from '@/hooks/use-storefront';
-import type { ProductReviewItem } from '@/lib/api/storefront.api';
+import type { ProductReviewItem, ProductReviewsResponse } from '@/lib/api/storefront.api';
 import { colors } from '@/lib/styles';
 import { useTranslation } from '@/lib/i18n';
 
 interface ProductReviewsProps {
   productId: string;
+  initialReviews?: ProductReviewsResponse;
 }
 
 function formatDate(iso: string): string {
@@ -33,12 +34,14 @@ function Stars({ rating, size = 14 }: { rating: number; size?: number }) {
   );
 }
 
-export function ProductReviews({ productId }: ProductReviewsProps) {
+export function ProductReviews({ productId, initialReviews }: ProductReviewsProps) {
   const [page, setPage] = useState(1);
   // Accumulate pages — нужно и для пагинации, и чтобы средний рейтинг считался
   // по всем отзывам, а не по первой странице (20 шт).
-  const [items, setItems] = useState<ProductReviewItem[]>([]);
-  const { data, isLoading, isError, isFetching } = useProductReviews(productId, page);
+  // Seed синхронно из initialReviews (не через useEffect) — иначе SSR/краулер
+  // без JS видит пустой список до гидратации, несмотря на server-фетч.
+  const [items, setItems] = useState<ProductReviewItem[]>(() => initialReviews?.items ?? []);
+  const { data, isLoading, isError, isFetching } = useProductReviews(productId, page, initialReviews);
   const { t, locale } = useTranslation();
 
   // Reset accumulator when product changes

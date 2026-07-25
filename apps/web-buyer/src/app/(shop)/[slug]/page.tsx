@@ -20,6 +20,7 @@ import { colors } from "@/lib/styles";
 import { StoreHeroBrandColumn } from "@/components/store/StoreHeroBrandColumn";
 import { StoreSectionLabels } from "@/components/store/StoreSectionLabels";
 import { StoreProductsLabel } from "@/components/store/StoreProductsLabel";
+import { StorePaymentInfo } from "@/components/store/StorePaymentInfo";
 import type { StoreCategoryItem } from "@/components/store/store-types";
 
 // generateMetadata + StorePage both fetch the same store — wrap in React.cache
@@ -202,6 +203,8 @@ export default async function StorePage({
 
       {/* ── Content wrapper ─────────────────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <StorePaymentInfo requisites={store.paymentRequisites} />
 
         {/* ── Store categories chip row — localized via client component ──────── */}
         <StoreSectionLabels

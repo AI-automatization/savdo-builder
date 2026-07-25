@@ -4,12 +4,9 @@ import { serverGetSitemapFeed } from '@/lib/api/storefront-server';
 const siteUrl = process.env.NEXT_PUBLIC_BUYER_URL || 'https://shop.maxsavdo.uz';
 
 // SEO-AUDIT-001 п.2: было 6 статичных URL, ни одного магазина/товара —
-// краулеру некуда идти дальше главной. Теперь тянем публичные магазины из
+// краулеру некуда идти дальше главной. Теперь тянем публичные магазины и товары из
 // /storefront/sitemap с честным lastModified вместо new Date() на каждый билд.
 //
-// ⚠️ Товары пока не эмитим: фид отдаёт только id (см. SitemapFeed в
-// storefront-server.ts) — без store.slug нельзя построить канонический
-// /{slug}/products/{id}. Блокер на Полате, см. analiz/logs.md SEO-AUDIT-001.
 // Honest lastModified per static page — last real content commit (git log), not build
 // time. Homepage stays "now" since it genuinely aggregates live featured stores/products.
 // Update the relevant date below when that page's actual content changes.
@@ -38,5 +35,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticEntries, ...storeEntries];
+  const productEntries: MetadataRoute.Sitemap = feed.products.map((p) => ({
+    url: `${siteUrl}/${p.storeSlug}/products/${p.id}`,
+    lastModified: new Date(p.updatedAt),
+    changeFrequency: 'weekly',
+    priority: 0.6,
+  }));
+
+  return [...staticEntries, ...storeEntries, ...productEntries];
 }

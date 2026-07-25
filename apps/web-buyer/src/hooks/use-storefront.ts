@@ -15,6 +15,7 @@ import {
   getProductsCatalog,
   type PlatformFeedParams,
   type ProductsCatalogParams,
+  type ProductReviewsResponse,
 } from '../lib/api/storefront.api';
 
 export const storefrontKeys = {
@@ -78,12 +79,17 @@ export function useProduct(id: string, initialProduct?: Product) {
   });
 }
 
-export function useProductReviews(id: string, page = 1) {
+// initialReviews — SEO-GEO-AEO-RESEARCH-002 п.4: server-fetched первая
+// страница отзывов для первого рендера (без этого текст отзывов был виден
+// только после client-фетча, а Product JSON-LD aggregateRating — уже нет).
+// Применяется только к page 1 (server фетчит limit=20, как и клиент по умолчанию).
+export function useProductReviews(id: string, page = 1, initialReviews?: ProductReviewsResponse) {
   return useQuery({
     queryKey: storefrontKeys.productReviews(id, page),
     queryFn: () => getProductReviews(id, page, 20),
     enabled: !!id,
     staleTime: 5 * 60 * 1000,
+    ...(page === 1 && initialReviews ? { initialData: initialReviews, initialDataUpdatedAt: 0 } : {}),
   });
 }
 

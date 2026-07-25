@@ -5,7 +5,7 @@
  */
 
 import type { FeaturedStorefrontResponse, GlobalCategory, Product, ProductListItem, StorefrontStore } from 'types';
-import type { StorefrontCategoryFilter } from './storefront.api';
+import type { StorefrontCategoryFilter, ProductReviewsResponse } from './storefront.api';
 import { API_BASE } from './env';
 
 async function sfetch<T>(path: string, search?: URLSearchParams | Record<string, string>): Promise<T> {
@@ -25,8 +25,29 @@ async function sfetch<T>(path: string, search?: URLSearchParams | Record<string,
   return res.json() as Promise<T>;
 }
 
-export async function serverGetStoreBySlug(slug: string): Promise<StorefrontStore> {
-  return sfetch<StorefrontStore>(`/storefront/stores/${slug}`);
+/**
+ * SELLER-PAYMENT-REQUISITES-001: `StorefrontStore` в packages/types на ветке
+ * web-buyer ещё без `paymentRequisites` (есть только на main) — тот же
+ * branch-sync разрыв, что со SlugFeed/StorePaymentRequisites в web-seller,
+ * см. analiz/logs.md SEO-DOC-DRIFT-001. `storefront/stores/:slug` реально
+ * отдаёт поле (storefront.controller.mapPublicStoreBySlug), локальный тип
+ * ниже отражает рантайм, не трогает packages/types (зона Полата).
+ */
+export interface StorePaymentRequisites {
+  acceptsCash: boolean;
+  acceptsCardTransfer: boolean;
+  cardNumber: string | null;
+  cardHolder: string | null;
+  clickLink: string | null;
+  paymeLink: string | null;
+}
+
+export type StorefrontStoreWithPayments = StorefrontStore & {
+  paymentRequisites?: StorePaymentRequisites;
+};
+
+export async function serverGetStoreBySlug(slug: string): Promise<StorefrontStoreWithPayments> {
+  return sfetch<StorefrontStoreWithPayments>(`/storefront/stores/${slug}`);
 }
 
 /**
@@ -50,18 +71,30 @@ export async function serverGetProduct(id: string): Promise<Product> {
 
 /**
  * SEO-AUDIT-001 п.2: фид для sitemap.ts.
- * ⚠️ products не несёт store slug/storeId — URL товара (`/{slug}/products/{id}`)
- * построить нельзя без него. sitemap.ts пока эмитит только магазины; товары —
- * после того как Полат добавит store.slug в findAllPublicForSitemap
- * (products.repository.ts). Заведено в analiz/logs.md.
+ * Полат добавил store.slug в findAllPublicForSitemap (products.repository.ts,
+ * 14.07.2026) — products теперь несёт storeSlug, канонический URL товара
+ * (`/{storeSlug}/products/{id}`) строится. ⚠️ Канонический тип в
+ * packages/types (StorefrontSitemapProduct) ещё не обновлён под storeSlug —
+ * это на Полате; здесь локальный тип уже отражает реальный ответ API.
  */
 export interface SitemapFeed {
   stores: Array<{ slug: string; updatedAt: string }>;
-  products: Array<{ id: string; updatedAt: string }>;
+  products: Array<{ id: string; updatedAt: string; storeSlug: string }>;
 }
 
 export async function serverGetSitemapFeed(): Promise<SitemapFeed> {
   return sfetch<SitemapFeed>('/storefront/sitemap');
+}
+
+/**
+ * SEO-GEO-AEO-RESEARCH-002 п.4: первая страница отзывов для SSR-первого рендера
+ * товара (см. useProductReviews initialData в use-storefront.ts) — без этого
+ * тексты отзывов рендерились только клиентским useQuery и были невидимы
+ * краулерам без JS (Product JSON-LD aggregateRating при этом уже был виден,
+ * создавая расхождение между structured data и видимым контентом).
+ */
+export async function serverGetProductReviews(id: string): Promise<ProductReviewsResponse> {
+  return sfetch<ProductReviewsResponse>(`/storefront/products/${id}/reviews`, { page: '1', limit: '20' });
 }
 
 /**

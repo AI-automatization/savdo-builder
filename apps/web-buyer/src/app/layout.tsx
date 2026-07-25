@@ -65,13 +65,21 @@ export default function RootLayout({
               logo: `${siteUrl}/brand/maxsavdo-mark.png`,
               description: 'Платформа интернет-магазинов Узбекистана в Telegram',
               areaServed: { '@type': 'Country', name: 'Uzbekistan' },
-              sameAs: ['https://t.me/savdo_builderBOT'],
+              // maxsavdo — продукт TezCode (MCHJ, резидент IT Park). Живого сайта у
+              // TezCode пока нет (tezcode.uz не резолвится) — sameAs на верифицированный
+              // GitHub org, не на непроверенный домен.
+              parentOrganization: {
+                '@type': 'Organization',
+                name: 'TezCode',
+                sameAs: ['https://github.com/AI-automatization'],
+              },
+              sameAs: ['https://t.me/maxsavdo_bot'],
               contactPoint: [
                 {
                   '@type': 'ContactPoint',
                   contactType: 'customer support',
                   email: 'hello@maxsavdo.uz',
-                  url: 'https://t.me/savdo_builderBOT',
+                  url: 'https://t.me/maxsavdo_bot',
                   availableLanguage: ['ru', 'uz'],
                 },
               ],
