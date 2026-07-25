@@ -1,6 +1,56 @@
 # Done — Азим + Полат
 
-## 2026-07-23 (Claude) — TG-BOT-SELLER-TERMS-001 + ONBOARD-SLUG-TRANSLIT-DEDUP-001 (API-часть)
+## 2026-07-25 (Claude) — LANDING-STALE-BOT-USERNAME-001 + LANDING-DEPLOY-TOPOLOGY-001 Railway-фикс
+
+### ✅ [LANDING-STALE-BOT-USERNAME-001] apps/landing — старый Telegram-бот в 5 местах
+- **Важность:** 🔴
+- **Дата:** 25.07.2026
+- **Контекст:** Полат нашёл и залогировал 24.07 (`e2016ba7`) — owner заметил старое имя бота
+  живьём. Подтвердил grep'ом и расширил список: помимо 3 мест из его находки (`jsonld.ts:5`,
+  `Footer.tsx:20`, `llms.txt:10`) нашёл 4-е — `Hero.tsx:96` (декоративный tag в phone-mockup).
+- **Файлы:** `apps/landing/src/components/Footer.tsx`, `Hero.tsx`, `src/lib/jsonld.ts`,
+  `src/lib/i18n.ts`, `public/llms.txt`.
+- **Что сделано:** `savdo_builderBOT` → `maxsavdo_bot` во всех 4 местах. Канал `@savdobuilder`
+  (`Footer.tsx` пункт «Канал», `jsonld.ts` sameAs) — убран целиком, не заменён на другой URL:
+  публичного TG-канала `@maxsavdo` по `docs/business` ещё не существует (pre-launch roadmap
+  item), оставлять второй несуществующий адрес вместо первого не стали. `FooterDict`/`Dict.footer`
+  типы упрощены (убрано поле `channel`). tsc EXIT 0, `next build` 8/8 страниц чисто (standalone
+  trace-copy падает локально на Windows symlink EPERM — не билд-ошибка, на Railway/Linux не
+  воспроизводится). Коммиты `94338136`, `e837b1ae` (main).
+
+### ✅ [LANDING-DEPLOY-TOPOLOGY-001] Настоящая причина 404 apex — не edge-кэш, а build-конфиг сервиса
+- **Важность:** 🔴
+- **Дата:** 25.07.2026
+- **Контекст:** SEO-AUDIT-001 P0 диагноз "remove+re-add custom domain" (предполагал edge-routing
+  кэш) не подтвердился при живой проверке Railway Settings. Реальная причина: Railway-сервис
+  `landing` (домен `maxsavdo.uz`) был настроен собирать **`apps/web-seller`**
+  (Dockerfile Path `/apps/web-seller/Dockerfile`, Start Command `node apps/web-seller/server.js`,
+  Watch Paths `apps/web-seller/**`, ветка `landing`) — не `apps/landing`. Отсюда и 404 на
+  `/robots.txt`/`/sitemap.xml` с телом от web-seller (в web-seller этих роутов просто нет).
+  Живьём подтверждено curl'ом ДО фикса: `/` → 200 landing-контент (он физически лежит внутри
+  apps/web-seller на ветке `landing`), `/robots.txt`+`/sitemap.xml` → 404 с title
+  «Seller Dashboard».
+- **Что сделано (Railway dashboard, сервис `landing`, project `savdo builder`):**
+  1. Source Branch: `landing` → `main` (там же теперь и фикс бота выше, и весь SEO-пакет
+     17-18.07 от Fable 5 — JSON-LD, llms.txt, honest sitemap dates).
+  2. Build → Dockerfile Path: `/apps/web-seller/Dockerfile` → `/apps/landing/Dockerfile`.
+  3. Build → Watch Paths: `apps/web-seller/**` → `apps/landing/**`.
+  4. Deploy → Start Command: `node apps/web-seller/server.js` → `node server.js`
+     (соответствует `apps/landing/Dockerfile` — standalone-сборка кладёт `server.js` в
+     `/app`, без вложенного `apps/landing/` пути, в отличие от web-seller-сборки).
+  5. Variables сервиса `landing` уже содержали `NEXT_PUBLIC_API_URL`+`NEXT_PUBLIC_BUYER_URL`
+     (заданы 09.07 в DEPLOY-DOMAIN-MAXSAVDO-001) — `NEXT_PUBLIC_SITE_URL`/
+     `NEXT_PUBLIC_BOT_USERNAME` не заданы, но у обоих есть safe-фолбэк в коде
+     (`maxsavdo.uz`, и bot username в apps/landing захардкожен в компонентах, не через env)
+     — не блокер.
+  6. Apply 4 changes → Deploy. Билд запущен на коммите `e837b1ae` (main).
+- **⚠️ Побочная находка (не блокер, отметить владельцу):** воркспейс TezCode Team показывает
+  баннер "Your subscription is past due" в Railway dashboard — тот же `INFRA-RAILWAY-PAST-DUE-001`
+  из чекпоинта 29.06, всё ещё не оплачено. Деплой в этот раз прошёл несмотря на баннер (не
+  заблокирован), но грузить дальше — риск.
+- **Проверка после деплоя:** curl `maxsavdo.uz/robots.txt` + `/sitemap.xml` до фикса отдавали
+  404 с телом web-seller; результат после деплоя — см. следующую запись/logs.md при следующей
+  сессии, если не дописано здесь же (мониторинг деплоя шёл в фоне в конце этой сессии).
 
 ### ✅ [TG-BOT-SELLER-TERMS-001] TG-бот: регистрация продавца без согласия с офертой — фикс
 - **Важность:** 🔴
