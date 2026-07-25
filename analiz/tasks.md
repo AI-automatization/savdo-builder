@@ -103,8 +103,18 @@
   6. 🟢 «Скрыт администратором» — добавлена кликабельная ссылка на `@maxsavdo_bot`.
   7. 🟢 «Номер аккаунта» → «Телефон покупателя» (ru) / «Xaridor telefoni» (uz).
 
-## 🟡 [FRONT-SERVER-SEARCH-001] web-*: переключить поиск списков на серверный параметр `search`
-- **Домен:** apps/web-buyer, apps/web-seller (Азим) · **Кто взял:** не назначено
+## ✅ [FRONT-SERVER-SEARCH-001] web-*: переключить поиск списков на серверный параметр `search` — ЗАКРЫТО 25.07.2026
+- **Домен:** apps/web-buyer, apps/web-seller (Азим) · **Кто взял:** Азим/Claude, `.worktrees/web-seller`
+- **Сделано:** `getSellerProducts` (`products.api.ts`) и `useSellerProducts` (`use-products.ts`)
+  принимают `search`; `products/page.tsx` дёргает `/seller/products?search=` с debounce 300мс
+  (`useDebouncedValue`, тот же паттерн, что уже был в web-buyer `hooks/use-search.ts`) вместо
+  клиентского `.filter()` по title. Статус-фильтр остался клиентским (не входил в скоуп задачи).
+  Empty-state починен под новую семантику: `products` теперь уже сервер-отфильтрован по search,
+  поэтому "пусто, нет товаров" vs "ничего не найдено" различаются через `isFiltering`
+  (search активен ИЛИ статус ≠ ALL), а не через сырой `products.length`. tsc EXIT 0.
+- Web-buyer не тронут — там нет аналогичного клиентского списка под `/seller/*` (web-buyer это
+  buyer-facing storefront, у него уже был серверный `storefront/search`, менять нечего — как и
+  было написано в исходном контракте задачи).
 - **Контекст:** PERF-API-001 (18.07.2026, Полат) — API теперь принимает `search` на списках,
   фронт больше не должен фильтровать клиентом только загруженную страницу.
 - **Контракт (query-параметр `search`, insensitive contains, pg_trgm index-backed):**
@@ -152,11 +162,31 @@
   подтверждено в Railway deploy logs.
 - **`packages/types/src/slug.ts` оставлен** — годится для web-* апов (Next.js бандлит TS сам,
   проблемы рантайм-require там нет).
-- **🔲 Осталось (Азим, вне моей зоны — apps/web-seller):** `apps/web-seller/src/app/(onboarding)/
-  onboarding/page.tsx:18-33` (`CYRILLIC`/`toSlug`) — можно заменить на
-  `import { toLatinSlug } from 'types'` (для Next.js это безопасно). ⚠️ Разница поведения: старый
-  web-seller `toSlug` разрешал `\w` (подчёркивание) и резал до 60 символов, а не 40 — если это
-  осознанно, вызывать `toLatinSlug(name, 60)`, иначе `toLatinSlug(name)` (default 40).
+- **🔎 РАЗОБРАНО 25.07.2026 (Азим/Claude) — дедуп пока НЕ сделан, нашлись 3 реальных стопора:**
+  1. **`packages/types/src/slug.ts` физически нет на ветке `web-seller`** (и на `web-buyer` тоже) —
+     он был добавлен коммитом `1147734c` только на `main`. `web-seller`/`web-buyer` — отдельные
+     долгоживущие ветки, main в них не мержится автоматически → импортировать неоткуда, пока файл
+     не попадёт в ветку (мерж/cherry-pick — решение по git-топологии, не строчка кода).
+  2. **60, а не 40 — подтверждено намеренное**, не мелочь на усмотрение: `apps/api/.../slug.service.ts`
+     прямым текстом — *"По умолчанию 60 (исторический контракт SlugService — НЕ менять для stores)"*
+     + *"⚠️ Менять regex/дефолты запрещено — поломаются существующие slug в БД"*. `onboarding/
+     page.tsx:472` шлёт фронтовый slug напрямую как `slug:` в `CreateStoreDto` — бэкендовый
+     `SlugService.generate()` **вообще не транслитерирует кириллицу** (его же комментарий), так что
+     фронтовый transliterate — единственный источник осмысленного slug для кириллических имён, уже
+     живущий в БД. При переходе на `toLatinSlug` — обязательно `toLatinSlug(name, 60)`, не default.
+     (Ремарка: старая запись "toSlug разрешал `\w`/подчёркивание" — неточна, локальный regex
+     `[^a-z0-9\s-]` подчёркивание не пропускает — тот же класс неточности, что в `SEO-DOC-DRIFT-001`.)
+  3. **Таблицы транслитерации не совпадают, не только длина:** `й→y`/`щ→sch` (web-seller, live в
+     проде) vs `й→j`/`щ→shch` (packages/types). Версия из packages/types писалась для API-фичи,
+     которую откатили **до продакшена** (см. запись выше) — она никогда не обрабатывала реальный
+     трафик. Значит канонической для дедупа должна стать web-seller-таблица, не наоборот.
+- **🔲 Полату:** обновить `packages/types/src/slug.ts` — таблицу под `й→y`/`щ→sch` (как в
+  web-seller, уже в БД) и держать дефолт `maxLength` осознанным (stores нужен 60). После этого —
+  подтянуть файл в ветки `web-seller`/`web-buyer`, и только тогда `onboarding/page.tsx` можно
+  безопасно переключить на `import { toLatinSlug } from 'types'`.
+- **Азим/Claude сознательно НЕ трогали `packages/types` и не мержили ветки** — вне зоны
+  (`packages/types — Полат пишет`), локальная копия в `onboarding/page.tsx` уже верна и
+  проверена продом, менять её на нерабочий импорт сейчас было бы регрессом.
 
 ---
 
@@ -178,7 +208,7 @@
   3. ~~(опц.) удалить smoke-товар `12c3e990-…`~~ ✅ 16.07 — удалён в рамках чистки базы
      (PROD-DB-CLEANUP-001, см. done.md).
 
-## 🟢 [SELLER-PAYMENT-REQUISITES-001] Реквизиты оплаты продавца — API ГОТОВ 14.07 (Полат), очередь Азима
+## ✅ [SELLER-PAYMENT-REQUISITES-001] Реквизиты оплаты продавца — ЗАКРЫТО 25.07.2026 (Азим/Claude)
 - **Домен:** `packages/db` + `apps/api` (✅ Полат 14.07, см. done.md) → `web-seller`/`web-buyer` (🔲 Азим)
 - **✅ Контракт для Азима:**
   - Owner: `GET/PATCH /seller/store/payment-requisites` — сырые поля
@@ -188,7 +218,30 @@
   - Buyer: в `storefront/stores/:slug` и `stores/:slug` появился объект `paymentRequisites`
     (тип `StorePaymentRequisites`): `{acceptsCash, acceptsCardTransfer, cardNumber, cardHolder, clickLink, paymeLink}` —
     карта/ссылки не-null ТОЛЬКО при acceptsCardTransfer=true (гейт на сервере, сырые колонки из ответа вырезаны).
-- **🔲 Азим:** экран «Реквизиты» в web-seller + реальное отображение на checkout web-buyer вместо placeholder.
+- **✅ web-seller (`.worktrees/web-seller`):** `PaymentRequisitesSection` в `settings/page.tsx` —
+  форма (наличные/перевод-на-карту toggle, номер/держатель карты, Click/Payme-ссылки),
+  `usePaymentRequisites`/`useUpdatePaymentRequisites` в `use-seller.ts`, API-функции в
+  `seller.api.ts`. Client-валидация зеркалит backend regex (13-24 цифры для карты,
+  https-only для ссылок), реальная 422-ошибка от backend показывается через `errorText()`.
+- **✅ web-buyer (`.worktrees/web-buyer`):** НЕ привязано к checkout/`paymentMethod` — нашлась
+  развилка (см. ниже), Азим выбрал информационный блок. `StorePaymentInfo.tsx` на странице
+  магазина (`[slug]/page.tsx`) — показывает карту/держателя (с copy-to-clipboard) и
+  Click/Payme-кнопки, только когда `acceptsCardTransfer && cardNumber`. Оплата остаётся
+  cash/договорная, как в текущем FAQ.
+- **⚠️ Важная находка, не путать с "просто разблокировать кнопку card":** disabled-кнопка
+  «card» в `checkout/page.tsx` (`CHECKOUT-PAYMENTMETHOD-NOT-SENT-001` комментарий) — это НЕ
+  «перевод на карту продавца». `CheckoutPaymentMethod` (`cash|card|online`, packages/types)
+  документирует `card` как **«картой при получении/курьеру»** — другая, отдельная
+  нереализованная фича (POS у курьера). У «перевода на карту заранее» нет своего значения в
+  этом enum. Если захотите позже сделать полноценный выбор способа оплаты — это отдельная
+  задача Полату (добавить значение в `CheckoutPaymentMethod` + backend), не путать с этой.
+- **⚠️ Тот же branch-sync разрыв в третий-четвёртый раз:** `StorePaymentRequisites`/
+  `UpdateStorePaymentRequisitesRequest` (packages/types) есть только на `main`, отсутствуют на
+  `web-seller`/`web-buyer`. Обошлись локальными типами в `seller.api.ts` (web-seller) и
+  `storefront-server.ts` (web-buyer), как и с `StorefrontSitemapProduct`/`slug.ts` ранее —
+  см. `SEO-DOC-DRIFT-001` в logs.md. **Полату:** это уже системный паттерн (4 находки за
+  сессию), возможно стоит завести регулярный процесс синка `packages/types` в долгоживущие
+  ветки web-*, а не находить дыры по одной за раз.
 
 ---
 
@@ -273,9 +326,17 @@
    `StorefrontSitemapFeed` добавлены в `packages/types` 12.07 (`98270455`).
 2. ✅ **[Азим, web-buyer]** `sitemap.ts` → динамический — закрыто 12.07.2026 (`b215b59b`,
    ветка `web-buyer`). Магазины подключены.
-   **✅ Хвост от Полата закрыт 14.07.2026:** `findAllPublicForSitemap` теперь отдаёт плоский
-   `storeSlug` (select store.slug + map), тип `StorefrontSitemapProduct` дополнен. **Азиму:**
-   доэмитить товары в `sitemap.ts` — канонический URL `/{storeSlug}/products/{id}`.
+   **✅ Хвост от Полата закрыт 14.07.2026:** `findAllPublicForSitemap` (`products.repository.ts`)
+   отдаёт плоский `storeSlug` (select store.slug + map) — подтверждено чтением кода 25.07.2026.
+   **✅ Товары доэмичены 25.07.2026** (Азим, `.worktrees/web-buyer`): `sitemap.ts` мапит
+   `feed.products` → `/{storeSlug}/products/{id}`, `weekly`/`0.6`. tsc EXIT 0.
+   **⚠️ Найдено при доработке:** канонический тип `StorefrontSitemapProduct` в
+   `packages/types/src/api/storefront.ts` **всё ещё** `{ id, updatedAt }` без `storeSlug` —
+   комментарий "тип дополнен" оказался неточным (проверено grep 25.07.2026). Runtime отдаёт
+   `storeSlug` исправно (API работает), но shared-тип не отражает реальный ответ. Азим завёл
+   локальный тип в `storefront-server.ts` как обходной путь (web-buyer не трогает
+   `packages/types` — зона Полата). **Полату:** дополнить `StorefrontSitemapProduct` полем
+   `storeSlug: string`, когда будет минутка — не блокер, просто рассинхрон типа с рантаймом.
 3. ✅ **[Азим, web-buyer]** Главная `(shop)/page.tsx` — закрыто 12.07.2026 (`b215b59b`).
    `serverGetFeatured()` фетчит featured server-side, `HomeTopStores` получает `initialData` —
    краулер видит реальные `<a href="/{slug}">` в первом HTML вместо client-only skeleton.
@@ -379,14 +440,17 @@
      жёстко `ru_RU`, описания магазинов/товаров пишет продавец (видимо в основном по-русски). Для
      узб. запросов индексировать может быть нечего независимо от техвставок. **Продуктовый вопрос
      Азиму/Юсуфу:** поощрять ли двуязычные (ru+uz) описания у продавцов.
-  4. 🟡 **Review/AggregateRating — нужна проверка, не код-фикс:** наш `aggregateRating` висит на
-     типе `Product` (`products/[id]/layout.tsx`) — это ОК, Google в 2026 всё ещё разрешает
-     review-сниппеты для Product (в отличие от LocalBusiness/Organization, где self-serving отзывы
-     не показываются вообще). НО обязательное условие — тексты отзывов должны быть реально видны
-     на самой странице, иначе риск ручной санкции на **весь домен**. Не проверял в этой сессии,
-     рендерится ли текст отзывов на product-странице web-buyer (только видел код расчёта рейтинга).
-     **Азиму:** подтвердить видимость; если только цифра без текстов — показать тексты или снять
-     `aggregateRating`.
+  4. ✅ **Review/AggregateRating — проверено И зафикшено 25.07.2026 (Азим, `.worktrees/web-buyer`).**
+     Тексты отзывов реально рендерятся (`ProductReviews.tsx:144-148`, `review.comment` в `<p>`) —
+     не голая цифра, условие Google соблюдено содержательно. НО нашёлся реальный баг: рендер шёл
+     только через клиентский `useProductReviews` **без initialData** — в первом server-HTML (что
+     видят Googlebot без полного JS-рендера и особенно AI-краулеры типа GPTBot/ClaudeBot, которые
+     JS не исполняют вообще) отзывов не было, при этом `aggregateRating` в JSON-LD уже был —
+     расхождение structured data и видимого контента. Фикс по паттерну SEO-AUDIT-001 п.3/4: `page.tsx`
+     теперь server-фетчит первую страницу отзывов (`serverGetProductReviews`, limit=20) и прокидывает
+     как `initialReviews` → `ProductPageClient` → `ProductReviews` → `useProductReviews` initialData;
+     `items` state теперь seed-ится синхронно из `initialReviews` (не через useEffect, иначе SSR всё
+     равно рендерил бы пустой список). tsc EXIT 0.
   5. 🟢 **Faceted navigation — уже верно, не трогать:** `[slug]/page.tsx` canonical жёстко
      `/${slug}` независимо от query-фильтров (`?categoryId=&priceMin=&f.*`) — ровно best-practice
      2026 (тот же паттерн, что у Amazon), риска дублей нет.
@@ -394,6 +458,17 @@
      CLS<0.1, по полевым CrUX-данным). `next/image`+`next/font(swap)` уже на месте — база хорошая;
      реальные цифры нужно смотреть через Search Console после его подключения (см.
      `DEPLOY-DOMAIN-MAXSAVDO-001`), не через код-ревью.
+  7. ✅ **TezCode parentOrganization в JSON-LD — сделано 25.07.2026** (владелец попросил, чтобы
+     поиск/AI связывали maxsavdo с материнским брендом TezCode). Добавлено в
+     `apps/landing/src/components/JsonLd.tsx` и `apps/web-buyer/src/app/layout.tsx`:
+     `parentOrganization: { '@type': 'Organization', name: 'TezCode', sameAs: ['https://github.com/AI-automatization'] }`.
+     `tezcode.uz` не резолвится (проверено curl) — намеренно не указан как `url`, только
+     верифицированный GitHub org.
+     **Заодно найден и зафикшен баг, который LANDING-STALE-BOT-USERNAME-001 (25.07, ветка landing)
+     пропустил:** `savdo_builderBOT` всё ещё был в двух местах — `apps/landing/src/components/
+     JsonLd.tsx` (TELEGRAM_BOT/TELEGRAM_CHANNEL) и **отдельная копия** Organization JSON-LD в
+     `apps/web-buyer/src/app/layout.tsx` (эта копия вообще не упоминалась в том коммите, т.к. он
+     был scoped на apps/landing). Оба переведены на `maxsavdo_bot`. tsc EXIT 0 в обоих apps.
 - **Честная оценка «1 место» (см. отчёт §5):** по общим коммерческим запросам конкурировать с
   Uzum/OLX нереалистично без многолетней ссылочной массы — это не вопрос JSON-LD. Реалистичная
   цель: брендовые запросы (уже наши), long-tail запросы конкретных магазинов/товаров, нишевые

@@ -1,5 +1,64 @@
 # Done — Азим + Полат
 
+## 2026-07-25 (Azim/Claude) — SEO/GEO-хвосты + FRONT-SERVER-SEARCH-001 + SELLER-PAYMENT-REQUISITES-001
+
+### ✅ SEO-AUDIT-001 п.2 + SEO-GEO-AEO-RESEARCH-002 п.4 — товары в sitemap + SSR отзывов
+- **Важность:** 🔴/🟡 · **Дата:** 25.07.2026 · **Домен:** apps/web-buyer (`.worktrees/web-buyer`)
+- **Что сделано:**
+  1. `sitemap.ts` эмитит `feed.products` → `/{storeSlug}/products/{id}` (Полат разблокировал
+     `storeSlug` в API 14.07, но фронт не был доделан).
+  2. Найден и зафикшен реальный баг: текст отзывов на product-странице рендерился только
+     клиентским `useProductReviews` без `initialData` — невидим в первом server-HTML (Googlebot
+     без полного JS-рендера, все AI-краулеры), хотя `aggregateRating` в JSON-LD уже был там —
+     расхождение structured data и видимого контента. Фикс по паттерну SEO-AUDIT-001 п.3/4:
+     `page.tsx` server-фетчит первую страницу отзывов → `initialReviews` до `ProductReviews`,
+     `items`-state сидируется синхронно (не через useEffect).
+- **Проверено:** `tsc --noEmit` EXIT 0 (web-buyer).
+
+### ✅ TezCode parentOrganization в JSON-LD + добит баг переименования бота
+- **Важность:** 🟡 · **Дата:** 25.07.2026 · **Домен:** apps/landing + apps/web-buyer
+- **Что сделано:** `parentOrganization` (TezCode, `sameAs` на верифицированный
+  `github.com/AI-automatization`, т.к. `tezcode.uz` не резолвится) добавлен в
+  `apps/landing/JsonLd.tsx` и `apps/web-buyer/layout.tsx`. Заодно нашёл: коммит
+  `LANDING-STALE-BOT-USERNAME-001` (сегодня, `e837b1ae`) пропустил `apps/landing/JsonLd.tsx` и
+  отдельную копию Organization-schema в `apps/web-buyer/layout.tsx` — обе тоже переведены на
+  `maxsavdo_bot`. Урок (лог `SEO-DOC-DRIFT-001`): после "переименовать везде" — `grep -r` по
+  всему монорепо, не только по затронутому app.
+- **Проверено:** `tsc --noEmit` EXIT 0 в обоих apps.
+
+### ✅ FRONT-SERVER-SEARCH-001 — серверный поиск в web-seller
+- **Важность:** 🟡 · **Дата:** 25.07.2026 · **Домен:** apps/web-seller (`.worktrees/web-seller`)
+- **Что сделано:** `/seller/products?search=` вместо клиентского `.filter()`, debounce 300мс
+  (`useDebouncedValue`, паттерн из web-buyer `use-search.ts`). Статус-фильтр остался клиентским
+  (не в скоупе). Empty-state починен: "нет товаров" vs "ничего не найдено" через явный флаг
+  `isFiltering`, а не сырой `products.length` (тот после серверного поиска стал бы врать).
+- **Проверено:** `tsc --noEmit` EXIT 0.
+
+### ✅ SELLER-PAYMENT-REQUISITES-001 — реквизиты оплаты, web-seller + web-buyer
+- **Важность:** 🟢 · **Дата:** 25.07.2026 · **Домен:** apps/web-seller + apps/web-buyer
+- **web-seller:** `PaymentRequisitesSection` в `settings/page.tsx` — toggle наличные/перевод на
+  карту, поля карты/держателя/Click/Payme, client-валидация зеркалит backend (13-24 цифры,
+  https-only), реальные 422 через `errorText()`.
+- **web-buyer:** `StorePaymentInfo.tsx` на странице магазина — карта с copy-to-clipboard +
+  Click/Payme кнопки, только при `acceptsCardTransfer && cardNumber`. **Осознанно НЕ привязано
+  к checkout/`paymentMethod`** — нашлась развилка: disabled-кнопка «card» в checkout это
+  «картой курьеру» (`CheckoutPaymentMethod` enum), не «перевод заранее» — у второго нет своего
+  значения в enum. Азим выбрал информационный блок вместо похода к Полату за новым enum-значением.
+- **Проверено:** `tsc --noEmit` EXIT 0 в обоих apps.
+
+### ⚠️ Системная находка — branch-sync разрыв `packages/types`, 4 раза за сессию
+- `slug.ts` (транслитерация), `storeSlug` в `StorefrontSitemapProduct`, `StorePaymentRequisites`/
+  `UpdateStorePaymentRequisitesRequest` — всё это существует только на `main`, отсутствует на
+  `web-seller`/`web-buyer` (долгоживущие ветки, `main` в них не мержится автоматически).
+  Обходились локальными типами в каждом случае (не трогали `packages/types` — зона Полата).
+  **Полату:** возможно стоит завести регулярный процесс синка `packages/types` в ветки web-*,
+  а не находить дыры по одной. Детали каждого случая — `analiz/tasks.md`.
+- **ONBOARD-SLUG-TRANSLIT-DEDUP-001 остаётся открытым** — упирается именно в этот разрыв +
+  расхождение таблиц транслитерации (`й→y`/`щ→sch` в web-seller живёт в БД, `й→j`/`щ→shch` в
+  packages/types никогда не обрабатывала прод-трафик) — канонической должна стать web-seller-таблица.
+
+---
+
 ## 2026-07-25 (Claude) — FULL-AUDIT-LANDING-2026-07-20: 2 живых прод-бага на apps/landing (main)
 
 ### ✅ FeaturedStores.tsx хардкод + Free-тариф лимит 20/10 vs реальные 50

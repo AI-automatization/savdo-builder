@@ -1,6 +1,27 @@
 # Logs — локальные тесты и баги
 
-## [2026-07-23] [INFRA-TYPES-PKG-RUNTIME-001] Прод-деплой api падал на healthcheck — `types` пакет не собирается в JS
+## [2026-07-25] [SEO-DOC-DRIFT-001] Задокументированный фикс не совпал с реальным кодом — 2 инстанса
+- **Статус:** ✅ Исправлено (детали в SEO-AUDIT-001/SEO-GEO-AEO-RESEARCH-002, analiz/tasks.md)
+- **Что случилось:** при доработке SEO (доэмитить товары в sitemap + SSR-фикс отзывов + TezCode
+  JSON-LD) наткнулся на два места, где `analiz/tasks.md`/коммит-сообщения утверждали "готово", а
+  живой grep показывал другое:
+  1. Запись "тип `StorefrontSitemapProduct` дополнен [storeSlug]" (14.07.2026) — неточная.
+     `packages/types/src/api/storefront.ts` до сих пор `{ id, updatedAt }` без `storeSlug`.
+     Рантайм API (`products.repository.ts:503`) реально отдаёт `storeSlug` — значит расхождение
+     именно в объявлении shared-типа, не в поведении. Обошёл локальным типом в web-buyer
+     (не трогал `packages/types` — зона Полата), но сам shared-тип остаётся неточным.
+  2. Коммит `e837b1ae` "LANDING-STALE-BOT-USERNAME-001 — savdo_builderBOT -> maxsavdo_bot
+     everywhere" (25.07.2026) был scoped на `apps/landing`, но `savdo_builderBOT` также сидел в
+     `apps/landing/src/components/JsonLd.tsx` (не задетый тем же коммитом почему-то) и в отдельной
+     копии Organization JSON-LD в `apps/web-buyer/src/app/layout.tsx` — про эту копию коммит вообще
+     не знал, т.к. не искал за пределами `apps/landing`.
+- **Причина класса:** "everywhere"/"дополнен" в коммит-сообщении или tasks.md — это утверждение
+  автора на момент записи, не гарантия. Дублирующиеся JSON-LD-блоки (один и тот же Organization
+  schema скопирован в 2+ app) и dev-типы, объявленные отдельно от общего пакета — оба паттерна
+  создают места, куда "фикс везде" не долетает.
+- **Что делать в следующий раз:** после любого "переименовать/дополнить X everywhere" — `grep -r`
+  по старому значению на весь монорепо (не только затронутый app), прежде чем закрывать задачу.
+
 - **Статус:** ✅ Исправлено и подтверждено на проде (health 200)
 - **Что случилось:** в рамках ONBOARD-SLUG-TRANSLIT-DEDUP-001 вынес `toLatinSlug` в
   `packages/types/src/slug.ts` и заменил локальную копию в `telegram-demo.handler.ts` на
