@@ -171,7 +171,7 @@ const uz: Dict = {
         period: "soʻm",
         tagline: "Sinab koʻrish uchun",
         features: [
-          "20 ta mahsulotgacha",
+          "50 ta mahsulotgacha",
           "Telegram-bot",
           "MaxSavdo brendi bilan sayt",
           "Asosiy statistika",
@@ -228,7 +228,7 @@ const uz: Dict = {
       },
       {
         q: "Free tarifda nima cheklov?",
-        a: "10 ta mahsulot va MaxSavdo brendi bilan sayt. Avtopostlash yoʻq.",
+        a: "50 ta mahsulotgacha va MaxSavdo brendi bilan sayt. Avtopostlash yoʻq.",
       },
       {
         q: "Sinab koʻrish bepulmi?",
@@ -347,7 +347,7 @@ const ru: Dict = {
         period: "сум",
         tagline: "Попробовать",
         features: [
-          "До 20 товаров",
+          "До 50 товаров",
           "Telegram-бот",
           "Сайт с брендом MaxSavdo",
           "Базовая статистика",
@@ -404,7 +404,7 @@ const ru: Dict = {
       },
       {
         q: "Какие ограничения на Free?",
-        a: "До 10 товаров и сайт с брендом MaxSavdo. Без автопостинга.",
+        a: "До 50 товаров и сайт с брендом MaxSavdo. Без автопостинга.",
       },
       {
         q: "Пробный период бесплатный?",
