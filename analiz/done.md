@@ -38,19 +38,31 @@
   4. Deploy → Start Command: `node apps/web-seller/server.js` → `node server.js`
      (соответствует `apps/landing/Dockerfile` — standalone-сборка кладёт `server.js` в
      `/app`, без вложенного `apps/landing/` пути, в отличие от web-seller-сборки).
-  5. Variables сервиса `landing` уже содержали `NEXT_PUBLIC_API_URL`+`NEXT_PUBLIC_BUYER_URL`
-     (заданы 09.07 в DEPLOY-DOMAIN-MAXSAVDO-001) — `NEXT_PUBLIC_SITE_URL`/
-     `NEXT_PUBLIC_BOT_USERNAME` не заданы, но у обоих есть safe-фолбэк в коде
-     (`maxsavdo.uz`, и bot username в apps/landing захардкожен в компонентах, не через env)
-     — не блокер.
-  6. Apply 4 changes → Deploy. Билд запущен на коммите `e837b1ae` (main).
+  5. Apply 4 changes → Deploy. Билд запущен на коммите `e837b1ae` (main).
+- **✅ Первый деплой подтверждён curl'ом:** `robots.txt` + `sitemap.xml` → 200, реальный контент
+  вместо web-seller-404.
+- **🔴 НАЙДЕН и исправлен доп. баг сразу после первого деплоя:** `sitemap.xml` отдавал
+  **относительные** URL (`<loc>/</loc>` вместо `<loc>https://maxsavdo.uz/</loc>`), `robots.txt`
+  — `Sitemap: /sitemap.xml` вместо абсолютного. По sitemap-протоколу `<loc>` обязан быть
+  абсолютным — краулеры такой sitemap могут игнорировать. **Причина:** переменная
+  `NEXT_PUBLIC_SITE_URL` не была задана в Railway Variables сервиса `landing`; я ошибочно
+  посчитал это некритичным из-за `?? 'https://maxsavdo.uz'` в коде (`sitemap.ts`/`robots.ts`/
+  `jsonld.ts`/`layout.tsx`) — но Docker `ARG` без переданного значения превращается в **пустую
+  строку `""`**, а не `undefined`, и `?? ` на `""` не срабатывает (нужен был `||`, не `??`, либо
+  сам факт задать переменную). Итог: `SITE_URL` реально был `""` во всей сборке.
+  **Фикс:** добавлена Variable `NEXT_PUBLIC_SITE_URL=https://maxsavdo.uz` в Railway → сервис
+  `landing`, задеплоено повторно (NEXT_PUBLIC_* инлайнятся на build-time, нужен полный ребилд,
+  runtime-рестарта недостаточно).
 - **⚠️ Побочная находка (не блокер, отметить владельцу):** воркспейс TezCode Team показывает
   баннер "Your subscription is past due" в Railway dashboard — тот же `INFRA-RAILWAY-PAST-DUE-001`
-  из чекпоинта 29.06, всё ещё не оплачено. Деплой в этот раз прошёл несмотря на баннер (не
-  заблокирован), но грузить дальше — риск.
-- **Проверка после деплоя:** curl `maxsavdo.uz/robots.txt` + `/sitemap.xml` до фикса отдавали
-  404 с телом web-seller; результат после деплоя — см. следующую запись/logs.md при следующей
-  сессии, если не дописано здесь же (мониторинг деплоя шёл в фоне в конце этой сессии).
+  из чекпоинта 29.06, всё ещё не оплачено. Оба деплоя в этой сессии прошли несмотря на баннер
+  (не заблокированы), но грузить дальше — риск.
+- **✅ Второй деплой подтверждён curl'ом (25.07, в этой же сессии):** `sitemap.xml` теперь
+  `<loc>https://maxsavdo.uz/</loc>` (было `<loc>/</loc>`), `robots.txt` — `Sitemap:
+  https://maxsavdo.uz/sitemap.xml` (было относительный). JSON-LD на главной: `"url":
+  "https://maxsavdo.uz"`, `"logo":"https://maxsavdo.uz/logo-maxsavdo.svg"` — абсолютные.
+  Все ключевые роуты 200: `/robots.txt`, `/sitemap.xml`, `/`, `/ru`, `www.maxsavdo.uz`.
+  **LANDING-DEPLOY-TOPOLOGY-001 полностью закрыт** — перенесено из tasks.md.
 
 ### ✅ [TG-BOT-SELLER-TERMS-001] TG-бот: регистрация продавца без согласия с офертой — фикс
 - **Важность:** 🔴

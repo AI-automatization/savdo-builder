@@ -302,51 +302,6 @@
   web-seller `toSlug` разрешал `\w` (подчёркивание) и резал до 60 символов, а не 40 — если это
   осознанно, вызывать `toLatinSlug(name, 60)`, иначе `toLatinSlug(name)` (default 40).
 
-## 🔴 [LANDING-DEPLOY-TOPOLOGY-001] apps/landing SEO-код досинхронизирован с main — Railway-фикс см. SEO-AUDIT-001 P0 (Азим, на паузе у owner)
-- **Домен:** код — закрыто (Fable 5). Railway-фикс — инфра, см. `SEO-AUDIT-001 → P0 НОВОЕ (16.07.2026)`
-  ниже в этом файле — **это Азимова находка, более авторитетная** (реальный Railway dashboard +
-  nslookup доступ, которого у меня в этой сессии нет). НЕ дублирую его диагноз, только дополняю.
-- **Кто взял:** код — Fable 5 (17-18.07, по запросу owner: "почему maxsavdo.uz не виден в Google/geo")
-- **Контекст:** независимо от Азимова apex-routing бага (см. ниже) я нашёл, что branch `landing` в
-  git содержит `apps/web-seller/railway.toml` с `dockerfilePath = "apps/web-seller/Dockerfile"` —
-  т.е. **на уровне репозитория** для сервиса `landing` в этой ветке есть конфиг-файл, указывающий на
-  `apps/web-seller`, не на `apps/landing`. Не факт, что Railway реально читает именно этот файл
-  (Root Directory обычно задаётся в дашборде, а не только файлом) — но это совпадает с тем, что
-  Азим независимо подтвердил через дашборд: последний успешный деплой `landing` (`ba1bd884`) —
-  коммит, трогавший именно `apps/web-seller`. Т.е. **два разных метода диагностики сошлись на одном
-  выводе**: живой `maxsavdo.uz` так или иначе получает контент из `apps/web-seller`, а не из
-  `apps/landing`. Азим относит это к edge-routing/DNS-кэшу (apex без CNAME-алиаса); я — до кучи
-  нашёл, что даже если routing почини­тся, конфиг **branch `landing`** всё равно указывает Root Directory
-  не туда. Оба фактора стоит проверить вместе при следующем заходе в Railway dashboard.
-- **Что сделано (код, безопасно — не трогает live-инфра):**
-  1. Cherry-picked 7 коммитов Азима (`apps/landing`-only, без примеси `apps/web-seller`) с `origin/landing`
-     на `main`: логотип/фавикон/цвета + `4589707a` (llms.txt, AI-crawler robots, честные даты sitemap —
-     это те самые правки из `SEO-AUDIT-001-P2 #10` в `done.md`, которые лежали только на branch `landing`
-     и не доезжали до `main`).
-  2. Добавлен JSON-LD в `apps/landing`, которого там по факту не было (см. поправку в `done.md` к
-     записи `SEO-AUDIT-001-P2 #10` — "landing уже имел это раньше" не подтвердилось при чтении кода):
-     Organization (root layout, sitewide) + per-locale `@graph` (WebSite, SoftwareApplication с
-     реальными Offer из тарифов, FAQPage из реального FAQ). Без LocalBusiness/адреса — физической
-     точки для покупателей нет, выдумывать по принципу `LANDING-HONEST-COPY-001` не стали.
-  3. Фикс `apps/landing/railway.toml`: `NEXT_PUBLIC_SITE_URL` default был `savdo.uz` (опечатка) →
-     `maxsavdo.uz`.
-  4. Проверено локально: `tsc --noEmit` чисто, `npm run build` чисто (8/8 страниц, `/robots.txt` +
-     `/sitemap.xml` генерятся), standalone-сборка поднята и curl-ом проверено — JSON-LD рендерится,
-     robots.txt отдаёт AI-crawler правила, sitemap.xml — честные даты, llms.txt — 200.
-  5. Смёржено в `main`, запушено (см. `done.md`).
-- **🔲 Осталось (Полат/owner, Railway dashboard — НЕ начинать без снятия "подождать"-холда владельца):**
-  1. Сначала — Азимов P0-фикс (remove+re-add custom domain, см. ниже). Проверить результат curl'ом.
-  2. Если после этого `maxsavdo.uz` всё ещё отдаёт web-seller-контент — значит дело не только в
-     edge-кэше, и нужно дополнительно свериться в Railway Settings, что Root Directory сервиса
-     `landing` реально указывает на `apps/landing` (branch `main`), а не на `apps/web-seller`
-     (branch `landing`). Если нет — переключить.
-  3. Проверить env vars сервиса: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_BOT_USERNAME`,
-     `NEXT_PUBLIC_SITE_URL=https://maxsavdo.uz`.
-  4. Постдеплой: Google Search Console + Bing Webmaster (ни одного из 7 сайтов компании там нет —
-     Азимова находка) + Google Business Profile / 2GIS / Yandex Business (SEO-AUDIT-001 §4.4).
-  5. Учесть Compute Usage Limit ($64/$60, деплои приостановлены) — редеплой не пройдёт, пока лимит
-     не поднят; сама привязка домена, по заметке Азима, деплоем не является и лимитом не блокируется.
-
 ---
 
 ## 🟡 [PARTNER-API-RAOS-001] RAOS-интеграция — КОД ГОТОВ 14.07 (см. done.md), остались орг-шаги
@@ -425,26 +380,25 @@
 - **Контекст:** owner запросил аудит SEO/GEO/AEO + кода сайта. Находки-баги: `logs.md → SEO-AUDIT-001`.
   Вывод: техфундамент хороший, но сайт невидим для поисковиков и AI-краулеров (нет discovery-пути).
 
-### 🔴 P0 НОВОЕ (16.07.2026) — apex maxsavdo.uz отдаёт 404 на /robots.txt и /sitemap.xml (причина ПОДТВЕРЖДЕНА, фикс на паузе)
-- **Домен:** Railway дашборд (доступ есть у Азима — зашёл под azim.kurbanov.2000@mail.ru,
-  TezCode Team → savdo builder) — НЕ код-фикс
-- **Контекст:** внешний аудит (Bekzod aka) заявил maxsavdo.uz 3/10, robots.txt+sitemap.xml
-  "вообще отсутствуют". Проверено live 16.07 — подтверждено, но код в `apps/landing` в порядке.
-- **Причина ПОДТВЕРЖДЕНА (не догадка):** apex/`www.maxsavdo.uz` реально обслуживает **web-seller**,
-  а не `landing` — тело 404 дословно совпадает с `apps/web-seller/src/app/layout.tsx:19-27`
-  (title/description/lang). При этом Railway Settings показывает `landing` как владельца домена,
-  и его деплой свежий/успешный (4 дня назад, HEAD `ba1bd884`) — т.е. рассинхрон именно в
-  Railway edge routing, не в коде/деплое. Полные детали и nslookup-доказательства —
-  `logs.md → SEO-AUDIT-001 [2026-07-16, доп.]`.
-- **⚠️ Побочная находка:** воркспейс `TezCode Team` превысил Compute Usage Limit ($64/$60) —
-  "All deployments are paused" до апгрейда лимита или след. billing-цикла. Не блокирует фикс
-  домена (это не деплой), но блокирует любой обычный редеплой сервисов до решения по лимиту.
-- **Предложенный фикс (НЕ применён — owner попросил подождать 16.07):** в Railway → `landing` →
-  Settings → Networking: удалить и заново добавить custom domain `maxsavdo.uz`+`www` — форсирует
-  Railway пересобрать routing. DNS в Cloudflare трогать не обязательно, если новый CNAME-таргет
-  совпадёт со старым.
-- **Отдельно, не блокер:** ни у одного из 7 сайтов компании (включая нас) нет Google Search
-  Console / Yandex.Webmaster — аккаунт-левел действие у владельца доменов, не код-задача.
+### ✅ P0 ЗАКРЫТО 25.07.2026 — apex maxsavdo.uz отдавал 404 на /robots.txt и /sitemap.xml
+- **Реальная причина (не догадка, не edge-кэш — прочитана напрямую в Railway Settings 25.07):**
+  Railway-сервис `landing` был настроен собирать **`apps/web-seller`**, не `apps/landing`:
+  Dockerfile Path `/apps/web-seller/Dockerfile`, Start Command `node apps/web-seller/server.js`,
+  Watch Paths `apps/web-seller/**`, ветка `landing`. Предыдущий диагноз "edge-routing кэш" +
+  предложенный фикс "remove+re-add custom domain" не подтвердился и не был бы фиксом — домен
+  и так верно указывал на этот сервис, проблема была в build-конфиге самого сервиса.
+- **Фикс:** переключено Source Branch → `main`, Dockerfile Path → `/apps/landing/Dockerfile`,
+  Watch Paths → `apps/landing/**`, Start Command → `node server.js`. Деплой прошёл несмотря на
+  баннер "subscription past due" (см. `INFRA-RAILWAY-PAST-DUE-001`) — не заблокирован.
+- **Побочный найденный + исправленный баг:** после первого деплоя `sitemap.xml`/`robots.txt`
+  отдавали относительные URL (`<loc>/</loc>` вместо абсолютного) — `NEXT_PUBLIC_SITE_URL` не был
+  задан в Railway Variables, а Docker ARG без значения = пустая строка, на которой `??`-фолбэк в
+  коде не срабатывает. Добавлена переменная `NEXT_PUBLIC_SITE_URL=https://maxsavdo.uz`, повторный
+  деплой. Детали — `done.md`, antipattern — Obsidian `PROJECTS/savdo/_antipatterns.md`.
+- **Подтверждено curl'ом 25.07:** `/robots.txt`, `/sitemap.xml`, `/`, `/ru`, `www.maxsavdo.uz` —
+  все 200, sitemap `<loc>` и robots `Sitemap:` абсолютные, JSON-LD `url`/`logo` абсолютные.
+- **🔲 Осталось (не блокер, отдельно):** Google Search Console + Bing Webmaster (ни у одного из
+  7 сайтов компании нет) + Google Business Profile / 2GIS / Yandex Business (SEO-AUDIT-001 §4.4).
 
 ### ✅ Что НОРМ — не трогать (подтверждено чтением кода)
 - SSR страницы магазина + `generateMetadata`/canonical/OG (`[slug]/page.tsx`), React.cache дедуп.
