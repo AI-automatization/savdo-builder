@@ -702,37 +702,6 @@ sidebar/login/onboarding). Backwards-compat regex parser принимает об
 
 ---
 
-## 🟡 [INFRA-BACKUP-DRILL-FIRST-RUN-001] Первый реальный restore drill на прод-дампе
-
-- **Домен:** SRE / DBA (Полат)
-- **Кто берёт:** Полат
-- **Приоритет:** P1 — закрывает остаточный риск **R2** из launch-readiness 2026-05-20.
-- **Контекст:** документация и инструментарий готовы (`INFRA-BACKUP-RUNBOOK-001`,
-  см. `done.md` 2026-05-20). Осталось **один раз реально прогнать** drill
-  end-to-end на свежем прод-дампе — это закрывает блокер Data integrity
-  по существу (а не только по бумагам).
-- **Что сделать:**
-  1. Включить Railway public networking для Postgres (Networking → Public →
-     Enable) или поднять `pg_dump` через `railway shell` внутри savdo-api.
-  2. Снять свежий dump: `DATABASE_URL='postgresql://postgres:***@<host>:5432/railway'
-     bash scripts/db/backup.sh`.
-  3. Поднять локальный Postgres: `docker run -d --name savdo-staging-pg
-     -e POSTGRES_USER=maxsavdo -e POSTGRES_PASSWORD=maxsavdo -e POSTGRES_DB=savdo_staging
-     -p 55432:5432 postgres:16-alpine`.
-  4. Запустить drill: `bash scripts/db/restore-drill.sh --dump backups/savdo-*.dump
-     --target-db postgresql://maxsavdo:maxsavdo@localhost:55432/savdo_staging
-     --source-db "$DATABASE_URL"`.
-  5. Результат (PASS/FAIL + JSON-репорт) — зафиксировать в `analiz/logs.md`
-     по шаблону из runbook'а §4.4.
-  6. Если PASS — поставить календарный reminder на последнюю пятницу
-     июня для следующего drill.
-- **Файлы:**
-  - `docs/runbooks/postgres-backup-restore.md` — runbook
-  - `scripts/db/backup.sh`, `scripts/db/restore-drill.sh`, `scripts/db/integrity-check.sql`
-- **Definition of done:** один JSON-репорт `drill_status: PASS` в `analiz/logs.md`.
-
----
-
 ## 🟡 [INFRA-BACKUP-R2-SETUP-001] Завести R2 bucket для off-platform дампов
 
 - **Домен:** инфра (Полат)
@@ -959,8 +928,19 @@ profile под Notifications, добавлен в sitemap. Деталь — `don
   обрежет build-context и сломает билд. Оставляем Root Directory=корень + корневой
   toml на ветке tma. Альтернатива (standalone Dockerfile без workspace) — отдельная
   задача, если дубль-конфиг снова кого-то укусит.
-  **Осталось:** п.6 (watchPatterns — пропущен осознанно), п.8 (алертинг =
-  INFRA-UPTIME-ALERTS-001), CODEOWNERS (нужен GitHub-handle Полата).
+  **🆕 25.07 (Claude) — п.6 проверен и фактически ЗАКРЫТ:** сверил все три
+  `railway.toml` с реальными `COPY` в соответствующих Dockerfile — `apps/tma`
+  watch'ит только `apps/tma/**` (Dockerfile с `bc92186` уже standalone, ничего
+  из `packages/` не копирует — совпадает); `apps/api` watch'ит `apps/api/**,
+  packages/db/**, packages/types/**` (Dockerfile копирует ровно `packages/`
+  целиком, но api реально использует только db+types — ок); `apps/admin`
+  watch'ит `apps/admin/**, packages/types/**, packages/ui/**` (Dockerfile
+  копирует `packages/` целиком + отдельно объявляет `package.json` types/ui —
+  совпадает). Расхождение из note 12.07 больше не актуально.
+  **Осталось:** п.8 (алертинг = INFRA-UPTIME-ALERTS-001, дубль), CODEOWNERS
+  (нужен GitHub-handle Полата — не найден автоматически, git author =
+  `ogerz3 <polatbekismoilov17@gmail.com>`, но это не обязательно GitHub login;
+  нужно подтверждение).
 - **Контекст:** инцидент `DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18` (см. `analiz/logs.md`).
   18.05 одновременно offline: `savdo-api` (краш по ETIMEDOUT от ioredis →
   исчерпан `restartPolicyMaxRetries=3`), `telegram-app` (build FAILED, Railpack
