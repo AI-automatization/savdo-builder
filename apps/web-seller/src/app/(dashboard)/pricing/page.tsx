@@ -9,6 +9,20 @@ import type { SubscriptionTier } from 'types';
 
 const TIER_ORDER: SubscriptionTier[] = ['STARTER', 'PRO', 'BUSINESS'];
 
+// Stop-gap for branch drift (FULL-AUDIT-WS-2026-07-20): origin/api renamed the tier enum
+// to FREE/PRO/STUDIO (BILLING-TIER-ENUM-SYNC-001, 15.06.2026), but packages/types on this
+// branch never picked that up, so the backend can hand us tier values this UI doesn't know.
+// Real fix is syncing packages/types/src/enums.ts on this branch — this just prevents the
+// TypeError crash in the meantime by mapping new names onto the equivalent old local ones
+// (STARTER already renders as "Free" via nameKey, BUSINESS already renders as "Studio").
+const TIER_ALIAS: Record<string, SubscriptionTier> = {
+  STARTER: 'STARTER', PRO: 'PRO', BUSINESS: 'BUSINESS',
+  FREE: 'STARTER', STUDIO: 'BUSINESS',
+};
+function normalizeTier(tier: string | undefined): SubscriptionTier {
+  return TIER_ALIAS[tier ?? 'STARTER'] ?? 'STARTER';
+}
+
 const TIER_CONFIG: Record<SubscriptionTier, {
   nameKey: string;
   descKey: string;
@@ -34,7 +48,7 @@ export default function PricingPage() {
   const { data: store } = useStore();
   const [upgradeTarget, setUpgradeTarget] = useState<UpgradeTarget | null>(null);
 
-  const currentTier = subscription?.tier ?? 'STARTER';
+  const currentTier = normalizeTier(subscription?.tier);
   const status       = subscription?.status;
   const daysLeft     = subscription?.daysLeft;
   const currentIdx   = TIER_ORDER.indexOf(currentTier);
@@ -46,7 +60,7 @@ export default function PricingPage() {
 
   function managerDeeplink(tierName: string) {
     const text = `Хочу перейти на ${tierName}. Мой магазин: ${store?.slug ?? '—'}`;
-    return `tg://resolve?domain=ismailov_0011&text=${encodeURIComponent(text)}`;
+    return `https://t.me/ismailov_0011?text=${encodeURIComponent(text)}`;
   }
 
   const statusLabel =

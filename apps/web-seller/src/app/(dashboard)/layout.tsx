@@ -353,7 +353,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <span style={{ color: colors.warning }}>{t('billing.pastDueBanner')}</span>
             <a
-              href="tg://resolve?domain=ismailov_0011"
+              href="https://t.me/ismailov_0011"
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs font-semibold whitespace-nowrap hover:opacity-80"
@@ -370,7 +370,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <span style={{ color: colors.danger }}>{t('billing.suspendedBanner')}</span>
             <a
-              href="tg://resolve?domain=ismailov_0011"
+              href="https://t.me/ismailov_0011"
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs font-semibold whitespace-nowrap hover:opacity-80"
@@ -387,7 +387,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             <span style={{ color: colors.danger }}>{t('billing.churnedBanner')}</span>
             <a
-              href="tg://resolve?domain=ismailov_0011"
+              href="https://t.me/ismailov_0011"
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs font-semibold whitespace-nowrap hover:opacity-80"

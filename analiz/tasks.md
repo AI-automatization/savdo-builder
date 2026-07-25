@@ -5,6 +5,22 @@
 
 ---
 
+## 🟡 [FULL-AUDIT-WS-2026-07-20] /pricing краш (SubscriptionTier branch-drift) — stop-gap закрыт 25.07, настоящий фикс ждёт Полата
+
+- **Домен:** `apps/web-seller` (✅ Азим, stop-gap) + `packages/types`/`apps/api` (Полат — источник рассинхрона, ещё не сделано).
+- **✅ 25.07.2026 (Азим/Claude) — stop-gap применён:** `pricing/page.tsx` — добавлен `TIER_ALIAS`/`normalizeTier()`
+  (маппит новые бэкенд-значения `FREE`/`STUDIO` на локальные `STARTER`/`BUSINESS`, которые уже
+  корректно рендерятся через `nameKey` как «Free»/«Studio» — это не костыль-заглушка, а ровно
+  тот перевод, что имелся в виду), краш `TIER_CONFIG[currentTier]` больше не воспроизводится.
+  Заодно п.3 (`tg://resolve?domain=...` → `https://t.me/...`, 4 места: `layout.tsx:356,373,390`,
+  `pricing/page.tsx`) — «Написать менеджеру» в PAST_DUE/SUSPENDED/CHURNED-баннерах теперь
+  реально открывается в браузере без протокол-хендлера. `tsc --noEmit` EXIT 0.
+- **🔲 Осталось (Полат):** синхронизировать `packages/types/src/enums.ts` на ветке `web-seller`
+  с `origin/api` (`BILLING-TIER-ENUM-SYNC-001`, закрыт там 15.06.2026, здесь — нет). Связано с
+  `INFRA-BRANCH-RECONCILE-001`. После синка `TIER_ALIAS`-костыль можно убрать.
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/pricing/page.tsx`, `layout.tsx`.
+
+---
 
 ## 🟠 [INFRA-BRANCH-RECONCILE-001] Свести деплой-ветки к `main` (предложение, нужно согласие Полат+Азим)
 

@@ -1,5 +1,15 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-20] [FULL-AUDIT-2026-07-20] Плановый аудит web-seller — 🔴 краш /pricing из-за branch-drift packages/types
+- **Статус:** 🔴 Найден живой краш + 2 находки поменьше, не исправлено.
+- **Метод:** параллельный агент — сверка с analiz/ (middleware client-only auth, `WEB-002` localhost-fallback, hydration-flash — все подтверждены ещё открытыми; `lib/enums.ts` shim подтверждён ещё нужным, `packages/types` этой ветки всё ещё `export type`) + `tsc --noEmit` (чисто в своей ветке) + чтение billing UI / onboarding / chat.
+- **Находки:**
+  - 🔴 **`SubscriptionTier` branch drift.** `pricing/page.tsx` держит `TIER_CONFIG` на `STARTER/PRO/BUSINESS` (текущий `packages/types` этой ветки). На `origin/api` тир давно переименован в `FREE/PRO/STUDIO` (`BILLING-TIER-ENUM-SYNC-001`, закрыт 15.06.2026 коммитами `9ba6c7c`/`c5a0bc6`), но `web-seller` эту правку не подтянул. Когда бэкенд начнёт реально отдавать `tier:'FREE'` (дефолт почти всех продавцов) — `TIER_CONFIG['FREE']` = `undefined` → `TypeError` крашит весь `/pricing`. Тот же класс бага, что `WEB-SELLER-ENUM-AS-VALUE-BUILD-001` и `API-TYPES-PAYMENT-METHOD-COLLISION-001` — см. `INFRA-BRANCH-RECONCILE-001`.
+  - 🟠 4 места (`layout.tsx:356,373,390`, `pricing/page.tsx:49`) используют `tg://resolve?domain=ismailov_0011` вместо `https://t.me/...` — на десктоп-браузерах без зарегистрированного протокол-хендлера клик по «Написать менеджеру» в PAST_DUE/SUSPENDED-баннере не делает ничего видимого. Плюс это хардкод личного контакта в 4 местах, а не через `NEXT_PUBLIC_SUPPORT_URL` (паттерн `SUPPORT-CHANNEL-001`).
+  - 🟡 Billing read-only lock (`layout.tsx:412-418`) чисто визуальный — пока `useSubscription()` не резолвнулся (первый пейнт/медленная сеть), оверлей не показан и write-actions кликабельны. Полагается целиком на backend-энфорсмент, defense-in-depth на фронте отсутствует.
+  - 🟢 `aria-label="Меню"` захардкожен на русском в `LandingHeader.tsx:89` вместо `t()`.
+- **Что сделано:** только залогировано (аудит-режим). Тикет — `analiz/tasks.md` → `FULL-AUDIT-WS-2026-07-20`.
+
 ## [2026-06-16] [CROSS-AGENT-STATUS-SYNC-001] Сверка статусов перед стартом suspended-states (BILLING-MACHINE-001)
 - **Статус:** 🟡 Предупреждение (расхождение статусов между сессиями, не баг кода).
 - **Что случилось:** перед стартом suspended-states (фронтовая часть BILLING-MACHINE-001) сверил три

@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-07-25 (Claude) — FULL-AUDIT-WS-2026-07-20 stop-gap: /pricing краш + tg://resolve ссылки
+
+### ✅ [FULL-AUDIT-WS-2026-07-20] Stop-gap для SubscriptionTier branch-drift
+- **Важность:** 🔴 (P0 — краш ждал только реального `tier:'FREE'` от бэка)
+- **Дата:** 25.07.2026
+- **Контекст:** находка висела незакоммиченной с 20.07 (параллельный агент, режим аудита).
+  Обнаружено при сверке аудитов web-seller за 23-24.07 — worktree `web-seller` содержал
+  незапушенные `analiz/tasks.md`/`logs.md` правки, которые никто не закоммитил.
+- **Что сделано:** `pricing/page.tsx` — `TIER_ALIAS`/`normalizeTier()` маппит `FREE`→`STARTER`,
+  `STUDIO`→`BUSINESS` (совпадает с уже существующими `nameKey` в `TIER_CONFIG` — не костыль,
+  а тот самый перевод старых enum-имён этой ветки на новые бэкенд-значения). Плюс 4 места
+  `tg://resolve?domain=ismailov_0011` → `https://t.me/ismailov_0011` (`layout.tsx:356,373,390`,
+  `pricing/page.tsx`) — протокол-ссылка не открывалась на десктопе без хендлера.
+- **Файлы:** `apps/web-seller/src/app/(dashboard)/pricing/page.tsx`, `layout.tsx`.
+- **Проверено:** `tsc --noEmit` EXIT 0.
+- **Осталось:** настоящий фикс — Полат синхронизирует `packages/types/src/enums.ts` с `origin/api`.
+
+---
+
 ## 2026-06-25 (Азим) — Итоги сессии (продолжение)
 
 ### ✅ [PRICING-PAGE-002] Подключить реальный API к странице тарифов
