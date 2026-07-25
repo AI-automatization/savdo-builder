@@ -2,8 +2,18 @@ import type { FC } from 'react';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://maxsavdo.uz';
 
-const TELEGRAM_BOT = 'https://t.me/savdo_builderBOT';
-const TELEGRAM_CHANNEL = 'https://t.me/savdo_builderBOT/app';
+const TELEGRAM_BOT = 'https://t.me/maxsavdo_bot';
+const TELEGRAM_CHANNEL = 'https://t.me/maxsavdo_bot/app';
+
+// parentOrganization — maxsavdo продукт компании TezCode (MCHJ, резидент IT Park,
+// GitHub org AI-automatization / display name TezCode-Team). У TezCode пока нет
+// живого сайта (tezcode.uz не резолвится) — sameAs указывает на верифицированный
+// GitHub, не на непроверенный домен.
+const TEZCODE_ORG = {
+  '@type': 'Organization' as const,
+  name: 'TezCode',
+  sameAs: ['https://github.com/AI-automatization'],
+};
 
 const organizationSchema = {
   '@context': 'https://schema.org',
@@ -19,6 +29,7 @@ const organizationSchema = {
     '@type': 'Country',
     name: 'Uzbekistan',
   },
+  parentOrganization: TEZCODE_ORG,
   contactPoint: [
     {
       '@type': 'ContactPoint',
