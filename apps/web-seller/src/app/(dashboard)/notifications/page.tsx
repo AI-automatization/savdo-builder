@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useNotifications, useReadAll } from '../../../hooks/use-notifications';
 import type { NotificationItem } from '../../../lib/api/notifications.api';
@@ -102,11 +102,9 @@ export default function NotificationsPage() {
   const { data: items = [], isLoading, isError } = useNotifications();
   const readAll = useReadAll();
 
-  // Auto mark-all-read on mount (fire-and-forget)
-  useEffect(() => {
-    readAll.mutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Mark-all-read only fires from the explicit button below — auto-firing on mount
+  // used to empty the "Непрочитанные" tab before the seller had actually read anything
+  // (WEB-SELLER-SCREENS-AUDIT-003 #5).
 
   const filtered = tab === 'unread' ? items.filter(n => !n.isRead) : items;
 

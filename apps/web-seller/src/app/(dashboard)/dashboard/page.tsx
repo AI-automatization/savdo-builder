@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useStore } from '../../../hooks/use-seller';
+import { useStore, useSubmitStore } from '../../../hooks/use-seller';
 import { useSellerOrders } from '../../../hooks/use-orders';
 import { useSellerSummary } from '../../../hooks/use-analytics';
 import { useSellerProducts } from '../../../hooks/use-products';
@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const { data: productsData, isLoading: productsLoading } = useSellerProducts();
   const [copied, setCopied] = useState(false);
   const hasNoProducts = !productsLoading && (productsData?.total ?? 0) === 0;
+  const submitStore = useSubmitStore();
 
   function handleCopyLink() {
     if (!store) return;
@@ -107,6 +108,32 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Store not visible to buyers yet */}
+      {store?.status === StoreStatus.DRAFT && (
+        <div
+          className="rounded-lg px-5 py-4 flex items-center justify-between gap-3 flex-wrap"
+          style={{ background: 'rgba(251,191,36,.10)', border: '1px solid rgba(251,191,36,.25)' }}
+        >
+          <p className="text-sm" style={{ color: colors.warning }}>{t('dashboard.draftBanner')}</p>
+          <button
+            onClick={() => submitStore.mutate()}
+            disabled={submitStore.isPending}
+            className="px-4 py-2 rounded-md text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40 flex-shrink-0"
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
+          >
+            {submitStore.isPending ? t('dashboard.draftBannerSubmitting') : t('dashboard.draftBannerCta')}
+          </button>
+        </div>
+      )}
+      {store?.status === StoreStatus.PENDING_REVIEW && (
+        <div
+          className="rounded-lg px-5 py-4 text-sm"
+          style={{ background: 'rgba(59,130,246,.10)', border: '1px solid rgba(59,130,246,.25)', color: colors.info }}
+        >
+          {t('dashboard.pendingReviewBanner')}
+        </div>
+      )}
 
       {/* Empty-state: no products yet */}
       {hasNoProducts && store && (

@@ -7,6 +7,7 @@ import { useSellerOrder, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { track } from '@/lib/analytics';
 import { card, cardMuted, colors, dangerTint, inputStyle } from '@/lib/styles';
 import { useTranslation } from '@/lib/i18n';
+import { errorText } from '@/lib/error-text';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -61,10 +62,12 @@ function CancelModal({
   onClose,
   onConfirm,
   loading,
+  error,
 }: {
   onClose: () => void;
   onConfirm: (reason: string) => void;
   loading: boolean;
+  error?: string;
 }) {
   const { t } = useTranslation();
   const [reason, setReason] = useState('');
@@ -93,6 +96,9 @@ function CancelModal({
             autoFocus
           />
         </div>
+        {error && (
+          <p className="text-xs" style={{ color: colors.danger }}>{error}</p>
+        )}
         <div className="flex gap-2.5 justify-end">
           <button
             onClick={onClose}
@@ -261,7 +267,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           )}
           {updateStatus.isError && (
             <p className="w-full text-xs" style={{ color: colors.danger }}>
-              {t('orders.actionError')}
+              {errorText(updateStatus.error, t('orders.actionError'))}
             </p>
           )}
         </div>
@@ -383,6 +389,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           onClose={() => setShowCancel(false)}
           onConfirm={handleCancel}
           loading={pending}
+          error={updateStatus.isError ? errorText(updateStatus.error, t('orders.actionError')) : undefined}
         />
       )}
     </div>

@@ -24,8 +24,10 @@ import { Select } from '../../../../../components/select';
 import { titlePlaceholder, descriptionPlaceholder } from '../../../../../lib/product-examples';
 import { card, colors, dangerTint, inputStyle as inputBase } from '@/lib/styles';
 import { useTranslation } from '@/lib/i18n';
+import { errorText } from '@/lib/error-text';
 
 const glass = card;
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'maxsavdo_bot';
 
 // ── Form types ────────────────────────────────────────────────────────────────
 
@@ -396,7 +398,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           className="mb-4 px-4 py-3 rounded-xl text-sm"
           style={{ background: "rgba(251,191,36,.10)", border: "1px solid rgba(251,191,36,.25)", color: colors.warning }}
         >
-          {t('products.edit.hiddenByAdmin')}
+          {t('products.edit.hiddenByAdmin')}{' '}
+          <a
+            href={`https://t.me/${BOT_USERNAME}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold underline"
+          >
+            {t('products.edit.hiddenByAdminSupportLink')}
+          </a>{' '}
+          {t('products.edit.hiddenByAdminSuffix')}
         </div>
       )}
 
@@ -550,7 +561,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             className="mt-4 px-4 py-3 rounded-xl text-sm"
             style={{ background: dangerTint(0.12), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
           >
-            {t('products.edit.errorSave')}
+            {errorText(update.error, t('products.edit.errorSave'))}
           </div>
         )}
 
@@ -642,7 +653,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               className="px-4 py-3 rounded-xl text-sm"
               style={{ background: dangerTint(0.12), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
             >
-              {t('products.edit.errorStatus')}
+              {errorText(updateStatus.error, t('products.edit.errorStatus'))}
             </div>
           )}
 

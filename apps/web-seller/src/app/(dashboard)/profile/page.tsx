@@ -11,6 +11,7 @@ import { useLogout } from '@/hooks/use-auth';
 import { card, cardMuted, colors } from '@/lib/styles';
 import { buyerStoreUrl } from '@/lib/buyer-url';
 import { useTranslation } from '@/lib/i18n';
+import { StoreStatus } from '@/lib/enums';
 
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -37,12 +38,12 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const STATUS_LABEL: Record<string, { text: string; color: string }> = {
-    DRAFT:     { text: t('profile.statusDraft'),     color: colors.textDim },
-    SUBMITTED: { text: t('profile.statusSubmitted'),  color: colors.warning },
-    APPROVED:  { text: t('profile.statusApproved'),   color: colors.success },
-    REJECTED:  { text: t('profile.statusRejected'),   color: colors.danger },
-    SUSPENDED: { text: t('profile.statusSuspended'),  color: colors.danger },
-    PUBLISHED: { text: t('profile.statusPublished'),  color: colors.success },
+    [StoreStatus.DRAFT]:          { text: t('common.storeStatus.DRAFT'),          color: colors.textDim },
+    [StoreStatus.PENDING_REVIEW]: { text: t('common.storeStatus.PENDING_REVIEW'), color: colors.warning },
+    [StoreStatus.APPROVED]:       { text: t('common.storeStatus.APPROVED'),       color: colors.success },
+    [StoreStatus.REJECTED]:       { text: t('common.storeStatus.REJECTED'),       color: colors.danger },
+    [StoreStatus.SUSPENDED]:      { text: t('common.storeStatus.SUSPENDED'),      color: colors.danger },
+    [StoreStatus.ARCHIVED]:       { text: t('common.storeStatus.ARCHIVED'),       color: colors.textDim },
   };
 
   const displayName = profile?.fullName?.trim() || user?.phone || t('profile.seller');

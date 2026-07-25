@@ -19,6 +19,7 @@ import { createOptionGroup, createOptionValue } from '../../../../lib/api/produc
 import { useCategoryFilters } from '../../../../hooks/use-category-filters';
 import type { ProductDisplayType } from 'types';
 import { useTranslation } from '@/lib/i18n';
+import { errorText } from '@/lib/error-text';
 
 import { card, colors, dangerTint, warningTint, inputStyle as inputBase } from '@/lib/styles';
 
@@ -516,7 +517,7 @@ export default function CreateProductPage() {
             className="mt-4 px-4 py-3 rounded-md text-sm"
             style={{ background: dangerTint(0.12), border: `1px solid ${dangerTint(0.25)}`, color: colors.danger }}
           >
-            {t('products.create.errorCreate')}
+            {errorText(create.error, t('products.create.errorCreate'))}
           </div>
         )}
 

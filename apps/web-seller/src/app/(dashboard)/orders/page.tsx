@@ -9,6 +9,7 @@ import { useSellerOrders, useUpdateOrderStatus } from '@/hooks/use-orders';
 import { track } from '@/lib/analytics';
 import { card, colors, dangerTint, inputStyle } from '@/lib/styles';
 import { useTranslation } from '@/lib/i18n';
+import { errorText } from '@/lib/error-text';
 
 // Seller-allowed forward transitions per state
 const NEXT_TRANSITION_KEY: Record<string, { status: OrderStatus; labelKey: string }> = {
@@ -336,8 +337,8 @@ export default function OrdersPage() {
     try {
       await updateStatus.mutateAsync({ id: order.id, status: toStatus });
       track.orderStatusChanged(order.id, order.status, toStatus);
-    } catch {
-      setRowErrors((prev) => ({ ...prev, [order.id]: t('orders.actionError') }));
+    } catch (err) {
+      setRowErrors((prev) => ({ ...prev, [order.id]: errorText(err, t('orders.actionError')) }));
     } finally {
       setRowPending(order.id, false);
     }
@@ -352,8 +353,8 @@ export default function OrdersPage() {
       await updateStatus.mutateAsync({ id, status: OrderStatus.CANCELLED, reason });
       track.orderStatusChanged(id, cancelTarget.status, OrderStatus.CANCELLED);
       setCancelTarget(null);
-    } catch {
-      setRowErrors((prev) => ({ ...prev, [id]: t('orders.actionError') }));
+    } catch (err) {
+      setRowErrors((prev) => ({ ...prev, [id]: errorText(err, t('orders.actionError')) }));
     } finally {
       setRowPending(id, false);
     }

@@ -11,6 +11,7 @@ import { applySeller } from '../../../lib/api/seller.api';
 import { buyerHostDisplay } from '../../../lib/buyer-url';
 import { track } from '../../../lib/analytics';
 import { MaxsavdoLogo } from '@/components/brand/MaxsavdoLogo';
+import { errorText } from '@/lib/error-text';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -83,7 +84,11 @@ function ProgressBar({ step }: { step: number }) {
     { label: t('onboarding.stepDone') },
   ];
   return (
-    <div className="flex items-center gap-2 mb-8">
+    <div className="mb-8">
+      <p className="text-xs font-medium mb-2 sm:hidden" style={{ color: colors.accent }}>
+        {t('onboarding.stepProgress', { current: step + 1, total: STEPS.length, label: STEPS[step].label })}
+      </p>
+      <div className="flex items-center gap-2">
       {STEPS.map((s, i) => {
         const done    = i < step;
         const active  = i === step;
@@ -122,6 +127,7 @@ function ProgressBar({ step }: { step: number }) {
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -307,12 +313,14 @@ function Step4({
   storeName,
   onSubmit,
   onSkip,
+  onBack,
   isLoading,
   error,
 }: {
   storeName: string;
   onSubmit: () => void;
   onSkip: () => void;
+  onBack: () => void;
   isLoading: boolean;
   error?: string;
 }) {
@@ -361,14 +369,24 @@ function Step4({
       <ErrorBanner message={error} />
 
       <div className="flex flex-col gap-3">
-        <button
-          onClick={onSubmit}
-          disabled={isLoading}
-          className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-60"
-          style={{ background: colors.accent, color: colors.accentTextOnBg }}
-        >
-          {isLoading ? t('onboarding.submitting') : t('onboarding.submitForReview')}
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{ background: colors.surfaceMuted, border: `1px solid ${colors.border}`, color: colors.textMuted }}
+          >
+            {t('onboarding.backButton')}
+          </button>
+          <button
+            onClick={onSubmit}
+            disabled={isLoading}
+            className="flex-1 py-3 rounded-xl text-sm font-semibold disabled:opacity-60"
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
+          >
+            {isLoading ? t('onboarding.submitting') : t('onboarding.submitForReview')}
+          </button>
+        </div>
         <button
           onClick={onSkip}
           className="text-xs text-center transition-opacity hover:opacity-80"
@@ -455,8 +473,8 @@ export default function OnboardingPage() {
           city:                data.city,
           telegramContactLink,
         });
-      } catch {
-        setError(t('onboarding.errorCreateStore'));
+      } catch (err) {
+        setError(errorText(err, t('onboarding.errorCreateStore')));
         return;
       }
 
@@ -482,8 +500,8 @@ export default function OnboardingPage() {
       const store = await submitStore.mutateAsync();
       track.storeSubmittedForReview(store.id);
       router.push('/dashboard');
-    } catch {
-      setError(t('onboarding.errorSubmitStore'));
+    } catch (err) {
+      setError(errorText(err, t('onboarding.errorSubmitStore')));
     }
   }
 
@@ -518,6 +536,7 @@ export default function OnboardingPage() {
           storeName={storeName}
           onSubmit={handleSubmit}
           onSkip={toDashboard}
+          onBack={() => setStep(1)}
           isLoading={submitStore.isPending}
           error={error}
         />
