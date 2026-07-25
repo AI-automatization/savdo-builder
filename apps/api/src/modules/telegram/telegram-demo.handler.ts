@@ -26,7 +26,18 @@ function storeUrl(slug: string): string {
   return `${buyerBaseUrl()}/${slug}`;
 }
 
+// TG-BOT-SELLER-TERMS-001: публичная оферта продавца живёт на web-buyer.
+function offerUrl(): string {
+  return `${buyerBaseUrl()}/offer`;
+}
+
 // ── Транслитерация кириллицы для slug-генерации ───────────────────────────────
+// INFRA-TYPES-PKG-RUNTIME-001 (23.07.2026): держим копию локально, а не
+// `import from 'types'` — packages/types не собирается в JS (package.json
+// main указывает на raw .ts), и NestJS-рантайм (`node dist/src/main`, plain
+// CommonJS require, без ts-node) не может его загрузить в проде. Логика
+// зеркалит `packages/types/src/slug.ts` (для web-* апов, которые бандлят TS
+// через Next.js — там раздельная копия не нужна).
 const CYRILLIC_MAP: Record<string, string> = {
   а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'j',к:'k',
   л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',
@@ -425,7 +436,29 @@ export class TelegramDemoHandler {
     );
   }
 
-  async finishSellerRegistration(chatId: string, description?: string): Promise<void> {
+  // TG-BOT-SELLER-TERMS-001: обязательное согласие с офертой перед созданием магазина.
+  async askSellerTerms(chatId: string, description?: string): Promise<void> {
+    const lang = await this.getLang(chatId);
+    await this.setTmp(chatId, 'sellerDescription', description?.trim() ?? '');
+    await this.setState(chatId, 'seller_reg_terms');
+    await this.bot.sendInlineKeyboard(
+      chatId,
+      t(lang, 'reg.step4', { url: offerUrl() }),
+      [
+        [{ text: t(lang, 'btn.acceptTerms'), callback_data: 'seller_reg_terms_accept' }],
+        [{ text: t(lang, 'btn.declineTerms'), callback_data: 'seller_reg_terms_decline' }],
+      ],
+      'HTML',
+    );
+  }
+
+  async declineSellerRegistration(chatId: string): Promise<void> {
+    await this.clearState(chatId);
+    const lang = await this.getLang(chatId);
+    await this.bot.sendMessage(chatId, t(lang, 'reg.termsDeclined'));
+  }
+
+  async finishSellerRegistration(chatId: string): Promise<void> {
     await this.clearState(chatId);
 
     const lang      = await this.getLang(chatId);
@@ -434,6 +467,7 @@ export class TelegramDemoHandler {
     const username  = await this.getTmp(chatId, 'username');
     const sellerName = await this.getTmp(chatId, 'sellerName');
     const storeName  = await this.getTmp(chatId, 'storeName');
+    const description = await this.getTmp(chatId, 'sellerDescription');
 
     if (!phone || !sellerName || !storeName) {
       await this.bot.sendMessage(chatId, t(lang, 'reg.error'));
@@ -456,6 +490,7 @@ export class TelegramDemoHandler {
         telegramUsername: username || '',
         telegramChatId: BigInt(chatId),
         telegramNotificationsActive: true,
+        termsAcceptedAt: new Date(),
         store: {
           create: {
             name: storeName,

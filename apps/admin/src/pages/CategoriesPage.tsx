@@ -3,6 +3,7 @@ import { Tags, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, X, S
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
+import { DialogShell } from '../components/admin/DialogShell'
 
 interface GlobalCategory {
   id: string
@@ -276,10 +277,10 @@ export default function CategoriesPage() {
       )}
 
       {/* Delete confirm */}
+      {/* A11Y (UIUX-ADMIN-TMA-001): raw div → DialogShell (focus-trap + Escape + role="dialog") */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
-          <div className="rounded-xl p-6 w-80 shadow-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text)' }}>{t('categories.deleteConfirmTitle')}</h3>
+        <DialogShell onClose={() => setConfirmDelete(null)} width={320} ariaLabelledBy="cat-delete-title" contentStyle={{ padding: 24 }}>
+            <h3 id="cat-delete-title" className="text-sm font-semibold mb-2" style={{ color: 'var(--text)' }}>{t('categories.deleteConfirmTitle')}</h3>
             <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>
               {t('categories.deleteConfirmText')}
             </p>
@@ -299,16 +300,14 @@ export default function CategoriesPage() {
                 {t('common.delete')}
               </button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
 
-      {/* Create / Edit modal */}
+      {/* Create / Edit modal — A11Y: DialogShell вместо raw div */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
-          <div className="rounded-xl w-[480px] shadow-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <DialogShell onClose={closeModal} width={480} ariaLabelledBy="cat-modal-title" contentStyle={{ padding: 0 }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+              <h3 id="cat-modal-title" className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
                 {modal === 'create' ? t('categories.modalCreate') : t('categories.modalEdit')}
               </h3>
               <button onClick={closeModal} aria-label={t('common.close')}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
@@ -386,18 +385,16 @@ export default function CategoriesPage() {
                 {saving ? t('categories.saving') : t('common.save')}
               </button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
 
-      {/* FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий */}
+      {/* FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий — A11Y: DialogShell */}
       {historyOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
-          <div className="rounded-xl w-[560px] max-h-[80vh] flex flex-col shadow-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <DialogShell onClose={() => setHistoryOpen(false)} width={560} ariaLabelledBy="cat-history-title" contentStyle={{ padding: 0, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
               <div className="flex items-center gap-2">
                 <History size={16} style={{ color: 'var(--text-muted)' }} />
-                <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{t('categories.historyTitle')}</h3>
+                <h3 id="cat-history-title" className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{t('categories.historyTitle')}</h3>
               </div>
               <button onClick={() => setHistoryOpen(false)} aria-label={t('common.close')}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
             </div>
@@ -416,8 +413,7 @@ export default function CategoriesPage() {
                 <HistoryEntry key={log.id} log={log} />
               ))}
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
     </div>
   )

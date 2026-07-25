@@ -39,6 +39,7 @@ import { PartnerModule } from './modules/partner/partner.module';
 import { HealthModule } from './health/health.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { QueuesModule } from './queues/queues.module';
+import { DbBackupModule } from './queues/processors/db-backup.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -57,6 +58,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     SharedServicesModule,
     IdempotencyModule,
     QueuesModule,
+    // BACKUP-001: ежедневный pg_dump → R2 (kill-switch DB_BACKUP_ENABLED).
+    DbBackupModule,
     AuthModule,
     UsersModule,
     SellersModule,

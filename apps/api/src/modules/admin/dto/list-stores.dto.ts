@@ -6,4 +6,9 @@ export class ListStoresDto extends PaginationDto {
   @IsString()
   @IsIn(['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'REJECTED', 'SUSPENDED', 'ARCHIVED'])
   status?: string;
+
+  // PERF-API-001: серверный поиск по name/slug.
+  @IsOptional()
+  @IsString()
+  search?: string;
 }

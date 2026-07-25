@@ -58,6 +58,9 @@ export const envValidationSchema = Joi.object({
   PAYMENT_ONLINE_ENABLED: Joi.boolean().default(false),
   PRODUCT_IMAGE_ATTACHMENT_ENABLED: Joi.boolean().default(false),
   AUTO_CANCEL_PENDING_AFTER_HOURS: Joi.number().default(48),
+  // BACKUP-001: ежедневный pg_dump → R2. Включать ТОЛЬКО на прод-инстансе
+  // (локально/preview дампить прод нечем и незачем).
+  DB_BACKUP_ENABLED: Joi.boolean().default(false),
 
   // CORS
   ALLOWED_ORIGINS: Joi.string().optional(),

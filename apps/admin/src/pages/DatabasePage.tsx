@@ -3,6 +3,7 @@ import { Database, Search, Edit2, Trash2, Plus, X, Check, AlertTriangle, Refresh
 import { useFetch } from '../lib/hooks'
 import { api } from '../lib/api'
 import { PaginationBar } from '../components/admin/PaginationBar'
+import { DialogShell } from '../components/admin/DialogShell'
 import { useTranslation } from '../lib/i18n/I18nProvider'
 
 type DbFieldType = 'string' | 'text' | 'number' | 'boolean' | 'datetime' | 'json' | 'enum'
@@ -366,11 +367,11 @@ function EditModal({ row, writableFields, fieldMetas, onSave, onCancel }: {
     finally { setSaving(false) }
   }
 
+  // A11Y (UIUX-ADMIN-TMA-001): raw div → DialogShell (focus-trap + Escape)
   return (
-    <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 540, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
+    <DialogShell onClose={onCancel} width={540} zIndex={300} ariaLabelledBy="db-edit-title">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('db.editModalTitle')}</h3>
+          <h3 id="db-edit-title" style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('db.editModalTitle')}</h3>
           <button onClick={onCancel} aria-label={t('common.close')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
         </div>
 
@@ -401,8 +402,7 @@ function EditModal({ row, writableFields, fieldMetas, onSave, onCancel }: {
             <Check size={14} /> {saving ? t('db.saving') : t('common.save')}
           </button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   )
 }
 
@@ -450,11 +450,11 @@ function InsertModal({ writableFields, fieldMetas, onSave, onCancel }: {
     finally { setSaving(false) }
   }
 
+  // A11Y (UIUX-ADMIN-TMA-001): raw div → DialogShell (focus-trap + Escape)
   return (
-    <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 540, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' }}>
+    <DialogShell onClose={onCancel} width={540} zIndex={300} ariaLabelledBy="db-insert-title">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('db.insertModalTitle')}</h3>
+          <h3 id="db-insert-title" style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('db.insertModalTitle')}</h3>
           <button onClick={onCancel} aria-label={t('common.close')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={18} /></button>
         </div>
         {writableFields.map(field => {
@@ -475,8 +475,7 @@ function InsertModal({ writableFields, fieldMetas, onSave, onCancel }: {
             <Plus size={14} /> {saving ? t('db.saving') : t('db.add')}
           </button>
         </div>
-      </div>
-    </div>
+    </DialogShell>
   )
 }
 
@@ -765,11 +764,10 @@ export default function DatabasePage() {
 
       {/* Delete Confirm */}
       {deleteConfirmId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 28, width: 380 }}>
+        <DialogShell onClose={() => setDeleteConfirmId(null)} width={380} zIndex={300} ariaLabelledBy="db-delete-title">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <AlertTriangle size={20} color="#EF4444" />
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('db.deleteTitle')}</h3>
+              <AlertTriangle size={20} color="#EF4444" aria-hidden="true" />
+              <h3 id="db-delete-title" style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>{t('db.deleteTitle')}</h3>
             </div>
             <p style={{ margin: '0 0 6px', color: 'var(--text-muted)', fontSize: 13 }}>
               ID: <code style={{ fontFamily: 'monospace', fontSize: 11 }}>{deleteConfirmId.slice(0, 16)}…</code>
@@ -779,8 +777,7 @@ export default function DatabasePage() {
               <button onClick={() => setDeleteConfirmId(null)} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer' }}>{t('common.cancel')}</button>
               <button onClick={() => handleDelete(deleteConfirmId)} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: '#EF4444', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{t('common.delete')}</button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
     </div>
   )

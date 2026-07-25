@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { TableSkeletonRows } from '@/components/ui/skeleton'
 import { PaginationBar } from '../components/admin/PaginationBar'
 
 interface StoreItem {
@@ -50,16 +51,26 @@ export default function StoresPage() {
   const navigate = useNavigate()
   const { t, locale } = useTranslation()
   const [filter, setFilter] = useState('ALL')
+  // FRONT-SERVER-SEARCH (18.07.2026): поиск ушёл на сервер (PERF-API-001,
+  // GET /admin/stores?search= по name/slug) — клиентский filter искал только
+  // в текущей странице из 20 строк. Паттерн debounce — как в SellersPage.
+  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const LIMIT = 20
 
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(searchInput.trim()); setPage(1) }, 300)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
   const query = new URLSearchParams({ page: String(page), limit: String(LIMIT) })
   if (filter !== 'ALL') query.set('status', filter)
+  if (search) query.set('search', search)
   const { data, loading, error, refetch } = useFetch<StoresResponse>(
-    `/api/v1/admin/stores?${query}`, [page, filter],
+    `/api/v1/admin/stores?${query}`, [page, filter, search],
   )
 
   const [localStores, setLocalStores] = useState<StoreItem[]>([])
@@ -67,14 +78,6 @@ export default function StoresPage() {
 
   const total = data?.total ?? 0
   const totalPages = Math.ceil(total / LIMIT)
-
-  const filtered = search
-    ? localStores.filter(s =>
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.slug.toLowerCase().includes(search.toLowerCase()) ||
-        s.seller?.fullName?.toLowerCase().includes(search.toLowerCase())
-      )
-    : localStores
 
   async function approveStore(storeId: string) {
     setLocalStores(prev => prev.map(s => s.id === storeId ? { ...s, status: 'APPROVED' } : s))
@@ -142,9 +145,10 @@ export default function StoresPage() {
         <div className="relative flex-1 min-w-[220px] max-w-xs">
           <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
           <Input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
             placeholder={t('stores.searchPlaceholder')}
+            aria-label={t('stores.searchPlaceholder')}
             className="pl-8"
           />
         </div>
@@ -181,10 +185,10 @@ export default function StoresPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
-            ) : filtered.length === 0 ? (
+              <TableSkeletonRows rows={8} cols={7} />
+            ) : localStores.length === 0 ? (
               <tr><td colSpan={7} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.notFound')}</td></tr>
-            ) : filtered.map((s, i) => {
+            ) : localStores.map((s, i) => {
               const cfg = STATUS_CFG[s.status] ?? STATUS_CFG.DRAFT
 
               return (
@@ -192,7 +196,7 @@ export default function StoresPage() {
                   key={s.id}
                   onClick={() => navigate(`/stores/${s.id}`)}
                   className="cursor-pointer transition-colors"
-                  style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none' }}
+                  style={{ borderBottom: i < localStores.length - 1 ? '1px solid var(--border)' : 'none' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                   onMouseLeave={e => (e.currentTarget.style.background = '')}
                 >

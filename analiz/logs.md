@@ -1,5 +1,32 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-23] [INFRA-TYPES-PKG-RUNTIME-001] Прод-деплой api падал на healthcheck — `types` пакет не собирается в JS
+- **Статус:** ✅ Исправлено и подтверждено на проде (health 200)
+- **Что случилось:** в рамках ONBOARD-SLUG-TRANSLIT-DEDUP-001 вынес `toLatinSlug` в
+  `packages/types/src/slug.ts` и заменил локальную копию в `telegram-demo.handler.ts` на
+  `import { toLatinSlug } from 'types'`. Локально `pnpm --filter api build` (tsc) проходил чисто —
+  tsc резолвит `.ts` файлы напрямую, ему всё равно, как это будет грузиться в рантайме.
+  На Railway деплой падал на **Network > Healthcheck** — реальная причина видна только в Deploy Logs:
+  `Error: Cannot find module '/app/apps/api/node_modules/types/src/index.ts'`. `packages/types/
+  package.json` имеет `"main": "./src/index.ts"` — без build-шага в JS. Next.js апы (web-buyer/
+  web-seller) это переживают, потому что их бандлер (webpack) сам транспилирует TS при импорте.
+  NestJS-прод-рантайм — это plain `node dist/src/main.js` (CommonJS `require`, без ts-node) —
+  требовать `.ts` файл он не может, процесс падал на старте ещё до открытия порта → healthcheck
+  закономерно валился. Старая (вчерашняя) версия осталась ACTIVE, новый код (включая
+  TG-BOT-SELLER-TERMS-001) на прод не попал, хотя выглядело так, будто пуш прошёл нормально.
+- **Что сделано:** откатил runtime-импорт в `telegram-demo.handler.ts` — вернул локальную копию
+  `CYRILLIC_MAP`/`toLatinSlug` (идентичную по логике `packages/types/src/slug.ts`, maxLength=40).
+  `packages/types/src/slug.ts` оставлен как есть — годится для web-* апов при будущей миграции
+  Азимом (у них TS резолвится через бандлер, не через голый Node require). Проверено локально:
+  build EXIT 0, смоук-запуск `node dist/src/main.js` с фейковыми env — падает уже на штатной
+  Nest config-валидации (APP_URL/JWT_ACCESS_SECRET), а не на MODULE_NOT_FOUND. Задеплоено
+  (`api` ветка, `926c0ab`), Railway "Deployment successful", `api.maxsavdo.uz/api/v1/health` → 200.
+- **Урок на будущее:** `packages/types` (и любой workspace-пакет без build-шага, main → raw `.ts`)
+  **нельзя импортировать в рантайме из apps/api** (или любого другого plain-Node/NestJS сервиса).
+  Безопасно только для апов, которые бандлят TS сами (web-buyer/web-seller через Next.js). Если
+  когда-нибудь понадобится расшарить рантайм-логику с api — сначала завести build-шаг
+  (`tsup`/`tsc` → `dist/`) в `packages/types`, поменять `main` на скомпилированный JS.
+
 ## [2026-07-16] [MODERATION-ORPHANS-001] Сироты в очереди модерации после hard-delete
 - **Статус:** ✅ Исправлено (чистка прода + фикс в purge-коде)
 - **Что случилось:** при чистке прод-базы в очереди модерации остались 3 OPEN-кейса
@@ -2787,3 +2814,20 @@ P2: остальное.
   не деплой, лимит компьюта не должен мешать. DNS в Cloudflare трогать не обязательно, если
   Railway выдаст тот же CNAME-таргет.
 - **Статус:** 🔴 Открыто, ждём решения owner'а когда делать фикс.
+
+## [2026-07-18] [SEC-DEPS-001] pnpm audit: 7 moderate-уязвимостей в prod-зависимостях
+- **Статус:** ✅ Частично исправлено (5 из 7; 2 требуют мажорных апгрейдов — см. ниже)
+- **Что случилось:** `pnpm audit --prod` нашёл 7 moderate: js-yaml ReDoS (через
+  @nestjs/swagger), qs DoS (через express/body-parser, 35 путей), joi 18.0.2,
+  react-router 6.30.3 (apps/tma), @nestjs/core 10.4.22 (патч только в 11.1.18),
+  @opentelemetry/core 1.30.1 (через @sentry/node 8.x, патч только в 2.8.0).
+- **Что сделано:** bounded-override'ы в pnpm-workspace.yaml (js-yaml >=4.1.2 <5,
+  qs >=6.15.2 <7 — по правилу «не выпрыгивать за мажор» из NOTE 2026-07-12);
+  прямые бампы: joi ^18.2.1 (apps/api), react-router-dom ^6.30.4 (apps/tma).
+  Проверено: api build+test EXIT 0, admin build EXIT 0, tma build EXIT 0.
+- **Остаток (осознанно не трогаем в этой задаче):**
+  - `@nestjs/core` 10.4.22 → фикс требует Nest 11 (мажор всего фреймворка,
+    Express 5 в platform-express) — отдельная задача NEST-11-UPGRADE.
+  - `@opentelemetry/core` 1.30.1 → фикс требует @sentry/node 8→10 (мажор,
+    peer-цепочка из 44 путей) — отдельная задача SENTRY-10-UPGRADE.
+  Обе — moderate (DoS-класс), не критичные для немедленного фикса.

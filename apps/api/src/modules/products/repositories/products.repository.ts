@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, Product, ProductStatus } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
+import { toPrismaPagination } from '../../../common/utils/pagination';
 
 // Стандартный include-блок для Seller list view — товар + все картинки + варианты + счётчик.
 // Вынесено в const чтобы Prisma.validator вывел точный тип возврата
@@ -134,18 +135,26 @@ export class ProductsRepository {
     status?: ProductStatus;
     page?: number;
     limit?: number;
+    // PERF-API-001: серверный поиск для admin ProductsPage (раньше фильтровала
+    // клиентом только загруженную страницу). contains → pg_trgm index-backed.
+    search?: string;
     // P1-4 (audit 2026-06-04): admin может явно запросить soft-deleted записи,
     // чтобы UI совпадал с «База данных» (raw view). По умолчанию — скрываем.
     includeDeleted?: boolean;
   }): Promise<{ products: AdminProductListItem[]; total: number }> {
-    const page  = filters?.page  ?? 1;
-    const limit = filters?.limit ?? 20;
-    const skip  = (page - 1) * limit;
+    const { limit, skip } = toPrismaPagination(filters);
 
     const where: Record<string, unknown> = {};
     if (!filters?.includeDeleted) where['deletedAt'] = null;
     if (filters?.storeId) where['storeId'] = filters.storeId;
     if (filters?.status)  where['status']  = filters.status;
+    const q = filters?.search?.trim();
+    if (q) {
+      where['OR'] = [
+        { title:       { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+      ];
+    }
 
     const [products, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
@@ -168,20 +177,55 @@ export class ProductsRepository {
       globalCategoryId?: string;
       storeCategoryId?: string;
       limit?: number;
+      // PERF-API-001: серверный поиск для TMA (раньше TMA фильтровала клиентом).
+      search?: string;
     },
   ): Promise<SellerProductListItem[]> {
+    // PERF-API-001: раньше без limit запрос был unbounded — магазин с тысячами
+    // товаров тянул всё. Границы повторяют findPublicByStoreId: default 200, cap 500.
+    const take = Math.min(Math.max(filters?.limit ?? 200, 1), 500);
     return this.prisma.product.findMany({
-      where: {
-        storeId,
-        deletedAt: null,
-        ...(filters?.status && { status: filters.status }),
-        ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
-        ...(filters?.storeCategoryId && { storeCategoryId: filters.storeCategoryId }),
-      },
+      where: this.sellerListWhere(storeId, filters),
       include: sellerProductInclude,
       orderBy: { createdAt: 'desc' },
-      ...(filters?.limit !== undefined && { take: filters.limit }),
+      take,
     });
+  }
+
+  private sellerListWhere(
+    storeId: string,
+    filters?: {
+      status?: ProductStatus;
+      globalCategoryId?: string;
+      storeCategoryId?: string;
+      search?: string;
+    },
+  ): Prisma.ProductWhereInput {
+    const q = filters?.search?.trim();
+    return {
+      storeId,
+      deletedAt: null,
+      ...(filters?.status && { status: filters.status }),
+      ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
+      ...(filters?.storeCategoryId && { storeCategoryId: filters.storeCategoryId }),
+      ...(q && { title: { contains: q, mode: 'insensitive' as const } }),
+    };
+  }
+
+  /**
+   * PERF-API-001: total для seller-списка с теми же фильтрами что findByStoreId —
+   * иначе при search total показывал бы все товары магазина.
+   */
+  async countByStoreIdFiltered(
+    storeId: string,
+    filters?: {
+      status?: ProductStatus;
+      globalCategoryId?: string;
+      storeCategoryId?: string;
+      search?: string;
+    },
+  ): Promise<number> {
+    return this.prisma.product.count({ where: this.sellerListWhere(storeId, filters) });
   }
 
   async findById(id: string): Promise<SellerProductDetail | null> {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Users, Phone, Search, MessageCircle } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
+import { TableSkeletonRows } from '@/components/ui/skeleton'
 import { PaginationBar } from '../components/admin/PaginationBar'
 
 interface UserRow {
@@ -138,11 +139,7 @@ export default function UsersPage() {
             </tr>
           </thead>
           <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>{t('common.loading')}</td>
-              </tr>
-            )}
+            {loading && <TableSkeletonRows rows={8} cols={6} />}
             {!loading && users.length === 0 && (
               <tr>
                 <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>{t('users.notFound')}</td>

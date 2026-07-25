@@ -93,17 +93,16 @@ export class ProductsController {
     @Query('globalCategoryId') globalCategoryId?: string,
     @Query('storeCategoryId') storeCategoryId?: string,
     @Query('limit') limit?: string,
+    // PERF-API-001: серверный поиск (title) — TMA больше не фильтрует клиентом.
+    @Query('search') search?: string,
   ) {
     const storeId = await this.resolveStoreId(user.sub, { requireActiveSubscription: false });
     const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+    const listFilters = { status, globalCategoryId, storeCategoryId, search };
     const [products, total] = await Promise.all([
-      this.productsRepo.findByStoreId(storeId, {
-        status,
-        globalCategoryId,
-        storeCategoryId,
-        limit: parsedLimit,
-      }),
-      this.productsRepo.countByStoreId(storeId),
+      this.productsRepo.findByStoreId(storeId, { ...listFilters, limit: parsedLimit }),
+      // total с теми же фильтрами — иначе при search счётчик врёт (PERF-API-001).
+      this.productsRepo.countByStoreIdFiltered(storeId, listFilters),
     ]);
     const mapped = products.map((p) => {
       const { _count, images, variants, basePrice, oldPrice, salePrice, ...rest } = p;

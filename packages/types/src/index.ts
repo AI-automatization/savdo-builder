@@ -4,6 +4,7 @@
 
 export * from './enums';
 export * from './common';
+export * from './slug';
 export * from './api/auth';
 export * from './api/stores';
 export * from './api/products';

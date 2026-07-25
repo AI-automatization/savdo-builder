@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { TableSkeletonRows } from '@/components/ui/skeleton'
 import { PaginationBar } from '../components/admin/PaginationBar'
 
 interface Seller {
@@ -89,6 +90,7 @@ export default function SellersPage() {
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             placeholder={t('sellers.searchPlaceholder')}
+            aria-label={t('sellers.searchPlaceholder')}
             className="pl-8"
           />
         </div>
@@ -125,7 +127,7 @@ export default function SellersPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</td></tr>
+              <TableSkeletonRows rows={8} cols={6} />
             ) : sellers.length === 0 ? (
               <tr><td colSpan={6} className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>{t('common.notFound')}</td></tr>
             ) : sellers.map((s, i) => {
