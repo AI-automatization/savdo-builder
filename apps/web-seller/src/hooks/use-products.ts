@@ -30,6 +30,7 @@ export function useSellerProducts(params?: {
   status?: ProductStatus;
   globalCategoryId?: string;
   storeCategoryId?: string;
+  search?: string;
 }) {
   const { user } = useAuth();
   return useQuery({

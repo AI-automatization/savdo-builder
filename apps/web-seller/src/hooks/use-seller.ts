@@ -17,6 +17,9 @@ import {
   updateStoreCategory,
   deleteStoreCategory,
   uploadSellerAvatar,
+  getPaymentRequisites,
+  updatePaymentRequisites,
+  type UpdatePaymentRequisitesRequest,
 } from '../lib/api/seller.api';
 import type { SellerProfile } from 'types';
 import { useAuth } from '../lib/auth/context';
@@ -87,6 +90,26 @@ export function useSubmitStore() {
   return useMutation({
     mutationFn: submitStore,
     onSuccess: (store) => queryClient.setQueryData(['seller', 'store'], store),
+  });
+}
+
+// ── Payment requisites (SELLER-PAYMENT-REQUISITES-001) ──────────────────────────
+
+export function usePaymentRequisites() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['seller', 'payment-requisites'],
+    queryFn: getPaymentRequisites,
+    staleTime: 5 * 60 * 1000,
+    enabled: !!user && user.role === 'SELLER',
+  });
+}
+
+export function useUpdatePaymentRequisites() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdatePaymentRequisitesRequest) => updatePaymentRequisites(data),
+    onSuccess: (data) => queryClient.setQueryData(['seller', 'payment-requisites'], data),
   });
 }
 

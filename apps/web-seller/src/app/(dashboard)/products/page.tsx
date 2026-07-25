@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useSellerProducts, useUpdateProductStatus } from '@/hooks/use-products';
 import { Check, Link2, Send, Layers, Package } from 'lucide-react';
@@ -9,6 +9,17 @@ import { ProductStatus } from '@/lib/enums';
 import { buyerProductUrl } from '@/lib/buyer-url';
 import { card, colors, dangerTint, inputStyle } from '@/lib/styles';
 import { useTranslation } from '@/lib/i18n';
+
+// FRONT-SERVER-SEARCH-001: серверный поиск (PERF-API-001, apps/api search на
+// /seller/products) вместо клиентского .filter() по уже загруженной странице.
+function useDebouncedValue<T>(value: T, delay = 300): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
 
 function Skeleton({ className }: { className?: string }) {
   return (
@@ -45,7 +56,13 @@ export default function ProductsPage() {
     { key: ProductStatus.ARCHIVED,     label: t('products.filterArchived') },
   ];
 
-  const { data: productsData, isLoading } = useSellerProducts();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ProductStatus | 'ALL'>('ALL');
+  const debouncedSearch = useDebouncedValue(search.trim());
+
+  const { data: productsData, isLoading } = useSellerProducts({
+    search: debouncedSearch || undefined,
+  });
   const products = productsData?.products;
   const { mutate: updateStatus, isPending: isStatusPending, variables: statusVars } = useUpdateProductStatus();
   const { data: store } = useStore();
@@ -68,18 +85,15 @@ export default function ProductsPage() {
       setTimeout(() => setTgCopiedId(null), 2000);
     });
   }
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ProductStatus | 'ALL'>('ALL');
-
+  // Поиск теперь серверный (см. useSellerProducts выше) — тут только статус
+  // фильтруется на клиенте, как и раньше.
   const filtered = useMemo(() => {
     if (!products) return [];
-    const q = search.trim().toLowerCase();
-    return products.filter((p) => {
-      const matchStatus = statusFilter === 'ALL' || p.status === statusFilter;
-      const matchSearch = !q || p.title.toLowerCase().includes(q);
-      return matchStatus && matchSearch;
-    });
-  }, [products, search, statusFilter]);
+    if (statusFilter === 'ALL') return products;
+    return products.filter((p) => p.status === statusFilter);
+  }, [products, statusFilter]);
+
+  const isFiltering = debouncedSearch.length > 0 || statusFilter !== 'ALL';
 
   function fmt(n: unknown) {
     const num = typeof n === "number" ? n : Number(n);
@@ -181,7 +195,7 @@ export default function ProductsPage() {
           </>
         ) : filtered.length === 0 ? (
           <div className="px-5 py-12 text-center text-sm" style={{ color: colors.textDim }}>
-            {products?.length === 0
+            {!isFiltering
               ? <><span>{t('products.empty')}</span><Link href="/products/create" style={{ color: colors.accent }}>{t('products.emptyAddLink')}</Link></>
               : t('products.notFound')}
           </div>

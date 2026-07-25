@@ -90,6 +90,43 @@ export async function getGlobalCategories(): Promise<GlobalCategory[]> {
   return res.data;
 }
 
+// ── Payment requisites (SELLER-PAYMENT-REQUISITES-001) ──────────────────────────
+// Локальные типы: `StorePaymentRequisites`/`UpdateStorePaymentRequisitesRequest`
+// определены в packages/types только на main (packages/types/src/api/stores.ts),
+// на ветке web-seller их нет — обходной путь как со SlugFeed в web-buyer, см.
+// analiz/tasks.md SEO-DOC-DRIFT-001 / ONBOARD-SLUG-TRANSLIT-DEDUP-001. Контракт
+// сверен с `apps/api/src/modules/stores/{dto/update-payment-requisites.dto.ts,
+// repositories/stores.repository.ts (PAYMENT_REQUISITES_SELECT), stores.controller.ts}`.
+export interface RawPaymentRequisites {
+  paymentCardNumber: string | null;
+  paymentCardHolder: string | null;
+  paymentClickLink: string | null;
+  paymentPaymeLink: string | null;
+  acceptsCash: boolean;
+  acceptsCardTransfer: boolean;
+}
+
+export interface UpdatePaymentRequisitesRequest {
+  cardNumber?: string | null;
+  cardHolder?: string | null;
+  clickLink?: string | null;
+  paymeLink?: string | null;
+  acceptsCash?: boolean;
+  acceptsCardTransfer?: boolean;
+}
+
+export async function getPaymentRequisites(): Promise<RawPaymentRequisites> {
+  const res = await apiClient.get<RawPaymentRequisites>('/seller/store/payment-requisites');
+  return res.data;
+}
+
+export async function updatePaymentRequisites(
+  data: UpdatePaymentRequisitesRequest,
+): Promise<RawPaymentRequisites> {
+  const res = await apiClient.patch<RawPaymentRequisites>('/seller/store/payment-requisites', data);
+  return res.data;
+}
+
 export async function getStoreCategories(): Promise<StoreCategory[]> {
   const res = await apiClient.get<StoreCategory[]>('/seller/categories');
   return res.data;

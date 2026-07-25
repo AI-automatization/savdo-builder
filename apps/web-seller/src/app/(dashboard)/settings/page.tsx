@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import Link from 'next/link';
-import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile, useStoreCategories } from '@/hooks/use-seller';
+import { useStore, useUpdateStore, useSellerProfile, useUpdateSellerProfile, useStoreCategories, usePaymentRequisites, useUpdatePaymentRequisites } from '@/hooks/use-seller';
 import { ChevronRight, ExternalLink } from 'lucide-react';
 import { useNotifPreferences, useUpdateNotifPreferences } from '@/hooks/use-notifications';
 import type { Store } from 'types';
@@ -12,6 +12,7 @@ import { Select, type SelectOption } from '@/components/select';
 import { card, colors, inputStyle as inputStyleBase } from '@/lib/styles';
 import { LanguageToggle } from '@/components/language-toggle';
 import { useTranslation } from '@/lib/i18n';
+import { errorText } from '@/lib/error-text';
 
 // SUPPORT-CHANNEL-001: ссылка на поддержку. Когда Полат создаст канал —
 // выставит NEXT_PUBLIC_SUPPORT_URL в Railway-env. До этого фолбэк на бот
@@ -249,6 +250,166 @@ function DeliverySettingsSection() {
           <SavedBadge show={saved} />
           {updateStore.isError && (
             <span className="text-xs" style={errorStyle}>{t('settings.saveError')}</span>
+          )}
+        </div>
+      </form>
+    </Section>
+  );
+}
+
+// ── Payment Requisites Form (SELLER-PAYMENT-REQUISITES-001) ─────────────────────
+
+type PaymentFormValues = {
+  cardNumber: string;
+  cardHolder: string;
+  clickLink: string;
+  paymeLink: string;
+  acceptsCash: boolean;
+  acceptsCardTransfer: boolean;
+};
+
+function PaymentRequisitesSection() {
+  const { t } = useTranslation();
+  const { data: requisites, isLoading } = usePaymentRequisites();
+  const updateRequisites = useUpdatePaymentRequisites();
+  const [saved, setSaved] = useState(false);
+
+  const { register, handleSubmit, reset, watch, control, formState: { errors, isDirty } } =
+    useForm<PaymentFormValues>();
+  const acceptsCardTransfer = watch('acceptsCardTransfer');
+  const cardNumber = watch('cardNumber');
+
+  useEffect(() => {
+    if (requisites) {
+      reset({
+        cardNumber: requisites.paymentCardNumber ?? '',
+        cardHolder: requisites.paymentCardHolder ?? '',
+        clickLink: requisites.paymentClickLink ?? '',
+        paymeLink: requisites.paymentPaymeLink ?? '',
+        acceptsCash: requisites.acceptsCash,
+        acceptsCardTransfer: requisites.acceptsCardTransfer,
+      });
+    }
+  }, [requisites]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function onSubmit(values: PaymentFormValues) {
+    await updateRequisites.mutateAsync({
+      cardNumber: values.cardNumber.trim() || null,
+      cardHolder: values.cardHolder.trim() || null,
+      clickLink: values.clickLink.trim() || null,
+      paymeLink: values.paymeLink.trim() || null,
+      acceptsCash: values.acceptsCash,
+      acceptsCardTransfer: values.acceptsCardTransfer,
+    });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+    reset(values);
+  }
+
+  if (isLoading) {
+    return (
+      <div className="rounded-lg overflow-hidden" style={card}>
+        <div className="px-5 py-3.5" style={{ borderBottom: `1px solid ${colors.divider}`, background: colors.surfaceMuted }}>
+          <div className="h-3.5 w-40 rounded-full animate-pulse" style={{ background: colors.surfaceElevated }} />
+        </div>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          {[100, 100, 60].map((w, i) => (
+            <div key={i} className="h-10 rounded-md animate-pulse" style={{ width: `${w}%`, background: colors.surfaceElevated }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Section title={t('settings.sectionPayment')}>
+      <p className="text-xs -mt-2" style={{ color: colors.textMuted }}>{t('settings.paymentHint')}</p>
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <Controller
+          name="acceptsCash"
+          control={control}
+          render={({ field }) => (
+            <ToggleRow
+              label={t('settings.acceptsCashLabel')}
+              description={t('settings.acceptsCashDesc')}
+              checked={!!field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        <Controller
+          name="acceptsCardTransfer"
+          control={control}
+          render={({ field }) => (
+            <ToggleRow
+              label={t('settings.acceptsCardTransferLabel')}
+              description={t('settings.acceptsCardTransferDesc')}
+              checked={!!field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
+
+        {acceptsCardTransfer && (
+          <>
+            {!cardNumber?.trim() && (
+              <p className="text-xs" style={errorStyle}>{t('settings.cardRequiredForTransfer')}</p>
+            )}
+            <Field label={t('settings.labelCardNumber')} error={errors.cardNumber?.message}>
+              <input
+                {...register('cardNumber', {
+                  pattern: { value: /^(\d[\d ]{11,28}\d)?$/, message: t('settings.cardNumberPattern') },
+                })}
+                className={inputBase}
+                style={inputStyle}
+                placeholder={t('settings.cardNumberPlaceholder')}
+              />
+            </Field>
+            <Field label={t('settings.labelCardHolder')}>
+              <input
+                {...register('cardHolder')}
+                className={inputBase}
+                style={inputStyle}
+                placeholder={t('settings.cardHolderPlaceholder')}
+              />
+            </Field>
+            <Field label={t('settings.labelClickLink')} error={errors.clickLink?.message}>
+              <input
+                {...register('clickLink', {
+                  pattern: { value: /^(https:\/\/.+)?$/, message: t('settings.urlHttpsPattern') },
+                })}
+                className={inputBase}
+                style={inputStyle}
+                placeholder={t('settings.clickLinkPlaceholder')}
+              />
+            </Field>
+            <Field label={t('settings.labelPaymeLink')} error={errors.paymeLink?.message}>
+              <input
+                {...register('paymeLink', {
+                  pattern: { value: /^(https:\/\/.+)?$/, message: t('settings.urlHttpsPattern') },
+                })}
+                className={inputBase}
+                style={inputStyle}
+                placeholder={t('settings.paymeLinkPlaceholder')}
+              />
+            </Field>
+          </>
+        )}
+
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            type="submit"
+            disabled={!isDirty || updateRequisites.isPending}
+            className="px-5 py-2.5 rounded-md text-sm font-semibold disabled:opacity-40 transition-opacity hover:opacity-90"
+            style={{ background: colors.accent, color: colors.accentTextOnBg }}
+          >
+            {updateRequisites.isPending ? t('settings.saving') : t('settings.saveBtn')}
+          </button>
+          <SavedBadge show={saved} />
+          {updateRequisites.isError && (
+            <span className="text-xs" style={errorStyle}>
+              {errorText(updateRequisites.error, t('settings.saveError'))}
+            </span>
           )}
         </div>
       </form>
@@ -690,6 +851,7 @@ export default function SettingsPage() {
         </div>
         <div className="flex flex-col gap-5 min-w-0">
           <DeliverySettingsSection />
+          <PaymentRequisitesSection />
           <StoreCategoriesSection />
           <NotifPreferencesSection />
           <SupportSection />
