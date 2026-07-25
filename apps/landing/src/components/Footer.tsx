@@ -9,7 +9,6 @@ export type FooterDict = {
   rights: string;
   contact: string;
   bot: string;
-  channel: string;
 };
 
 type FooterProps = {
@@ -18,7 +17,6 @@ type FooterProps = {
 };
 
 const BOT_URL = 'https://t.me/maxsavdo_bot';
-const TG_CHANNEL = 'https://t.me/savdobuilder';
 const EMAIL = 'hello@maxsavdo.uz';
 
 export default function Footer({ locale, dict }: FooterProps) {
@@ -59,16 +57,6 @@ export default function Footer({ locale, dict }: FooterProps) {
                 className="inline-flex items-center gap-2 text-brand-muted transition-colors hover:text-brand-accent"
               >
                 <Send size={15} aria-hidden /> {dict.bot}
-              </a>
-            </li>
-            <li>
-              <a
-                href={TG_CHANNEL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-brand-muted transition-colors hover:text-brand-accent"
-              >
-                <Send size={15} aria-hidden /> {dict.channel}
               </a>
             </li>
             <li>

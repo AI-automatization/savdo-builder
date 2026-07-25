@@ -93,7 +93,7 @@ export default function Hero({ locale, dict }: HeroProps) {
 
 function PhoneMockup({ labels }: { labels: { bot: string; site: string; channel: string } }) {
   const channels = [
-    { icon: Bot, label: labels.bot, tag: '@savdo_builderBOT' },
+    { icon: Bot, label: labels.bot, tag: '@maxsavdo_bot' },
     { icon: Globe, label: labels.site, tag: 'maxsavdo.uz/shop' },
     { icon: Megaphone, label: labels.channel, tag: 't.me/shop' },
   ];

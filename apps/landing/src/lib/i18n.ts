@@ -65,7 +65,6 @@ export type Dict = {
     rights: string;
     contact: string;
     bot: string;
-    channel: string;
   };
 };
 
@@ -242,7 +241,6 @@ const uz: Dict = {
     rights: "Barcha huquqlar himoyalangan",
     contact: "Aloqa",
     bot: "Bot",
-    channel: "Kanal",
   },
 };
 
@@ -419,7 +417,6 @@ const ru: Dict = {
     rights: "Все права защищены",
     contact: "Связаться",
     bot: "Бот",
-    channel: "Канал",
   },
 };
 

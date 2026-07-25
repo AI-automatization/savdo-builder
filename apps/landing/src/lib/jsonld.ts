@@ -3,7 +3,6 @@ import type { Dict, Locale } from "./i18n";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://maxsavdo.uz";
 
 const TELEGRAM_BOT_URL = "https://t.me/maxsavdo_bot";
-const TELEGRAM_CHANNEL_URL = "https://t.me/savdobuilder";
 const CONTACT_EMAIL = "hello@maxsavdo.uz";
 
 // Site-wide — render once, in the root layout.
@@ -14,7 +13,7 @@ export function organizationJsonLd() {
     url: SITE_URL,
     logo: `${SITE_URL}/logo-maxsavdo.svg`,
     email: CONTACT_EMAIL,
-    sameAs: [TELEGRAM_CHANNEL_URL, TELEGRAM_BOT_URL],
+    sameAs: [TELEGRAM_BOT_URL],
     areaServed: {
       "@type": "Country",
       name: "Uzbekistan",
