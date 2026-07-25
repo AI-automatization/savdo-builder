@@ -2,7 +2,7 @@ import type { Dict, Locale } from "./i18n";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://maxsavdo.uz";
 
-const TELEGRAM_BOT_URL = "https://t.me/savdo_builderBOT";
+const TELEGRAM_BOT_URL = "https://t.me/maxsavdo_bot";
 const TELEGRAM_CHANNEL_URL = "https://t.me/savdobuilder";
 const CONTACT_EMAIL = "hello@maxsavdo.uz";
 

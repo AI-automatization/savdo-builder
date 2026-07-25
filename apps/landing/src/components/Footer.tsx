@@ -17,7 +17,7 @@ type FooterProps = {
   dict: FooterDict;
 };
 
-const BOT_URL = 'https://t.me/savdo_builderBOT';
+const BOT_URL = 'https://t.me/maxsavdo_bot';
 const TG_CHANNEL = 'https://t.me/savdobuilder';
 const EMAIL = 'hello@maxsavdo.uz';
 
