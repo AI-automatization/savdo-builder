@@ -5,7 +5,9 @@ export type Locale = 'uz' | 'ru';
 
 export type HeaderDict = {
   nav: {
+    how: string;
     features: string;
+    stores: string;
     pricing: string;
     faq: string;
     start: string;
@@ -55,15 +57,25 @@ export default function Header({ locale, dict }: HeaderProps) {
           className="hidden items-center gap-7 text-sm text-brand-muted md:flex"
           aria-label="primary"
         >
-          <a href="#features" className="transition-colors hover:text-brand-accent">
-            {dict.nav.features}
-          </a>
-          <a href="#pricing" className="transition-colors hover:text-brand-accent">
-            {dict.nav.pricing}
-          </a>
-          <a href="#faq" className="transition-colors hover:text-brand-accent">
-            {dict.nav.faq}
-          </a>
+          {[
+            { href: '#how', label: dict.nav.how },
+            { href: '#features', label: dict.nav.features },
+            { href: '#stores', label: dict.nav.stores },
+            { href: '#pricing', label: dict.nav.pricing },
+            { href: '#faq', label: dict.nav.faq },
+          ].map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="group relative transition-colors hover:text-brand-accent"
+            >
+              {item.label}
+              <span
+                aria-hidden
+                className="absolute -bottom-1.5 left-1/2 h-px w-0 -translate-x-1/2 bg-brand-accent transition-all duration-200 group-hover:w-full"
+              />
+            </a>
+          ))}
         </nav>
 
         <div className="flex items-center gap-3">
