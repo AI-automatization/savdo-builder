@@ -1,5 +1,6 @@
 # Done — Азим + Полат
 
+<<<<<<< HEAD
 ## 2026-07-25 (Azim/Claude) — SEO/GEO-хвосты + FRONT-SERVER-SEARCH-001 + SELLER-PAYMENT-REQUISITES-001
 
 ### ✅ SEO-AUDIT-001 п.2 + SEO-GEO-AEO-RESEARCH-002 п.4 — товары в sitemap + SSR отзывов
@@ -171,6 +172,22 @@
   "https://maxsavdo.uz"`, `"logo":"https://maxsavdo.uz/logo-maxsavdo.svg"` — абсолютные.
   Все ключевые роуты 200: `/robots.txt`, `/sitemap.xml`, `/`, `/ru`, `www.maxsavdo.uz`.
   **LANDING-DEPLOY-TOPOLOGY-001 полностью закрыт** — перенесено из tasks.md.
+
+## 2026-07-25 (Claude) — инвентаризация open Infra/API задач
+
+### ✅ [INFRA-BACKUP-DRILL-FIRST-RUN-001] Первый restore drill — фактически PASS ещё 25.06, трекер не обновили
+- **Важность:** 🟡
+- **Дата обнаружения расхождения:** 25.07.2026 (сама задача выполнена 25.06.2026)
+- **Контекст:** задача висела в `tasks.md` как открытая, хотя `analiz/logs.md:441` уже содержит
+  `drill_status: PASS` от 25.06.2026 (users=12, sellers=9, stores=9, products=34, orders=22,
+  0 orphan-строк, 0 null_totalAmount). Никто не перенёс запись в done.md и не удалил из tasks.md —
+  реальность обогнала трекер (как и с `LEGAL-OFFER-REQUISITES-001` 24.07).
+- **Что сделано (25.07):** перенёс сюда, удалил из tasks.md.
+- **🔲 Открытый хвост:** следующий drill планировался «последняя пятница июня или июля» —
+  если июльский прогон ещё не делали, стоит сделать до конца месяца (не блокер, обычный
+  cadence-чек, не заводил как P0).
+
+## 2026-07-23 (Claude) — TG-BOT-SELLER-TERMS-001 + ONBOARD-SLUG-TRANSLIT-DEDUP-001 (API-часть)
 
 ### ✅ [TG-BOT-SELLER-TERMS-001] TG-бот: регистрация продавца без согласия с офертой — фикс
 - **Важность:** 🔴
