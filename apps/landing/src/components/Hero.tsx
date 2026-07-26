@@ -39,7 +39,6 @@ gsap.registerPlugin(ScrollTrigger);
 ScrollTrigger.config({ ignoreMobileResize: true });
 
 const BOT_URL = 'https://t.me/maxsavdo_bot';
-const TMA_URL = 'https://t.me/maxsavdo_bot/app';
 
 // Supplementary phase 2/3 captions for the scroll story — restate what
 // Features already says, not new claims. Kept file-local (not in the central
@@ -446,9 +445,7 @@ export default function Hero({ locale, dict }: HeroProps) {
               {dict.ctaPrimary}
             </a>
             <a
-              href={TMA_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="#how"
               className="inline-flex items-center justify-center rounded-xl px-6 py-3.5 text-base font-semibold text-brand-text transition-all hover:border-brand-accent"
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(232,165,82,0.20)' }}
             >
@@ -517,9 +514,7 @@ export default function Hero({ locale, dict }: HeroProps) {
                   {dict.ctaPrimary}
                 </a>
                 <a
-                  href={TMA_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="#how"
                   className="inline-flex items-center justify-center rounded-xl px-6 py-3.5 text-base font-semibold text-brand-text transition-all hover:border-brand-accent"
                   style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(232,165,82,0.20)' }}
                 >
