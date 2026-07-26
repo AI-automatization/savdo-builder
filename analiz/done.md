@@ -1,6 +1,35 @@
 # Done — Азим + Полат
 
-<<<<<<< HEAD
+## 2026-07-26 (Azim/Claude) — LANDING-REDESIGN-001: полный реcкин apps/landing (main, `8fccf50a`)
+
+### ✅ Hero (GSAP scroll-story) + ProblemSection/WhyUs/FinalCta + честный beta-badge
+- **Важность:** 🟢 (продукт/маркетинг, задеплоено на прод) · **Дата:** 26.07.2026 · **Домен:** apps/landing (Азим)
+- **Что сделано:** визуал обкатан на throwaway-прототипе (`Desktop/maxsavdo-landing-wow-test`, вне репо),
+  затем перенесён в реальный `apps/landing` (Next 15) — реальные `dict` (uz+ru), реальные ссылки на
+  `@maxsavdo_bot`/TMA, реальный logo/language-switcher. Hero — GSAP ScrollTrigger 3-фазный сценарий
+  (телефон влетает → каталог → cart-toast → order-toast), рамка корпуса 7px, без 3D-гема (был в
+  промежуточной итерации, убран по фидбеку). Новые секции: ProblemSection, WhyUs (сравнение с Direct/
+  Marketplace/Tilda), FinalCta. `hero.badge` теперь честно говорит «Yopiq beta» — раньше live-Hero
+  вообще не упоминал бета-статус. `hero.title`/`subtitle`/цены/FAQ — не тронуты (визуальный реskin,
+  не смена оффера). Добавлена зависимость `gsap` (`apps/landing/package.json` + committed
+  `package-lock.json` — это единственный лок-файл, который реально использует Railway-сборка этого апа,
+  `Dockerfile` копирует только `apps/landing/`, не трогает корневой pnpm workspace).
+- **🔎 Побочная находка + фикс (вне исходного скоупа, но внутри apps/landing):**
+  `GetFeaturedStorefrontUseCase` (`apps/api`) уже давно отдаёт `{topStores, featuredProducts}`, но
+  `apps/landing/src/lib/api.ts` всё ещё ждал плоский массив (`Array.isArray(data) ? data : []`) —
+  секция «Bizning doʻkonlar» была молча пустой независимо от реальных данных, задолго до этой сессии.
+  `FeaturedStore`-тип (`productsCount`, которого в API нет) заменён на реальные поля `topStores`
+  (`city`, `avgRating`, `reviewCount`, `isVerified`) — карточка магазина теперь показывает город/
+  рейтинг/бейдж «Tasdiqlangan» вместо несуществующего счётчика товаров.
+- **Проверено:** `tsc --noEmit` + `next build` (prod-сборка, идентична Docker-стадии Railway) — оба
+  чистые. `/` и `/ru` дают 200 с реальным контентом (curl), JSON-LD (`organizationJsonLd`/`pageJsonLd`)
+  не задет. Полноценный визуальный QA (Playwright) прерван на середине — MCP-сервер отвалился после
+  restart node-процессов в сессии, дальше проверял через curl+HTML.
+- **Обнаружено, НЕ трогалось (см. logs.md):** ветка `landing` (`.worktrees/landing`) разошлась с
+  `main` на 15+ коммитов и отстаёт по важным фиксам (bot username, store-домен, Free-лимит) — Railway
+  её больше не использует (переключено на `main` 25.07). Требует отдельного решения — смержить или
+  удалить.
+
 ## 2026-07-25 (Azim/Claude) — SEO/GEO-хвосты + FRONT-SERVER-SEARCH-001 + SELLER-PAYMENT-REQUISITES-001
 
 ### ✅ SEO-AUDIT-001 п.2 + SEO-GEO-AEO-RESEARCH-002 п.4 — товары в sitemap + SSR отзывов
