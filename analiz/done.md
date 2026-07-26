@@ -1,5 +1,67 @@
 # Done — Азим + Полат
 
+## 2026-07-27 (Claude) — LANDING-SEO-FIX-001: технический SEO лендинга (P0/P1 из аудита 26.07)
+
+- **Важность:** 🟡 · **Дата:** 27.07.2026 · **Домен:** `apps/landing`
+- **Контекст:** аудит живого `maxsavdo.uz` (Obsidian `PROJECTS/savdo-builder/decisions/
+  2026-07-26-maxsavdo-seo-geo-aeo-audit.md`). Не пересекается с `analiz/seo-geo-aeo-report-2026-07-24.md`
+  — тот про `web-buyer`, этот про `landing`. Deploy-topology из ADR 18.07 подтверждён исправленным.
+
+### Что исправлено
+
+1. **`/ru` отдавался как `<html lang="uz">`** (hreflang говорил `ru`) — главный баг. Вложенный
+   `ru/layout.tsx` физически не может переопределить `<html>` root-лейаута. Перешли на **две
+   root-группы**: `src/app/(uz)/` и `src/app/(ru)/ru/`, у каждой свой root layout со своим `lang`.
+   URL не изменились. Общая разметка вынесена в `components/RootShell.tsx`, шрифт — в `lib/fonts.ts`.
+2. **`twitter:image` вёл на `/og-image.png` → 404** (файла не существует; `og:image` при этом брался
+   из file-convention). Добавлены `twitter-image.tsx` + `opengraph-image.tsx` в обе локали, рендерер
+   вынесен в `lib/og.tsx` (текст берётся из i18n, т.е. RU-картинка теперь на русском). Явные
+   `images` из metadata убраны — иначе хардкодился URL с меняющимся build-хешем.
+   Заодно: убран `runtime = 'edge'` → картинки генерируются на билде статически, а не по запросу.
+   Заодно: бейдж «14 kun bepul» заменён на «Komissiyasiz» — 14-дневного триала не существует
+   (FAQ: «Free тариф работает без ограничения по времени»).
+3. **`title` на `/ru` дублировался** (`... | Бот + Сайт + Канал | MaxSavdo`) — `title.absolute`.
+4. **sitemap:** убраны фрагментные URL `/#pricing` и `/#faq` (Google не считает фрагмент отдельной
+   страницей — это были дубли `/`); добавлены `alternates.languages` (hreflang в самом sitemap);
+   `lastModified` обновлён на дату реального изменения копирайта.
+5. **JSON-LD стал единым графом:** у `Organization`/`WebSite`/`SoftwareApplication` появились
+   стабильные `@id`, добавлен узел `WebPage`, все ссылаются друг на друга (`publisher`/`isPartOf`/
+   `about`/`seller`). Раньше это были 4 несвязанных блоба. `Organization` дополнена `legalName`
+   (MCHJ «TEZ KOD» — из публичной оферты `web-buyer/src/app/offer/page.tsx` §9), `address`
+   (Toshkent/UZ) и `contactPoint`. Ничего не выдумано.
+6. **`next.config.ts`:** `Strict-Transport-Security` (2 года, preload) + 308-редирект
+   `www.maxsavdo.uz` → apex (раньше оба хоста отдавали 200; канонникал спасал лишь частично).
+7. **`robots.googleBot`:** `max-image-preview: large`, `max-snippet: -1`.
+8. **Keywords:** было 8 общих слов, стало ~40 — бренд/категория/интент/JTBD/гео, uz+ru в обеих локалях.
+9. **Аналитики не было вообще** (ни GA4, ни Метрики). Добавлен `components/Analytics.tsx` —
+   **env-gated**: без `NEXT_PUBLIC_GA_ID` / `NEXT_PUBLIC_YANDEX_METRICA_ID` не рендерит ничего.
+   `strategy="afterInteractive"`, чтобы не трогать LCP/INP.
+10. **Верификация вебмастеров** заведена через env (`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`,
+    `NEXT_PUBLIC_YANDEX_VERIFICATION`, `NEXT_PUBLIC_BING_SITE_VERIFICATION`) — коды добавляются
+    на Railway без правки кода. Все переменные описаны в `.env.example`.
+
+### Файлы
+
+`src/app/(uz)/{layout,page,opengraph-image,twitter-image}.tsx` ·
+`src/app/(ru)/layout.tsx` · `src/app/(ru)/ru/{page,opengraph-image,twitter-image}.tsx` ·
+`src/components/{RootShell,Analytics}.tsx` · `src/lib/{seo,og,fonts,jsonld}.ts(x)` ·
+`src/app/sitemap.ts` · `next.config.ts` · `.env.example`.
+Удалены: `src/app/layout.tsx`, `src/app/ru/layout.tsx`.
+
+### Проверено (не «должно работать», а поднято и проверено)
+
+`tsc --noEmit` EXIT 0 · `next build` EXIT 0, 12 статических роутов, ни одного динамического ·
+standalone-сервер поднят на :3999 и проверен запросами:
+`/` → `lang="uz"`, `/ru` → `lang="ru"` · og/twitter картинки обеих локалей → 200 `image/png` ·
+sitemap содержит только 2 реальных URL с hreflang · HSTS в заголовках ·
+`Host: www.maxsavdo.uz` → 308 на `https://maxsavdo.uz/ru` · без env аналитика в HTML отсутствует.
+
+### Осталось (не код — решение владельца)
+
+- Подключить GSC / Яндекс.Вебмастер / Bing и положить коды + GA4/Метрику в Railway env.
+  **Без этого весь SEO измерять нечем.**
+- GEO (off-site) и AEO (контент-слой) — отдельные задачи, см. аудит в Obsidian.
+
 ## 2026-07-26 (Azim/Claude) — LANDING-REDESIGN-001 хвосты: сломанный билд + некликабельные кнопки + `#how` + иллюстрации
 - **Важность:** 🔴 (два прод-инцидента подряд после мержа) → 🟢 (контент-полировка) · **Дата:** 26.07.2026
 - **Домен:** apps/landing (Азим)

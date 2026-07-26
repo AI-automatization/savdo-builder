@@ -1,38 +1,36 @@
 import type { MetadataRoute } from 'next';
+import { SITE_URL } from '@/lib/seo';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://maxsavdo.uz';
+// Honest lastModified — the date of the last real content change to the homepage
+// copy (i18n.ts / page components), not build time. Bump this when the copy
+// actually changes; a build-time date would tell crawlers the page changed on
+// every deploy, which is a lie they eventually learn to discount.
+const CONTENT_LAST_MODIFIED = new Date('2026-07-26T12:00:00+05:00');
 
-// Honest lastModified — last real content commit to the homepage/ru page (git log),
-// not build time. Update this string when page.tsx/ru/page.tsx copy actually changes.
-const CONTENT_LAST_MODIFIED = new Date('2026-06-13T14:00:55+05:00');
+const languages = {
+  uz: `${SITE_URL}/`,
+  ru: `${SITE_URL}/ru`,
+  'x-default': `${SITE_URL}/`,
+};
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = CONTENT_LAST_MODIFIED;
-
+  // Only real, separately-addressable pages belong here. `/#pricing` and `/#faq`
+  // used to be listed — Google does not treat a fragment as its own URL, so they
+  // were just duplicates of `/` diluting the sitemap.
   return [
     {
       url: `${SITE_URL}/`,
-      lastModified,
+      lastModified: CONTENT_LAST_MODIFIED,
       changeFrequency: 'weekly',
       priority: 1.0,
+      alternates: { languages },
     },
     {
       url: `${SITE_URL}/ru`,
-      lastModified,
+      lastModified: CONTENT_LAST_MODIFIED,
       changeFrequency: 'weekly',
       priority: 0.9,
-    },
-    {
-      url: `${SITE_URL}/#pricing`,
-      lastModified,
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/#faq`,
-      lastModified,
-      changeFrequency: 'monthly',
-      priority: 0.7,
+      alternates: { languages },
     },
   ];
 }
