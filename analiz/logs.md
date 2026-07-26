@@ -1,5 +1,28 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-26] [LANDING-BUILD-BROKEN-LOCKFILE-003] Railway build упал `sh: next: not found` — battle package-lock.json
+- **Статус:** ✅ Исправлено (`22dae5f4`)
+- **Что случилось:** после мержа LANDING-REDESIGN-001 в `main` (`8fccf50a`) Railway-сборка
+  `apps/landing` упала на шаге `npm run build` с `sh: next: not found`, exit 127. Причина —
+  `package-lock.json`, закоммиченный в `661e9ec5`, был неполным (912 строк / 16 пакетов вместо
+  ожидаемых ~6800 строк / ~360 пакетов). Root cause: `apps/landing/node_modules` на диске уже
+  содержал symlink'и на `next`/`react` в корневой pnpm-стор (артефакт более раннего `pnpm install`
+  на корне монорепо — `pnpm-workspace.yaml` включает `apps/*`). Локальный `npm install
+  --legacy-peer-deps` (для добавления `gsap`) увидел эти пакеты уже "разрешёнными" через symlink и
+  не выписал их полностью в lock-файл — только новую зависимость. Билд и тесты локально проходили
+  чисто (файлы физически были доступны через symlink), но чистый Docker-стейдж Railway копирует
+  только `package.json`+lock-файл без node_modules/pnpm-стора — там ставить было нечего.
+- **Что сделано:** `apps/landing/node_modules` и старый lock-файл стёрты полностью, поставлено с
+  нуля (`362 packages`, `6869` строк в lock-файле). Дополнительно проверено в изолированной
+  temp-папке только с `package.json`+lock-файлом (без node_modules вообще) — `next` ставится и
+  запускается, ровно как в Dockerfile deps-стейдже. `tsc --noEmit` + `next build` перепройдены
+  чисто. Antipattern записан в Obsidian `_antipatterns.md` — общее правило для любого
+  self-contained app в монорепо с pnpm workspace на корне.
+- **Урок:** для apps-подпроектов со своим package.json/lock-файлом (Docker собирает их изолированно,
+  не через корневой pnpm workspace) — при любом изменении зависимостей делать полностью чистую
+  переустановку (стереть node_modules+lock-файл), а не инкрементальный install поверх существующей
+  папки, которая может быть загрязнена pnpm-symlink'ами с корня.
+
 ## [2026-07-26] [LANDING-BRANCH-STALE-002] Ветка `landing` (`.worktrees/landing`) разошлась с `main` на 15+ коммитов
 - **Статус:** 🟡 Предупреждение, не исправлено (сознательно вне скоупа LANDING-REDESIGN-001)
 - **Что случилось:** при работе над реcкином лендинга (`done.md` → LANDING-REDESIGN-001) сверял
