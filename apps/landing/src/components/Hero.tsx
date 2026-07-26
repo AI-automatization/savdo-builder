@@ -489,7 +489,7 @@ export default function Hero({ locale, dict }: HeroProps) {
                 ref={(el) => {
                   phaseTextRefs.current[i] = el;
                 }}
-                className="absolute inset-0 flex flex-col items-center gap-5 text-center lg:items-start lg:text-left"
+                className="pointer-events-none absolute inset-0 flex flex-col items-center gap-5 text-center lg:items-start lg:text-left"
               >
                 {p.badge && (
                   <span
