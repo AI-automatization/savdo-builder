@@ -15,6 +15,7 @@ export type Dict = {
     pricing: string;
     faq: string;
     start: string;
+    buyerCatalog: string;
   };
   hero: {
     title: string;
@@ -22,6 +23,28 @@ export type Dict = {
     ctaPrimary: string;
     ctaSecondary: string;
     badge: string;
+    niches: string;
+    metrics: Array<{ value: string; label: string }>;
+  };
+  mock: {
+    products: [string, string, string, string];
+    categories: [string, string, string, string];
+    nav: { catalog: string; search: string; cart: string; profile: string };
+    productsLabel: string;
+    searchPlaceholder: string;
+    sectionLabel: string;
+    sortLabel: string;
+  };
+  socialProof: {
+    statValue: string;
+    statLabel: string;
+    betaTitle: string;
+    betaDesc: string;
+  };
+  problem: {
+    title: string;
+    subtitle: string;
+    items: Array<{ title: string; body: string }>;
   };
   how: {
     title: string;
@@ -60,12 +83,42 @@ export type Dict = {
     title: string;
     items: Array<{ q: string; a: string }>;
   };
+  whyUs: {
+    title: string;
+    cols: { us: string; dm: string; mp: string; builder: string };
+    rows: Array<{
+      label: string;
+      cells: [
+        "yes" | "no" | "commission" | "expensive",
+        "yes" | "no" | "commission" | "expensive",
+        "yes" | "no" | "commission" | "expensive",
+        "yes" | "no" | "commission" | "expensive",
+      ];
+    }>;
+    yes: string;
+    no: string;
+    commission: string;
+    expensive: string;
+    note: string;
+  };
+  finalCta: {
+    title: string;
+    subtitle: string;
+    cta: string;
+  };
   footer: {
     tagline: string;
     rights: string;
     contact: string;
     bot: string;
     channel: string;
+    legal: string;
+    offer: string;
+    privacy: string;
+    terms: string;
+    product: string;
+    buyerCatalog: string;
+    admin: string;
   };
 };
 
@@ -86,6 +139,7 @@ const uz: Dict = {
     pricing: "Tariflar",
     faq: "Savollar",
     start: "Boshlash",
+    buyerCatalog: "Doʻkonlar katalogi",
   },
   hero: {
     badge: "Telegram-savdogarlar uchun konstruktor",
@@ -94,6 +148,45 @@ const uz: Dict = {
       "MaxSavdo — Telegram-savdogarlar uchun konstruktor. 5 daqiqada bot, sayt va avtomatik kanal-postlar — barchasi bitta akkauntdan, komissiyasiz.",
     ctaPrimary: "Bepul boshlash",
     ctaSecondary: "Qanday ishlaydi",
+    niches: "Moda · Go'zallik · Aksessuarlar · Handmade · Lifestyle",
+    metrics: [
+      { value: "5 daqiqa", label: "ishga tushirish" },
+      { value: "0%", label: "sotuvdan komissiya" },
+      { value: "24/7", label: "do'kon ishlaydi" },
+    ],
+  },
+  mock: {
+    products: ["Charm sumka", "Soat Gold Edition", "Poshnali tufli", "Rose Noir atir"],
+    categories: ["Barchasi", "Sumkalar", "Soatlar", "Poyabzal"],
+    nav: { catalog: "Katalog", search: "Qidiruv", cart: "Savat", profile: "Profil" },
+    productsLabel: "mahsulot",
+    searchPlaceholder: "Mahsulot qidirish...",
+    sectionLabel: "Mahsulotlar",
+    sortLabel: "Filtr",
+  },
+  socialProof: {
+    statValue: "10 dan 8 tasi",
+    statLabel: "mijozlaringiz allaqachon Telegramda",
+    betaTitle: "Yopiq beta",
+    betaDesc: "erta narx birinchi sotuvchilar uchun abadiy mustahkamlanadi",
+  },
+  problem: {
+    title: "Direct yoki storiesda sotyapsizmi?",
+    subtitle: "Tanish holat. Va har kuni shu tufayli pul yo'qotyapsiz.",
+    items: [
+      {
+        title: "Buyurtmalar yo'qoladi",
+        body: "Kelishuvlar yozishmalarda cho'kib ketadi, manzil va summalar chalkashadi, ba'zi buyurtmalar shunchaki unutiladi.",
+      },
+      {
+        title: "«narxi?» xabarlari",
+        body: "Mijoz katalogda o'zi ko'rishi mumkin bo'lgan narsani siz qo'lda qayta-qayta yozasiz.",
+      },
+      {
+        title: "Tahlil va checkout yo'q",
+        body: "Nima sotilayotgani ko'rinmaydi, savatcha va normal buyurtma rasmiylashtirish yo'q.",
+      },
+    ],
   },
   how: {
     title: "3 qadamda ishga tushiring",
@@ -237,12 +330,40 @@ const uz: Dict = {
       },
     ],
   },
+  whyUs: {
+    title: "Nega maxsavdo, hozirgisidan ko'ra",
+    cols: { us: "maxsavdo", dm: "Direct / stories", mp: "Marketplace", builder: "Tilda / Shopify" },
+    rows: [
+      { label: "Savatcha va checkout", cells: ["yes", "no", "yes", "yes"] },
+      { label: "O'z brendi va vitrinasi", cells: ["yes", "no", "no", "yes"] },
+      { label: "Sotuvdan komissiyasiz", cells: ["yes", "yes", "commission", "yes"] },
+      { label: "Telegram ichida", cells: ["yes", "yes", "no", "no"] },
+      { label: "Bir necha daqiqada ishga tushirish", cells: ["yes", "yes", "no", "expensive"] },
+    ],
+    yes: "Ha",
+    no: "Yo'q",
+    commission: "15% komissiya",
+    expensive: "$30+/oy",
+    note: "Marketplace har sotuvdan ~15% oladi. Sayt konstruktorlari — oyiga $30+ va Telegram-native emas. maxsavdo — komissiya o'rniga obuna, mijozlar allaqachon keladigan joyda.",
+  },
+  finalCta: {
+    title: "Do'koningizni 5 daqiqada ishga tushiring",
+    subtitle: "Beta davomida bepul. Sayt qurishsiz va komissiyasiz.",
+    cta: "Bepul yaratish",
+  },
   footer: {
     tagline: "Telegram-savdogarlar uchun konstruktor",
     rights: "Barcha huquqlar himoyalangan",
     contact: "Aloqa",
     bot: "Bot",
     channel: "Kanal",
+    legal: "Hujjatlar",
+    offer: "Ommaviy oferta",
+    privacy: "Maxfiylik siyosati",
+    terms: "Foydalanish shartlari",
+    product: "Mahsulot",
+    buyerCatalog: "Doʻkonlar katalogi",
+    admin: "Administratsiya",
   },
 };
 
@@ -263,6 +384,7 @@ const ru: Dict = {
     pricing: "Тарифы",
     faq: "Вопросы",
     start: "Начать",
+    buyerCatalog: "Каталог магазинов",
   },
   hero: {
     badge: "Конструктор для продавцов в Telegram",
@@ -271,6 +393,45 @@ const ru: Dict = {
       "MaxSavdo — конструктор магазина для Telegram-продавцов. За 5 минут получаете бота, сайт-витрину и автопостинг в канал. Без комиссий, фиксированная подписка.",
     ctaPrimary: "Начать бесплатно",
     ctaSecondary: "Как это работает",
+    niches: "Мода · Красота · Аксессуары · Handmade · Lifestyle",
+    metrics: [
+      { value: "5 мин", label: "на запуск" },
+      { value: "0%", label: "комиссии с продаж" },
+      { value: "24/7", label: "магазин работает" },
+    ],
+  },
+  mock: {
+    products: ["Кожаная сумка", "Часы Gold Edition", "Туфли на каблуке", "Парфюм Rose Noir"],
+    categories: ["Все", "Сумки", "Часы", "Обувь"],
+    nav: { catalog: "Каталог", search: "Поиск", cart: "Корзина", profile: "Профиль" },
+    productsLabel: "товаров",
+    searchPlaceholder: "Найти товар...",
+    sectionLabel: "Товары",
+    sortLabel: "Фильтр",
+  },
+  socialProof: {
+    statValue: "8 из 10",
+    statLabel: "ваших клиентов уже в Telegram",
+    betaTitle: "Закрытая бета",
+    betaDesc: "ранняя цена закрепляется за первыми продавцами навсегда",
+  },
+  problem: {
+    title: "Продаёте в директе или сторис?",
+    subtitle: "Знакомо. И каждый день вы теряете на этом деньги.",
+    items: [
+      {
+        title: "Заказы теряются",
+        body: "Договорённости тонут в переписке, путаются адреса и суммы, часть заказов просто забывается.",
+      },
+      {
+        title: "Сотни сообщений «цена?»",
+        body: "Вы вручную отвечаете одно и то же, вместо того чтобы клиент сам всё увидел в каталоге.",
+      },
+      {
+        title: "Ноль аналитики и checkout",
+        body: "Не видно, что продаётся, нет корзины и нормального оформления заказа.",
+      },
+    ],
   },
   how: {
     title: "Запуск за 3 шага",
@@ -414,12 +575,40 @@ const ru: Dict = {
       },
     ],
   },
+  whyUs: {
+    title: "Почему maxsavdo, а не то, что есть сейчас",
+    cols: { us: "maxsavdo", dm: "Директ / сторис", mp: "Маркетплейс", builder: "Tilda / Shopify" },
+    rows: [
+      { label: "Корзина и checkout", cells: ["yes", "no", "yes", "yes"] },
+      { label: "Свой бренд и витрина", cells: ["yes", "no", "no", "yes"] },
+      { label: "Без комиссии с продаж", cells: ["yes", "yes", "commission", "yes"] },
+      { label: "Нативно в Telegram", cells: ["yes", "yes", "no", "no"] },
+      { label: "Запуск за минуты", cells: ["yes", "yes", "no", "expensive"] },
+    ],
+    yes: "Да",
+    no: "Нет",
+    commission: "15% комиссия",
+    expensive: "$30+/мес",
+    note: "Маркетплейс берёт ~15% с каждой продажи. Конструкторы сайтов — от $30/мес и не Telegram-native. maxsavdo — подписка вместо комиссии, нативно там, откуда уже приходят клиенты.",
+  },
+  finalCta: {
+    title: "Запустите магазин за 5 минут",
+    subtitle: "Бесплатно, пока идёт бета. Без сайтостроения и комиссий.",
+    cta: "Создать бесплатно",
+  },
   footer: {
     tagline: "Конструктор магазина для Telegram-продавцов",
     rights: "Все права защищены",
     contact: "Связаться",
     bot: "Бот",
     channel: "Канал",
+    legal: "Документы",
+    offer: "Публичная оферта",
+    privacy: "Политика конфиденциальности",
+    terms: "Условия использования",
+    product: "Продукт",
+    buyerCatalog: "Каталог магазинов",
+    admin: "Админка",
   },
 };
 
