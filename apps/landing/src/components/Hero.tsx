@@ -480,27 +480,32 @@ export default function Hero({ locale, dict }: HeroProps) {
         <div className="relative mx-auto grid w-full max-w-content gap-10 px-4 sm:px-6 lg:grid-cols-2">
           {/* left: crossfading copy */}
           <div className="relative flex min-h-[270px] flex-col items-center gap-5 text-center lg:items-start lg:text-left">
-            {phases.map((p, i) => (
-              <div
-                key={i}
-                ref={(el) => {
-                  phaseTextRefs.current[i] = el;
-                }}
-                className="pointer-events-none absolute inset-0 flex flex-col items-center gap-5 text-center lg:items-start lg:text-left"
-              >
-                {p.badge && (
-                  <span
-                    className="inline-flex w-fit items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold text-brand-accent"
-                    style={{ background: 'rgba(232,165,82,0.10)', border: '1px solid rgba(232,165,82,0.22)' }}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#E8A552', boxShadow: '0 0 6px rgba(232,165,82,0.7)' }} />
-                    {p.badge}
-                  </span>
-                )}
-                <h2 className="max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-brand-text sm:text-4xl">{p.title}</h2>
-                <p className="max-w-lg text-base leading-relaxed text-brand-muted sm:text-lg">{p.subtitle}</p>
-              </div>
-            ))}
+            {phases.map((p, i) => {
+              // Phase 0 carries dict.title — the page's real headline — so it is the h1
+              // that crawlers see in the SSR markup; the later crossfade copy stays h2.
+              const Heading = i === 0 ? 'h1' : 'h2';
+              return (
+                <div
+                  key={i}
+                  ref={(el) => {
+                    phaseTextRefs.current[i] = el;
+                  }}
+                  className="pointer-events-none absolute inset-0 flex flex-col items-center gap-5 text-center lg:items-start lg:text-left"
+                >
+                  {p.badge && (
+                    <span
+                      className="inline-flex w-fit items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold text-brand-accent"
+                      style={{ background: 'rgba(232,165,82,0.10)', border: '1px solid rgba(232,165,82,0.22)' }}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#E8A552', boxShadow: '0 0 6px rgba(232,165,82,0.7)' }} />
+                      {p.badge}
+                    </span>
+                  )}
+                  <Heading className="max-w-xl text-3xl font-bold leading-[1.1] tracking-tight text-brand-text sm:text-4xl">{p.title}</Heading>
+                  <p className="max-w-lg text-base leading-relaxed text-brand-muted sm:text-lg">{p.subtitle}</p>
+                </div>
+              );
+            })}
             {/* static CTA + metrics, always visible below the crossfading block */}
             <div className="mt-[260px] flex flex-col items-center gap-6 sm:mt-[280px] lg:items-start">
               <div className="flex flex-col gap-3 sm:flex-row">
