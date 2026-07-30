@@ -185,9 +185,24 @@ const uzGuides: Guide[] = [
         table: {
           head: ["Tarif", "Narx", "Kimga", "Asosiy cheklov"],
           rows: [
-            ["Free", "0 soʻm", "Sinab koʻrish uchun", "50 ta mahsulot, avtopostlash yoʻq"],
-            ["Pro", "149 000 soʻm/oy", "Faol savdogarlar", "Cheklov yoʻq, oʻz domeni bor"],
-            ["Studio", "399 000 soʻm/oy", "Komandali doʻkonlar", "Bir nechta operator va rollar"],
+            [
+              "Free",
+              "0 soʻm",
+              "Sinab koʻrish uchun",
+              "50 ta mahsulot va oyiga 50 ta buyurtma",
+            ],
+            [
+              "Pro",
+              "149 000 soʻm/oy",
+              "Faol savdogarlar",
+              "Mahsulot va buyurtma soni cheklanmagan",
+            ],
+            [
+              "Studio",
+              "399 000 soʻm/oy",
+              "Katta doʻkonlar",
+              "Pro dagi hamma narsa + API kirishi",
+            ],
           ],
         },
       },
@@ -217,7 +232,7 @@ const uzGuides: Guide[] = [
         heading: "Yashirin toʻlovlar bormi",
         body: [
           "Yoʻq. Obuna narxi — toʻliq narx: sotuvdan ulush, tranzaksiya uchun qoʻshimcha foiz yoki mahsulot joylashtirish uchun toʻlov yoʻq. Free tarifi vaqt boʻyicha cheklanmagan, ya'ni sinov muddati tugab qolmaydi.",
-          "Pro tarifida oʻz domenini (.uz) ulash imkoni bor — domenning oʻzi uchun toʻlov registratorga toʻlanadi va u obunaga kirmaydi.",
+          "Free tarifidagi yagona jiddiy chegara — oyiga 50 ta buyurtma. Bu chegaradan oshsa doʻkon vaqtincha yopiladi, shuning uchun savdo oʻsganda Pro ga oʻtish kerak boʻladi.",
         ],
       },
     ],
@@ -228,7 +243,7 @@ const uzGuides: Guide[] = [
       },
       {
         q: "Free tarifida qancha vaqt ishlash mumkin?",
-        a: "Vaqt cheklovisiz. Free — sinov muddati emas, doimiy tarif: 50 ta mahsulotgacha, Telegram-bot va MaxSavdo brendi bilan sayt. Avtomatik kanal-postlar bu tarifga kirmaydi.",
+        a: "Vaqt cheklovisiz. Free — sinov muddati emas, doimiy tarif: 50 ta mahsulotgacha, oyiga 50 ta buyurtmagacha, Telegram-bot va MaxSavdo brendi bilan sayt. Buyurtma chegarasidan oshsa doʻkon vaqtincha yopiladi.",
       },
       {
         q: "Tarifni keyin oʻzgartirish mumkinmi?",
@@ -440,9 +455,19 @@ const ruGuides: Guide[] = [
         table: {
           head: ["Тариф", "Цена", "Кому", "Основное ограничение"],
           rows: [
-            ["Free", "0 сум", "Попробовать", "50 товаров, без автопостинга"],
-            ["Pro", "149 000 сум/мес", "Активные продавцы", "Без лимита, свой домен"],
-            ["Studio", "399 000 сум/мес", "Магазины с командой", "Несколько операторов и роли"],
+            ["Free", "0 сум", "Попробовать", "50 товаров и 50 заказов в месяц"],
+            [
+              "Pro",
+              "149 000 сум/мес",
+              "Активные продавцы",
+              "Без лимита товаров и заказов",
+            ],
+            [
+              "Studio",
+              "399 000 сум/мес",
+              "Крупные магазины",
+              "Всё из Pro + API-доступ",
+            ],
           ],
         },
       },
@@ -472,7 +497,7 @@ const ruGuides: Guide[] = [
         heading: "Есть ли скрытые платежи",
         body: [
           "Нет. Цена подписки — это полная цена: нет доли с продажи, нет дополнительного процента за транзакцию и нет платы за размещение товара. Тариф Free не ограничен по времени, то есть пробный период не заканчивается.",
-          "На тарифе Pro можно подключить свой домен (.uz) — оплата самого домена идёт регистратору и в подписку не входит.",
+          "Единственное серьёзное ограничение на Free — 50 заказов в месяц. При превышении магазин временно скрывается, поэтому с ростом продаж придётся перейти на Pro.",
         ],
       },
     ],
@@ -483,7 +508,7 @@ const ruGuides: Guide[] = [
       },
       {
         q: "Сколько можно работать на тарифе Free?",
-        a: "Без ограничения по времени. Free — это не пробный период, а постоянный тариф: до 50 товаров, Telegram-бот и сайт с брендом MaxSavdo. Автопостинг в канал в этот тариф не входит.",
+        a: "Без ограничения по времени. Free — это не пробный период, а постоянный тариф: до 50 товаров, до 50 заказов в месяц, Telegram-бот и сайт с брендом MaxSavdo. При превышении лимита заказов магазин временно скрывается.",
       },
       {
         q: "Можно ли поменять тариф позже?",

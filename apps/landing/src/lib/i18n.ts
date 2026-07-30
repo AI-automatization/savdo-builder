@@ -244,6 +244,7 @@ const uz: Dict = {
         tagline: "Sinab koʻrish uchun",
         features: [
           "50 ta mahsulotgacha",
+          "Oyiga 50 ta buyurtma",
           "Telegram-bot",
           "MaxSavdo brendi bilan sayt",
           "Asosiy statistika",
@@ -258,8 +259,8 @@ const uz: Dict = {
         tagline: "Faol savdogarlar uchun",
         features: [
           "Cheksiz mahsulotlar",
+          "Cheksiz buyurtmalar",
           "Avtomatik kanal-postlar",
-          "Maxsus domen (.uz)",
           "Kengaytirilgan statistika",
           "Mijozga qoʻllab-quvvatlash",
         ],
@@ -274,8 +275,6 @@ const uz: Dict = {
         tagline: "Komandali doʻkonlar uchun",
         features: [
           "Pro dagi hamma narsa",
-          "Bir nechta operator",
-          "Rollar va ruxsatlar",
           "Prioritet qoʻllab-quvvatlash",
           "API kirishi",
         ],
@@ -322,7 +321,7 @@ const uz: Dict = {
       },
       {
         q: "Oʻz domenimni ulash mumkinmi?",
-        a: "Ha, Pro va Studio tariflarida oʻz domenini (masalan .uz) ulash mumkin. Domenning oʻzi uchun toʻlov registratorga toʻlanadi va obuna narxiga kirmaydi. Free tarifida sayt MaxSavdo manzilida qoladi.",
+        a: "Hozircha yoʻq. Har bir doʻkon shop.maxsavdo.uz/sizning-dokon manzilida ishlaydi va bu manzil qidiruv tizimlariga indekslanadi. Oʻz domenini ulash rejalarda bor, lekin hali ishlamaydi — shuning uchun uni tarif imkoniyati sifatida vaʼda qilmaymiz.",
       },
       {
         q: "Doʻkon havolasi qanday koʻrinadi?",
@@ -522,6 +521,7 @@ const ru: Dict = {
         tagline: "Попробовать",
         features: [
           "До 50 товаров",
+          "До 50 заказов в месяц",
           "Telegram-бот",
           "Сайт с брендом MaxSavdo",
           "Базовая статистика",
@@ -536,8 +536,8 @@ const ru: Dict = {
         tagline: "Для активных продавцов",
         features: [
           "Безлимит товаров",
+          "Безлимит заказов",
           "Автопостинг в канал",
-          "Свой домен (.uz)",
           "Расширенная статистика",
           "Поддержка",
         ],
@@ -552,8 +552,6 @@ const ru: Dict = {
         tagline: "Для магазинов с командой",
         features: [
           "Всё из Pro",
-          "Несколько операторов",
-          "Роли и права",
           "Приоритетная поддержка",
           "API-доступ",
         ],
@@ -600,7 +598,7 @@ const ru: Dict = {
       },
       {
         q: "Можно ли подключить свой домен?",
-        a: "Да, на тарифах Pro и Studio можно подключить свой домен, например в зоне .uz. Оплата самого домена идёт регистратору и в стоимость подписки не входит. На Free сайт остаётся на адресе MaxSavdo.",
+        a: "Пока нет. Каждый магазин работает по адресу shop.maxsavdo.uz/ваш-магазин, и этот адрес индексируется поисковыми системами. Подключение своего домена есть в планах, но пока не работает — поэтому мы не обещаем его как возможность тарифа.",
       },
       {
         q: "Как выглядит ссылка на магазин?",

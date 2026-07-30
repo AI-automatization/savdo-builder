@@ -25,10 +25,14 @@
 
 ## Pricing (subscription, not commission)
 
-- Free — 0 UZS. Up to 50 products, MaxSavdo-branded storefront, no channel autoposting.
-  Not a trial: it has no time limit.
-- Pro — 149 000 UZS/month. Unlimited products, channel autoposting, custom .uz domain.
-- Studio — 399 000 UZS/month. Everything in Pro plus multiple operators, roles, API access.
+- Free — 0 UZS. Up to 50 products and up to 50 orders per month, MaxSavdo-branded storefront,
+  no channel autoposting. Not a trial: it has no time limit. Past the order limit the
+  storefront is hidden until the next month or an upgrade.
+- Pro — 149 000 UZS/month. Unlimited products and orders, channel autoposting.
+- Studio — 399 000 UZS/month. Everything in Pro, plus priority support and API access.
+
+Custom domains are NOT available on any tier — every storefront lives at
+shop.maxsavdo.uz/<slug>. One seller has exactly one shop; multi-shop is not supported.
 
 (Exact feature limits per tier: see https://maxsavdo.uz/#pricing — this file is a summary,
 that page is the source of truth.)
