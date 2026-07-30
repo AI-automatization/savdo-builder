@@ -5,6 +5,45 @@
 
 ---
 
+## 🔴 [LANDING-ENV-SEO-MEASURE-001] Аналитика и Yandex/Bing verification: **код готов, не хватает env vars в Railway**
+- **Домен:** Railway-сервис `landing` (инфра — Полат; доступ к дашборду есть и у Азима) ·
+  **Кто взял:** не назначено
+- **Кто нашёл:** Юсуф/Claude 30.07.2026 — живая проверка `maxsavdo.uz` + чтение кода.
+- **Это НЕ задача на код.** Проверено чтением: `apps/landing/src/lib/seo.ts:9-13` уже собирает
+  `verification` из env, `apps/landing/src/components/Analytics.tsx` уже существует. Всё
+  env-gated: переменной нет → блок просто не рендерится. Писать нечего, нужно задать значения.
+- **Доказательство, что сейчас пусто (живой HTML `maxsavdo.uz`, 30.07):** `gtag`,
+  `googletagmanager`, `mc.yandex`, `ym(`, `fbq` — **0 вхождений**; `yandex-verification` и
+  `msvalidate` в `<head>` отсутствуют. При этом `google-site-verification` **есть** — значит
+  механизм рабочий, просто заполнена одна переменная из трёх.
+- **Задать в Railway → сервис `landing` → Variables:**
+  - `NEXT_PUBLIC_YANDEX_VERIFICATION` — из Yandex Webmaster
+  - `NEXT_PUBLIC_BING_SITE_VERIFICATION` — из Bing Webmaster
+  - `NEXT_PUBLIC_GA_ID` — GA4 (`G-…`)
+  - `NEXT_PUBLIC_YANDEX_METRICA_ID` — Yandex Metrica
+  После добавления — **redeploy** (значения `NEXT_PUBLIC_*` вшиваются на этапе сборки, рестарта
+  недостаточно).
+- **Почему это блокер, а не «потом»:** GSC подключили на днях, но GSC показывает только Google.
+  Без Metrica не видно Яндекс-трафик (в УЗ это большая доля), без GA4 не видно AI-рефералов
+  (`chatgpt.com`, `perplexity.ai`) — то есть эффект всей SEO/GEO-работы сейчас не измеряется.
+  Bing отдельно важен: **веб-поиск ChatGPT опирается на индекс Bing**.
+- **Оговорка по зонам:** сам `apps/landing` — Юсуф, но правка Railway Variables это инфра.
+  Кто именно жмёт — согласовать, задача здесь just to unblock, не про код.
+
+## 🔴 [BUYER-SITEMAP-TEST-STORE-001] shop.maxsavdo.uz: тестовый магазин в sitemap, отдаётся Google
+- **Домен:** apps/web-buyer + возможно `GET /storefront/sitemap` (Полат) · **Кто взял:** не назначено
+- **Кто нашёл:** Юсуф/Claude 30.07.2026, живая проверка домена (не код-ревью). Подробности,
+  доказательства и варианты фикса — `analiz/logs.md → BUYER-SITEMAP-TEST-STORE-001`.
+- **Кратко:** `shop.maxsavdo.uz/sitemap.xml` содержит `/test-udalit-ms1gi4um` + 2 его товара
+  (`priority 0.8`, `changefreq daily`). Страницы живые, 200, `<title>fdgh — ТЕСТ - удалить</title>`,
+  `description: "test"`. Из 2 реальных магазинов в выдаче один — тестовый.
+- **Срочность:** GSC подключен на днях — первый краул субдомена увидит эти страницы.
+- **Что сделать:** фильтр состояния магазина в фиде/`sitemap.ts` (в `StorefrontSitemapFeed`
+  сейчас такого признака нет) либо `noindex`; плюс разово удалить тестовый магазин из прод-БД
+  (образец — `PROD-DB-CLEANUP-001`) и снять URL через GSC Removals.
+- **Файлы:** `apps/web-buyer/src/app/sitemap.ts`, `apps/api` storefront sitemap use-case,
+  `packages/types/src/api/storefront.ts`.
+
 ## 🟠 [LEGAL-OFFER-CONTENT-GAPS-001] Оферта maxsavdo — не хватает разделов, обязательных по ст.16 Закона «Об э-коммерции» + рыночной норме
 - **Домен:** apps/web-buyer (Азим, файл) — но формулировки юридические, финальный текст
   нужно утвердить владельцу/юристу, не чисто техзадача · **Кто взял:** не назначено
@@ -2177,3 +2216,43 @@ API-010, API-011, API-012, API-013, API-014 — реализованы на фр
 - [x] **[AUDIT-007]** API client: console.warn если NEXT_PUBLIC_API_URL не задан
 - [x] **[AUDIT-008]** web-seller: удалён лишний pnpm-workspace.yaml
 
+
+---
+
+## 🟡 [SEO-GEO-AEO-2026-07-30] Заход после подключения Search Console — что осталось
+
+Две ветки готовы к ревью, **не запушены**:
+- `seo/landing-aeo-geo-2026-07-30` (от `main`) — контентный слой лендинга
+- `seo/web-buyer-index-hygiene-2026-07-30` (от `origin/web-buyer`, worktree
+  `.worktrees/web-buyer-seo`) — гигиена индексации витрины
+
+### Сделано
+- Лендинг: `/faq` · `/ru/faq`, `/qollanma` · `/ru/rukovodstva` + по 3 руководства на
+  локаль. Sitemap 2 → 12 URL. HowTo / Article / BreadcrumbList / CollectionPage,
+  FAQ 5 → 14 с самодостаточными ответами. llms.txt переписан.
+- web-buyer: тестовый магазин выключен из индекса (см. `SEO-TEST-STORE-INDEXED-001`
+  в logs.md), canonical на всех статичных роутах, `/stores` и `/products` получили
+  собственные метаданные вместо унаследованных с главной.
+
+### Осталось — нужны решения, не код
+
+- 🟡 **Лимит заказов на Studio** — Азим сказал, что у Studio свой отдельный лимит, но
+  число не назвал. Сейчас во всех текстах (i18n, guides, llms.txt) Studio описан как
+  «всё из Pro + API», без числа. Как только число известно — проставить в четырёх
+  местах: `i18n.ts` (uz+ru), `guides.ts` (обе таблицы), `llms.txt`.
+- 🟡 **Удалить тестовый магазин в админке** — код-защита это только заглушка, см.
+  `SEO-TEST-STORE-INDEXED-001`.
+- 🟢 **`/stores` и `/products` — client components.** Метаданные и canonical теперь свои,
+  но сам контент каталога рендерится на клиенте: в первом HTML товаров и магазинов нет.
+  Для страниц магазина и товара это в своё время починили (SEO-AUDIT-001 п.3-4), для
+  каталогов — нет. Отдельная задача, не метаданные.
+- 🟢 **Узбекский на витрине.** Метаданные web-buyer получили uz-ключевики и
+  `og:alternateLocale`, но hreflang там не поставить — язык переключается на клиенте,
+  отдельных URL на локаль нет. Настоящее uz-покрытие = либо path-based локали
+  (`/uz/...`, архитектурное решение), либо uz-описания у продавцов. См.
+  `seo-geo-aeo-report-2026-07-24.md` §3.3 — вопрос с 24.07 так и открыт.
+- 🟢 **`sameAs` у Organization** — сейчас одна ссылка (бот). Для GEO важна склейка
+  сущности: как появятся реальные профили (канал, Instagram, YouTube) — добавить в
+  `apps/landing/src/lib/jsonld.ts`. Несуществующие URL туда не писать, это ломает склейку.
+- 🟢 **`WEB-BUYER-TSCONFIG-TYPES-001`** — `tsc --noEmit` в web-buyer всегда красный,
+  см. logs.md.
