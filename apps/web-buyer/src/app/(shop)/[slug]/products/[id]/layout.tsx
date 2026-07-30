@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ProductStatus, type Product } from 'types';
 import { API_BASE } from '@/lib/api/env';
 import type { ProductReviewsResponse } from '@/lib/api/storefront.api';
+import { isSeoExcludedStore } from '@/lib/seo/index-exclusions';
 
 const SITE_URL = process.env.NEXT_PUBLIC_BUYER_URL || 'https://shop.maxsavdo.uz';
 
@@ -98,6 +99,11 @@ export async function generateMetadata({
     title,
     description: desc,
     alternates: { canonical: `/${slug}/products/${id}` },
+    // Inherit the store's index policy: a product of a non-public store must not be
+    // indexable on its own either.
+    ...(isSeoExcludedStore(slug)
+      ? { robots: { index: false, follow: false } }
+      : {}),
     openGraph: {
       type: 'website',
       siteName: 'maxsavdo',

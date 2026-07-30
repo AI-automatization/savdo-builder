@@ -4,6 +4,7 @@ import { PrivacyContent } from '@/components/legal/PrivacyContent';
 export const metadata: Metadata = {
   title: 'Политика конфиденциальности — maxsavdo',
   description: 'Как maxsavdo собирает, хранит и обрабатывает персональные данные пользователей.',
+  alternates: { canonical: '/privacy' },
 };
 
 export default function PrivacyPage() {

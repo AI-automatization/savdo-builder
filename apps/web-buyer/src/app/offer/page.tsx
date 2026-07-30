@@ -4,6 +4,7 @@ import { OfferContent } from '@/components/legal/OfferContent';
 export const metadata: Metadata = {
   title: 'Публичная оферта — maxsavdo',
   description: 'Публичная оферта на оказание услуг платформы maxsavdo.',
+  alternates: { canonical: '/offer' },
 };
 
 export default function OfferPage() {

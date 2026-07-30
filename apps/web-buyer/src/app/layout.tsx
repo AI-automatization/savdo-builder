@@ -24,12 +24,34 @@ export const metadata: Metadata = {
     template: "%s",
   },
   description: "Покупайте у продавцов Узбекистана через Telegram. Быстро, удобно, без регистрации.",
+  // Both languages, on purpose. The UI is ru by default with a client-side switch,
+  // so there are no per-locale URLs and hreflang does not apply here — nothing to
+  // point it at. Keywords are the one channel that can carry the uz vocabulary
+  // without inventing URLs, and Yandex (which now runs a uz-trained neural search
+  // for Uzbekistan) still reads them.
+  //
+  // The real uz surface is seller-written store and product text, plus path-based
+  // locales (/uz/...) if that is ever decided — that is an architecture call, not a
+  // metadata one. See analiz/seo-geo-aeo-report-2026-07-24.md §3.3.
+  keywords: [
+    'Telegram doʻkon',
+    'Telegramda xarid qilish',
+    'onlayn doʻkon Oʻzbekiston',
+    'Toshkent yetkazib berish',
+    'maxsavdo',
+    'магазины в Telegram',
+    'интернет магазин Узбекистан',
+    'купить в Телеграм',
+    'доставка Ташкент',
+    'максавдо',
+  ],
   openGraph: {
     type: 'website',
     siteName: 'maxsavdo',
     title: 'maxsavdo — магазины в Telegram',
     description: 'Покупайте у продавцов Узбекистана через Telegram',
     locale: 'ru_RU',
+    alternateLocale: ['uz_UZ'],
     url: '/',
   },
   twitter: {

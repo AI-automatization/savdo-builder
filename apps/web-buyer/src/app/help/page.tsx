@@ -5,6 +5,7 @@ import { ru } from '@/lib/i18n/ru';
 export const metadata: Metadata = {
   title: 'Помощь и частые вопросы — maxsavdo',
   description: 'Короткие ответы на самые частые вопросы покупателей maxsavdo: оформление заказа, оплата, доставка, возврат, связь с продавцом.',
+  alternates: { canonical: '/help' },
 };
 
 const FAQ_KEYS = ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8'] as const;

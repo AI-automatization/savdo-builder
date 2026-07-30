@@ -13,6 +13,7 @@ import {
   PRODUCTS_PAGE_SIZE,
 } from "@/lib/api/storefront-server";
 import StoreProductsPager from "@/components/store/StoreProductsPager";
+import { isSeoExcludedStore } from "@/lib/seo/index-exclusions";
 
 import { TrackStorefrontView } from "@/components/TrackView";
 import { RegisterRecentStore } from "@/components/store/RegisterRecentStore";
@@ -45,6 +46,11 @@ export async function generateMetadata({
       title,
       description: desc,
       alternates: { canonical: `/${slug}` },
+      // Removing the store from the sitemap only stops us advertising it; the page is
+      // still linked and still crawlable, so the noindex has to be on the page itself.
+      ...(isSeoExcludedStore(slug)
+        ? { robots: { index: false, follow: false } }
+        : {}),
       openGraph: {
         type: 'website',
         siteName: 'maxsavdo',
