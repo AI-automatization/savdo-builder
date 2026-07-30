@@ -9,6 +9,7 @@ export type FooterDict = {
   rights: string;
   contact: string;
   bot: string;
+  resources: string;
 };
 
 type FooterProps = {
@@ -22,6 +23,20 @@ const EMAIL = 'hello@maxsavdo.uz';
 export default function Footer({ locale, dict }: FooterProps) {
   const year = new Date().getFullYear();
   const home = locale === 'uz' ? '/' : '/ru';
+  // Sitewide links to the content pages. A page reachable only from the sitemap gets
+  // crawled late and treated as peripheral; a footer link on every page does not.
+  const guidesHref = locale === 'uz' ? '/qollanma' : '/ru/rukovodstva';
+  const faqHref = locale === 'uz' ? '/faq' : '/ru/faq';
+  const resourceLinks =
+    locale === 'uz'
+      ? [
+          { href: guidesHref, label: 'Qoʻllanmalar' },
+          { href: faqHref, label: 'Savollar va javoblar' },
+        ]
+      : [
+          { href: guidesHref, label: 'Руководства' },
+          { href: faqHref, label: 'Вопросы и ответы' },
+        ];
 
   return (
     <footer
@@ -42,6 +57,24 @@ export default function Footer({ locale, dict }: FooterProps) {
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-brand-muted">
             {dict.tagline}
           </p>
+        </div>
+
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-widest text-brand-muted">
+            {dict.resources}
+          </h4>
+          <ul className="mt-4 flex flex-col gap-3 text-sm">
+            {resourceLinks.map((link) => (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className="text-brand-muted transition-colors hover:text-brand-accent"
+                >
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div>

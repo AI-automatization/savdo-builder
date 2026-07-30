@@ -10,6 +10,7 @@ export type HeaderDict = {
     stores: string;
     pricing: string;
     faq: string;
+    guides: string;
     start: string;
   };
 };
@@ -17,13 +18,31 @@ export type HeaderDict = {
 type HeaderProps = {
   locale: Locale;
   dict: HeaderDict;
+  /**
+   * Where the section anchors point. Omitted on the homepage (plain `#how`).
+   * On any sub-page it must be that locale's home path, otherwise `#how` resolves
+   * against the current URL — `/faq#how` — and the link goes nowhere.
+   */
+  anchorBase?: string;
+  /**
+   * Target of the uz/ru switch. Defaults to the other locale's homepage; sub-pages
+   * pass their own translated URL so switching language keeps you on the same page.
+   */
+  switchHref?: string;
 };
 
 const BOT_URL = 'https://t.me/maxsavdo_bot';
 
-export default function Header({ locale, dict }: HeaderProps) {
+export default function Header({
+  locale,
+  dict,
+  anchorBase = '',
+  switchHref,
+}: HeaderProps) {
   const otherLocale: Locale = locale === 'uz' ? 'ru' : 'uz';
-  const otherHref = otherLocale === 'uz' ? '/' : '/ru';
+  const otherHref = switchHref ?? (otherLocale === 'uz' ? '/' : '/ru');
+  const guidesHref = locale === 'uz' ? '/qollanma' : '/ru/rukovodstva';
+  const faqHref = locale === 'uz' ? '/faq' : '/ru/faq';
 
   return (
     <header
@@ -58,11 +77,14 @@ export default function Header({ locale, dict }: HeaderProps) {
           aria-label="primary"
         >
           {[
-            { href: '#how', label: dict.nav.how },
-            { href: '#features', label: dict.nav.features },
-            { href: '#stores', label: dict.nav.stores },
-            { href: '#pricing', label: dict.nav.pricing },
-            { href: '#faq', label: dict.nav.faq },
+            { href: `${anchorBase}#how`, label: dict.nav.how },
+            { href: `${anchorBase}#features`, label: dict.nav.features },
+            { href: `${anchorBase}#stores`, label: dict.nav.stores },
+            { href: `${anchorBase}#pricing`, label: dict.nav.pricing },
+            // Real URLs, not anchors: these two are crawlable pages of their own and
+            // the internal links are what gets them discovered.
+            { href: guidesHref, label: dict.nav.guides },
+            { href: faqHref, label: dict.nav.faq },
           ].map((item) => (
             <a
               key={item.href}
