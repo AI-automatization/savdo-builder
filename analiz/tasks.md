@@ -26,20 +26,33 @@
 - **Домен:** Railway-сервис `landing` (инфра — Полат; доступ к дашборду есть и у Азима) ·
   **Кто взял:** не назначено
 - **Кто нашёл:** Юсуф/Claude 30.07.2026 — живая проверка `maxsavdo.uz` + чтение кода.
-- **Это НЕ задача на код.** Проверено чтением: `apps/landing/src/lib/seo.ts:9-13` уже собирает
-  `verification` из env, `apps/landing/src/components/Analytics.tsx` уже существует. Всё
-  env-gated: переменной нет → блок просто не рендерится. Писать нечего, нужно задать значения.
-- **Доказательство, что сейчас пусто (живой HTML `maxsavdo.uz`, 30.07):** `gtag`,
-  `googletagmanager`, `mc.yandex`, `ym(`, `fbq` — **0 вхождений**; `yandex-verification` и
-  `msvalidate` в `<head>` отсутствуют. При этом `google-site-verification` **есть** — значит
-  механизм рабочий, просто заполнена одна переменная из трёх.
-- **Задать в Railway → сервис `landing` → Variables:**
-  - `NEXT_PUBLIC_YANDEX_VERIFICATION` — из Yandex Webmaster
-  - `NEXT_PUBLIC_BING_SITE_VERIFICATION` — из Bing Webmaster
-  - `NEXT_PUBLIC_GA_ID` — GA4 (`G-…`)
-  - `NEXT_PUBLIC_YANDEX_METRICA_ID` — Yandex Metrica
-  После добавления — **redeploy** (значения `NEXT_PUBLIC_*` вшиваются на этапе сборки, рестарта
-  недостаточно).
+- **⚠️ ИСПРАВЛЕНО 31.07.2026 — первая редакция этой задачи была неверной.** Я написал «просто
+  задайте 4 переменные в Railway Variables». **Этого недостаточно, и само по себе оно не
+  сработает.** Причина найдена после чтения Obsidian `_bugs.md` (запись 28.07 «NEXT_PUBLIC_* не
+  долетают до бандла без build args») и проверки файлов через `git show`.
+- **Реальное состояние (проверено на `main` И на `seo/landing-aeo-geo-2026-07-30` — одинаково):**
+  - `apps/landing/Dockerfile` — 6 `ARG`+`ENV`: `API_URL`, `BOT_USERNAME`, `SITE_URL`,
+    `GOOGLE_SITE_VERIFICATION`, `YANDEX_VERIFICATION`, `BING_SITE_VERIFICATION`
+  - `apps/landing/railway.toml [build.args]` — **только 3**: `API_URL`, `BOT_USERNAME`, `SITE_URL`
+  - `NEXT_PUBLIC_GA_ID` и `NEXT_PUBLIC_YANDEX_METRICA_ID` — **отсутствуют в обоих файлах**
+- **Что это значит:** `NEXT_PUBLIC_*` инлайнятся Next.js на этапе сборки, внутри Docker-образа.
+  Если build arg не доехал — в бандл уходит `undefined`, `Analytics.tsx` возвращает `null`,
+  ошибок в логах нет. Verification-коды точно так же не попадут в `<head>`.
+- **Правильный порядок (правило из записи 28.07 — три места сразу):**
+  1. `apps/landing/railway.toml` → `[build.args]`: добавить 5 строк — 3 verification +
+     `NEXT_PUBLIC_GA_ID` + `NEXT_PUBLIC_YANDEX_METRICA_ID`
+  2. `apps/landing/Dockerfile` → `ARG`+`ENV` для `GA_ID` и `YANDEX_METRICA_ID`
+     (3 verification там уже есть)
+  3. Railway → сервис `landing` → Variables: сами значения
+  4. **Новый деплой** — рестарта недостаточно
+- **🔎 Открытый вопрос, проверить в дашборде:** `google-site-verification` на живом сайте
+  **работает**, хотя `railway.toml` его в `build.args` не передаёт. Значит он приходит другим
+  путём — вероятно build arg задан вручную в Railway UI. Если так, конфигурация живёт не в репо,
+  а в дашборде, и следующий человек её не увидит. Стоит перенести в `railway.toml`.
+- **Попутно (тот же файл, тот же класс — branch drift):** `railway.toml [variables]` устарел —
+  `NEXT_PUBLIC_BOT_USERNAME = "savdo_builderBOT"` (в записи 28.07 значится исправленным на
+  `maxsavdo_bot`) и `NEXT_PUBLIC_API_URL = "savdo-api-production.up.railway.app"` (по
+  `DEPLOY-DOMAIN-MAXSAVDO-001` должен быть `api.maxsavdo.uz`).
 - **Почему это блокер, а не «потом»:** GSC подключили на днях, но GSC показывает только Google.
   Без Metrica не видно Яндекс-трафик (в УЗ это большая доля), без GA4 не видно AI-рефералов
   (`chatgpt.com`, `perplexity.ai`) — то есть эффект всей SEO/GEO-работы сейчас не измеряется.
