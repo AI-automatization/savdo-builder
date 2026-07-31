@@ -38,7 +38,7 @@ export default async function HomePage() {
         <FAQ locale={locale} dict={dict.faq} />
         <FinalCta dict={dict.finalCta} ctaLabel={dict.hero.ctaPrimary} />
       </main>
-      <Footer locale={locale} dict={dict.footer} />
+      <Footer locale={locale} dict={dict.footer} nav={dict.nav} />
     </>
   );
 }

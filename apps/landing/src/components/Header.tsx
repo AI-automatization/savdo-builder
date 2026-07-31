@@ -11,6 +11,8 @@ export type HeaderDict = {
     pricing: string;
     faq: string;
     start: string;
+    cases: string;
+    blog: string;
   };
 };
 
@@ -24,6 +26,8 @@ const BOT_URL = 'https://t.me/maxsavdo_bot';
 export default function Header({ locale, dict }: HeaderProps) {
   const otherLocale: Locale = locale === 'uz' ? 'ru' : 'uz';
   const otherHref = otherLocale === 'uz' ? '/' : '/ru';
+  const home = locale === 'uz' ? '/' : '/ru';
+  const p = (path: string) => (locale === 'uz' ? `/${path}` : `/ru/${path}`);
 
   return (
     <header
@@ -58,11 +62,12 @@ export default function Header({ locale, dict }: HeaderProps) {
           aria-label="primary"
         >
           {[
-            { href: '#how', label: dict.nav.how },
-            { href: '#features', label: dict.nav.features },
-            { href: '#stores', label: dict.nav.stores },
-            { href: '#pricing', label: dict.nav.pricing },
-            { href: '#faq', label: dict.nav.faq },
+            { href: `${home}#how`, label: dict.nav.how },
+            { href: `${home}#features`, label: dict.nav.features },
+            { href: `${home}#pricing`, label: dict.nav.pricing },
+            { href: p('cases'), label: dict.nav.cases },
+            { href: p('blog'), label: dict.nav.blog },
+            { href: p('faq'), label: dict.nav.faq },
           ].map((item) => (
             <a
               key={item.href}
