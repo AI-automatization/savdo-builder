@@ -5,7 +5,7 @@
  */
 
 import type { FeaturedStorefrontResponse, GlobalCategory, Product, ProductListItem, StorefrontStore } from 'types';
-import type { StorefrontCategoryFilter, ProductReviewsResponse } from './storefront.api';
+import type { StorefrontCategoryFilter, ProductReviewsResponse, StoresCatalogItem } from './storefront.api';
 import { API_BASE } from './env';
 
 async function sfetch<T>(path: string, search?: URLSearchParams | Record<string, string>): Promise<T> {
@@ -137,6 +137,23 @@ export async function serverGetProducts(params: {
     }
   }
   return sfetch<ServerProductsResult>('/storefront/products', search);
+}
+
+/**
+ * SEO-CRAWL-PATH-001: полный публичный список магазинов для SSR каталога /stores.
+ *
+ * Зачем: /stores — единственная hub-страница, ведущая на все витрины, но она
+ * client-компонент (фильтры, сортировка, URL-state), поэтому в первом HTML не было
+ * ни одного <a href="/{slug}">. Краулер приходил на /stores и не находил куда идти.
+ *
+ * Проверено на проде 01.08.2026: curl /stores → 0 ссылок на магазины, слаг
+ * единственной реальной витрины (raos) не встречался в ответе ни разу. Единственная
+ * ссылка на shop-поддомен со всего сайта вела на тестовый магазин, а его мы из
+ * индекса исключаем — то есть у raos не было ни одного пути обнаружения вообще.
+ */
+export async function serverGetStoresCatalog(): Promise<StoresCatalogItem[]> {
+  const res = await sfetch<{ data: StoresCatalogItem[] }>('/storefront/stores');
+  return res.data;
 }
 
 export async function serverGetGlobalCategories(): Promise<GlobalCategory[]> {

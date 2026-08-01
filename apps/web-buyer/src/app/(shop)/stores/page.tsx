@@ -1,138 +1,32 @@
-'use client';
+import { serverGetStoresCatalog } from '@/lib/api/storefront-server';
+import { isSeoExcludedStore } from '@/lib/seo/index-exclusions';
+import StoresCatalogClient, { type StoresCatalogQuery } from './StoresCatalogClient';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { useStoresCatalog } from '@/hooks/use-storefront';
-import { StoresGrid } from '@/components/catalog/StoresGrid';
-import {
-  StoresFilters,
-  type StoresFiltersState,
-  type StoresSortKey,
-} from '@/components/catalog/StoresFilters';
-import { EmptyState } from '@/components/catalog/EmptyState';
-import { BottomNavBar } from '@/components/layout/BottomNavBar';
-import { colors } from '@/lib/styles';
-import { track } from '@/lib/analytics';
-import { useTranslation } from '@/lib/i18n';
+/**
+ * SEO-CRAWL-PATH-001: /stores теперь SSR-ит первый список витрин.
+ *
+ * Была client-only страница: краулер получал заголовок, фильтры и пустую сетку —
+ * ни одного <a href="/{slug}">. Это единственная hub-страница на все магазины, и
+ * она не вела никуда. Тот же приём, что уже стоит на homepage (serverGetFeatured →
+ * HomeTopStores initialData): фетчим на сервере, отдаём клиенту как initialData,
+ * фильтры/сортировка/URL-state остаются клиентскими и работают как раньше.
+ *
+ * Исключённые из индекса магазины убираем и здесь: страница server-rendered, её
+ * ссылки — настоящие ссылки для краулера, ровно как в sitemap и в featured-блоке
+ * homepage. Клиентский рефетч потом покажет полный список живому пользователю —
+ * это осознанно: скрывать магазин от покупателя не нужно, нужно не звать на него
+ * краулера.
+ */
+export default async function StoresCatalogPage({
+  searchParams,
+}: {
+  searchParams: Promise<StoresCatalogQuery>;
+}) {
+  const [all, query] = await Promise.all([
+    serverGetStoresCatalog().catch(() => undefined),
+    searchParams,
+  ]);
+  const initialStores = all?.filter((s) => !isSeoExcludedStore(s.slug));
 
-const SORT_KEYS: StoresSortKey[] = ['top', 'rating'];
-
-function parseSort(v: string | null): StoresSortKey {
-  return (SORT_KEYS as string[]).includes(v ?? '') ? (v as StoresSortKey) : 'top';
-}
-
-function StoresCatalogInner() {
-  const { t, locale } = useTranslation();
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const [filters, setFilters] = useState<StoresFiltersState>({
-    city: searchParams.get('city') ?? 'all',
-    verifiedOnly: searchParams.get('verified') === '1',
-    sort: parseSort(searchParams.get('sort')),
-  });
-
-  const { data, isLoading, isError, refetch } = useStoresCatalog();
-  const stores = data ?? [];
-
-  useEffect(() => {
-    track.storesCatalogViewed('catalog-page');
-  }, []);
-
-  // Sync filters → URL (replace без push, чтобы back не множился)
-  useEffect(() => {
-    const sp = new URLSearchParams();
-    if (filters.city !== 'all') sp.set('city', filters.city);
-    if (filters.verifiedOnly) sp.set('verified', '1');
-    if (filters.sort !== 'top') sp.set('sort', filters.sort);
-    const qs = sp.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [filters, pathname, router]);
-
-  const display = useMemo(() => {
-    let out = stores.filter((s) => {
-      if (filters.city !== 'all' && s.city !== filters.city) return false;
-      if (filters.verifiedOnly && !s.isVerified) return false;
-      return true;
-    });
-    if (filters.sort === 'rating') {
-      out = [...out].sort(
-        (a, b) =>
-          (b.avgRating ?? 0) - (a.avgRating ?? 0) || b.reviewCount - a.reviewCount,
-      );
-    }
-    // 'top' — backend default (verified сверху, потом publishedAt desc).
-    // 'new' убран: backend не отдаёт publishedAt в payload, честно отсортировать
-    // по дате на фронте нечем (см. WEB-AUDIT-BUYER-SELLER-003).
-    return out;
-  }, [stores, filters]);
-
-  const countLabel = isLoading
-    ? t('catalog.stores.loading')
-    : locale === 'uz'
-    ? t('catalog.stores.countUz', { count: String(display.length) })
-    : `${display.length} ${pluralStores(display.length)}`;
-
-  return (
-    <div className="min-h-screen flex flex-col">
-      <div className="px-4 sm:px-6 max-w-7xl mx-auto w-full mt-6 mb-10 pb-20 md:pb-10">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1 text-xs mb-4 transition-opacity hover:opacity-80"
-          style={{ color: colors.textMuted }}
-        >
-          {t('catalog.backToHome')}
-        </Link>
-
-        <h1
-          className="text-2xl font-bold tracking-tight mb-1"
-          style={{ color: colors.textStrong }}
-        >
-          {t('catalog.stores.title')}
-        </h1>
-        <p className="text-sm mb-6" style={{ color: colors.textMuted }}>
-          {countLabel}
-        </p>
-
-        <StoresFilters stores={stores} value={filters} onChange={setFilters} />
-
-        {isError ? (
-          <EmptyState
-            title={t('catalog.stores.loadError')}
-            description={t('catalog.stores.loadErrorDesc')}
-            ctaLabel={t('common.retry')}
-            onCta={() => refetch()}
-          />
-        ) : !isLoading && display.length === 0 ? (
-          <EmptyState
-            title={t('catalog.stores.emptyFilters')}
-            description={t('catalog.stores.emptyFiltersDesc')}
-            ctaLabel={t('catalog.toHome')}
-            ctaHref="/"
-          />
-        ) : (
-          <StoresGrid stores={display} isLoading={isLoading} />
-        )}
-      </div>
-      <BottomNavBar />
-    </div>
-  );
-}
-
-function pluralStores(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return 'магазин';
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'магазина';
-  return 'магазинов';
-}
-
-export default function StoresCatalogPage() {
-  return (
-    <Suspense fallback={null}>
-      <StoresCatalogInner />
-    </Suspense>
-  );
+  return <StoresCatalogClient initialStores={initialStores} query={query} />;
 }

@@ -16,6 +16,7 @@ import {
   type PlatformFeedParams,
   type ProductsCatalogParams,
   type ProductReviewsResponse,
+  type StoresCatalogItem,
 } from '../lib/api/storefront.api';
 
 export const storefrontKeys = {
@@ -133,12 +134,16 @@ export function usePlatformFeed(params: PlatformFeedParams) {
 
 // ── Catalog: stores ──────────────────────────────────────────────────────────
 
-export function useStoresCatalog() {
+// initialData приходит из SSR-фетча в app/(shop)/stores/page.tsx — тот же приём,
+// что у useFeaturedStorefront выше. Без него первый HTML /stores не содержал
+// ссылок на витрины (см. serverGetStoresCatalog, SEO-CRAWL-PATH-001).
+export function useStoresCatalog(initialData?: StoresCatalogItem[]) {
   return useQuery({
     queryKey: storefrontKeys.storesCatalog,
     queryFn: getStoresCatalog,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
+    ...(initialData ? { initialData } : {}),
   });
 }
 

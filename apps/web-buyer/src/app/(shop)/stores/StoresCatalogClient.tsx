@@ -1,0 +1,161 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { useStoresCatalog } from '@/hooks/use-storefront';
+import { StoresGrid } from '@/components/catalog/StoresGrid';
+import {
+  StoresFilters,
+  type StoresFiltersState,
+  type StoresSortKey,
+} from '@/components/catalog/StoresFilters';
+import { EmptyState } from '@/components/catalog/EmptyState';
+import { BottomNavBar } from '@/components/layout/BottomNavBar';
+import { colors } from '@/lib/styles';
+import { track } from '@/lib/analytics';
+import { useTranslation } from '@/lib/i18n';
+import type { StoresCatalogItem } from '@/lib/api/storefront.api';
+
+const SORT_KEYS: StoresSortKey[] = ['top', 'rating'];
+
+function parseSort(v: string | null): StoresSortKey {
+  return (SORT_KEYS as string[]).includes(v ?? '') ? (v as StoresSortKey) : 'top';
+}
+
+export interface StoresCatalogQuery {
+  city?: string;
+  verified?: string;
+  sort?: string;
+}
+
+// Начальные фильтры приходят пропом с сервера, а не из useSearchParams.
+// Причина не в стиле: useSearchParams заставляет компонент уйти в client-side
+// bailout, ближайший Suspense отдаёт свой fallback, и в статическом HTML на месте
+// сетки оставался null — ровно та дыра, которую эта страница и должна была закрыть
+// (проверено на билде 01.08.2026: raos лежал в RSC-пейлоаде, но <a href="/raos">
+// в разметке не было). Дальнейшие изменения фильтров по-прежнему идут через
+// router.replace, URL-state работает как раньше.
+function StoresCatalogInner({
+  initialStores,
+  query,
+}: {
+  initialStores?: StoresCatalogItem[];
+  query?: StoresCatalogQuery;
+}) {
+  const { t, locale } = useTranslation();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [filters, setFilters] = useState<StoresFiltersState>({
+    city: query?.city ?? 'all',
+    verifiedOnly: query?.verified === '1',
+    sort: parseSort(query?.sort ?? null),
+  });
+
+  const { data, isLoading, isError, refetch } = useStoresCatalog(initialStores);
+  const stores = data ?? [];
+
+  useEffect(() => {
+    track.storesCatalogViewed('catalog-page');
+  }, []);
+
+  // Sync filters → URL (replace без push, чтобы back не множился)
+  useEffect(() => {
+    const sp = new URLSearchParams();
+    if (filters.city !== 'all') sp.set('city', filters.city);
+    if (filters.verifiedOnly) sp.set('verified', '1');
+    if (filters.sort !== 'top') sp.set('sort', filters.sort);
+    const qs = sp.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [filters, pathname, router]);
+
+  const display = useMemo(() => {
+    let out = stores.filter((s) => {
+      if (filters.city !== 'all' && s.city !== filters.city) return false;
+      if (filters.verifiedOnly && !s.isVerified) return false;
+      return true;
+    });
+    if (filters.sort === 'rating') {
+      out = [...out].sort(
+        (a, b) =>
+          (b.avgRating ?? 0) - (a.avgRating ?? 0) || b.reviewCount - a.reviewCount,
+      );
+    }
+    // 'top' — backend default (verified сверху, потом publishedAt desc).
+    // 'new' убран: backend не отдаёт publishedAt в payload, честно отсортировать
+    // по дате на фронте нечем (см. WEB-AUDIT-BUYER-SELLER-003).
+    return out;
+  }, [stores, filters]);
+
+  const countLabel = isLoading
+    ? t('catalog.stores.loading')
+    : locale === 'uz'
+    ? t('catalog.stores.countUz', { count: String(display.length) })
+    : `${display.length} ${pluralStores(display.length)}`;
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="px-4 sm:px-6 max-w-7xl mx-auto w-full mt-6 mb-10 pb-20 md:pb-10">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-xs mb-4 transition-opacity hover:opacity-80"
+          style={{ color: colors.textMuted }}
+        >
+          {t('catalog.backToHome')}
+        </Link>
+
+        <h1
+          className="text-2xl font-bold tracking-tight mb-1"
+          style={{ color: colors.textStrong }}
+        >
+          {t('catalog.stores.title')}
+        </h1>
+        <p className="text-sm mb-6" style={{ color: colors.textMuted }}>
+          {countLabel}
+        </p>
+
+        <StoresFilters stores={stores} value={filters} onChange={setFilters} />
+
+        {isError ? (
+          <EmptyState
+            title={t('catalog.stores.loadError')}
+            description={t('catalog.stores.loadErrorDesc')}
+            ctaLabel={t('common.retry')}
+            onCta={() => refetch()}
+          />
+        ) : !isLoading && display.length === 0 ? (
+          <EmptyState
+            title={t('catalog.stores.emptyFilters')}
+            description={t('catalog.stores.emptyFiltersDesc')}
+            ctaLabel={t('catalog.toHome')}
+            ctaHref="/"
+          />
+        ) : (
+          <StoresGrid stores={display} isLoading={isLoading} />
+        )}
+      </div>
+      <BottomNavBar />
+    </div>
+  );
+}
+
+function pluralStores(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'магазин';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'магазина';
+  return 'магазинов';
+}
+
+// Suspense-обёртка снята вместе с useSearchParams — она существовала только ради
+// него. Без неё сетка магазинов рендерится на сервере и попадает в первый HTML.
+export default function StoresCatalogClient({
+  initialStores,
+  query,
+}: {
+  initialStores?: StoresCatalogItem[];
+  query?: StoresCatalogQuery;
+}) {
+  return <StoresCatalogInner initialStores={initialStores} query={query} />;
+}

@@ -8,7 +8,7 @@ import type { Metadata } from 'next';
 import { BottomNavBar } from '@/components/layout/BottomNavBar';
 import { HomeHero } from '@/components/home/HomeHero';
 import { HomeTopStores } from '@/components/home/HomeTopStores';
-import { serverGetFeatured } from '@/lib/api/storefront-server';
+import { serverGetFeatured, serverGetStoresCatalog } from '@/lib/api/storefront-server';
 import { isSeoExcludedStore } from '@/lib/seo/index-exclusions';
 import { colors } from '@/lib/styles';
 
@@ -39,7 +39,7 @@ export default async function HomePage() {
   // crawler every store in the block — so a store excluded from the index has to be
   // dropped here too, not just from the sitemap. This is a homepage-only filter: the
   // /stores catalog is client-rendered off the API and is not affected.
-  const featured = rawFeatured
+  const filtered = rawFeatured
     ? {
         ...rawFeatured,
         topStores: rawFeatured.topStores.filter(
@@ -50,6 +50,35 @@ export default async function HomePage() {
         ),
       }
     : undefined;
+
+  // SEO-CRAWL-PATH-001: фильтр выше может выесть блок досуха. На проде 01.08.2026
+  // /storefront/featured отдавал ровно один магазин — тестовый, — то есть после
+  // исключения на главной не осталось бы ни одной ссылки на витрину, хотя реальный
+  // магазин (raos) в /storefront/stores есть, просто не попал в featured.
+  //
+  // Главная — самая авторитетная страница поддомена; отдать её краулеру совсем без
+  // исходящих ссылок хуже, чем показать неотобранные магазины. Поэтому при пустом
+  // featured добираем публичный список. Запрос делаем только в этом случае, чтобы
+  // не платить лишним фетчем на каждый рендер главной.
+  const featured =
+    filtered && filtered.topStores.length === 0
+      ? {
+          ...filtered,
+          topStores: (await serverGetStoresCatalog().catch(() => []))
+            .filter((store) => !isSeoExcludedStore(store.slug))
+            .map(({ id, slug, name, city, logoUrl, coverUrl, isVerified, avgRating, reviewCount }) => ({
+              id,
+              slug,
+              name,
+              city,
+              logoUrl,
+              coverUrl,
+              isVerified,
+              avgRating,
+              reviewCount,
+            })),
+        }
+      : filtered;
 
   return (
     <div className="min-h-screen">
