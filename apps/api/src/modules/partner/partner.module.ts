@@ -8,6 +8,9 @@ import { PartnerKeysAdminController } from './partner-keys.admin.controller';
 import { PartnerApiKeysRepository } from './repositories/partner-api-keys.repository';
 import { PartnerApiKeyGuard } from './guards/partner-api-key.guard';
 import { PartnerCreateProductUseCase } from './use-cases/partner-create-product.use-case';
+import { PartnerUpdateProductUseCase } from './use-cases/partner-update-product.use-case';
+import { PartnerUpdateStockUseCase } from './use-cases/partner-update-stock.use-case';
+import { PartnerDeleteProductUseCase } from './use-cases/partner-delete-product.use-case';
 import { ManagePartnerKeysUseCase } from './use-cases/manage-partner-keys.use-case';
 
 // PARTNER-API-RAOS-001: партнёрский API (RAOS → MaxSavdo).
@@ -20,6 +23,9 @@ import { ManagePartnerKeysUseCase } from './use-cases/manage-partner-keys.use-ca
     PartnerApiKeysRepository,
     PartnerApiKeyGuard,
     PartnerCreateProductUseCase,
+    PartnerUpdateProductUseCase,
+    PartnerUpdateStockUseCase,
+    PartnerDeleteProductUseCase,
     ManagePartnerKeysUseCase,
   ],
 })

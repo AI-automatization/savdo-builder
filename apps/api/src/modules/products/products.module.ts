@@ -75,6 +75,9 @@ import { UsersModule } from '../users/users.module';
     CreateProductUseCase,
     ChangeProductStatusUseCase,
     ProductImagesRepository,
+    // INTEG-RAOS-002 (issue #5): PartnerUpdateProductUseCase переиспользует
+    // валидацию цены/полей вместо дублирования.
+    UpdateProductUseCase,
   ],
 })
 export class ProductsModule {}
