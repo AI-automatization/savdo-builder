@@ -33,38 +33,42 @@ export default function Header() {
       }}
     >
       <div className="max-w-7xl mx-auto flex items-center gap-3">
-        {/* Logo + catalog nav share a baseline wrapper: wordmark (~17px) and nav
-            links (14px) sit at different font-sizes, so centering their boxes
-            (items-center) left the smaller nav text visually low/uneven next to
-            the logo — items-baseline aligns their actual text baselines instead. */}
-        <div className="flex items-baseline gap-3">
-          {/* Logo */}
-          <Link
-            href={slug ? `/${slug}` : "/"}
-            className="flex-shrink-0"
-            aria-label="maxsavdo"
-          >
-            <MaxsavdoLogo size={28} withWordmark />
-          </Link>
+        {/* Logo */}
+        <Link
+          href={slug ? `/${slug}` : "/"}
+          className="flex-shrink-0"
+          aria-label="maxsavdo"
+        >
+          <MaxsavdoLogo size={28} withWordmark />
+        </Link>
 
-          {/* Catalog nav — desktop only */}
-          <nav className="hidden md:flex items-baseline gap-4 ml-2 flex-shrink-0">
-            <Link
-              href="/stores"
-              className="text-sm font-semibold transition-opacity hover:opacity-80"
-              style={{ color: colors.textBody }}
-            >
-              {t('header.stores')}
-            </Link>
-            <Link
-              href="/products"
-              className="text-sm font-semibold transition-opacity hover:opacity-80"
-              style={{ color: colors.textBody }}
-            >
-              {t('header.products')}
-            </Link>
-          </nav>
-        </div>
+        {/* Catalog nav — desktop only.
+            translateY nudge: wordmark (~17px) and this text (14px) box-center
+            the same under items-center, but different font-sizes put their
+            actual glyphs at different visual heights (CSS align-items:center
+            centers boxes, not ink) — reads as uneven. Tried align-items:baseline
+            first; that came out worse because the logo's own "baseline" (a Link
+            wrapping an inline-flex <svg>+text span) resolves to the SVG's
+            bottom edge, not the wordmark text — pulls nav text down, not up.
+            Measured the real gap instead (Range.getBoundingClientRect() on both
+            text nodes on the live page) and calibrated this offset directly:
+            glyph centers matched exactly (28.1px = 28.1px) at -3.9px. */}
+        <nav className="hidden md:flex items-center gap-4 ml-2 flex-shrink-0">
+          <Link
+            href="/stores"
+            className="text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{ color: colors.textBody, transform: 'translateY(-3.9px)' }}
+          >
+            {t('header.stores')}
+          </Link>
+          <Link
+            href="/products"
+            className="text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{ color: colors.textBody, transform: 'translateY(-3.9px)' }}
+          >
+            {t('header.products')}
+          </Link>
+        </nav>
 
         {/* Search — grows */}
         <HeaderSearch />
