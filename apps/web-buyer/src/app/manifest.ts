@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Покупайте у продавцов Узбекистана через Telegram. Быстро, удобно, без регистрации.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#0A0A0A',
-    theme_color: '#C9A876',
+    background_color: '#0F0F0F',
+    theme_color: '#E8A552',
     lang: 'ru',
     orientation: 'portrait',
     icons: [
