@@ -49,6 +49,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      # PIPELINE-TEST-001 (01.08.2026): env.validation.ts требует APP_URL
+      # (Joi .required(), см. TMA-PHOTO-UPLOAD-DIAG-001) — тут его не было,
+      # контейнер падал на старте с "Config validation error: APP_URL is
+      # required". На Railway переменная задана в дашборде сервиса, поэтому
+      # прод не затронут — это чисто пробел локального стенда.
+      APP_URL: http://localhost:3000
 
       # Railway инжектирует эти два из плагинов — мы эмулируем здесь
       DATABASE_URL: postgresql://savdo:savdo_local@postgres:5432/savdo

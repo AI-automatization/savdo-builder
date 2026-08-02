@@ -5,6 +5,70 @@
 
 ---
 
+## 🔴 [SEO-AUDIT-002] web-buyer: sitemap не включает товары/магазины + нет priority на LCP-картинках
+- **Домен:** apps/web-buyer · **Кто взял:** не назначено
+- **Контекст:** SEO-аудит 02.08.2026 (полный отчёт — Artifact, см. Obsidian/чат) по 6 факторам
+  (EEAT/Search Intent/YMYL/CWV/Microdata/Behavioral). Два P1-находки:
+  1. `apps/web-buyer/src/app/sitemap.ts` отдаёт только 5 статических URL — ни одного товара/магазина.
+     Backend уже готов: `GET /storefront/sitemap` (`products.repository.ts:503
+     findAllPublicForSitemap()`) возвращает id+updatedAt+slug всех ACTIVE товаров — просто не
+     вызывается с фронта. Нужно ~15-20 строк в sitemap.ts.
+  2. Ни один `<Image>` во всём web-buyer не использует `priority` (0 совпадений). Первая
+     картинка товара/магазина — вероятный LCP-элемент, без `priority` next/image грузит её
+     lazy, что напрямую бьёт по LCP.
+- **P2 (не блокер, но стоит сделать):** нет `web-vitals`/RUM вообще — CWV не измеряются на
+  реальном трафике; нет `AggregateRating`/`BreadcrumbList` в Product JSON-LD хотя данные в БД есть.
+- **Файлы:** `apps/web-buyer/src/app/sitemap.ts`, `apps/web-buyer/src/components/store/ProductCard.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx` (JSON-LD).
+
+---
+
+## 🔴 [INTEG-RAOS-002b] Order-export webhook maxsavdo → RAOS (issue #6) — ⛔ ЗАБЛОКИРОВАНО, ждём Ибрата
+- **Домен:** apps/api (Checkout/Orders + новый outbound-клиент) · **Кто взял:** Полат
+- **Контекст:** 28-29.07.2026 — RAOS-сторона интеграции (`integrations/savdo/`) реализована,
+  прошла ревью Ибрата, **PR #426 смёржен и задеплоен на Railway**. Issue #5 (update/stock/delete
+  в Partner API) закрыт 31.07.2026 — см. `analiz/done.md` (`INTEG-RAOS-002a`).
+- **⛔ БЛОКЕР найден 31.07.2026 (прочитал реальный код RAOS-стороны, не issue-текст —
+  `gh` недоступен в окружении):** `POST /savdo/orders` на RAOS-стороне
+  (`savdo-order.service.ts:37-44`, raos-pos-cosmetics) резолвит `items[].productId` и
+  `sellerId` НАПРЯМУЮ как `WHERE id IN (...)` по СВОИМ таблицам (RAOS `Product.id`,
+  RAOS tenant id) — без fallback по SKU. Чтобы собрать такой body, нам нужны две вещи,
+  которых сейчас нет НИ У НАС, НИ НА ИХ СТОРОНЕ:
+  1. **RAOS-tenant (sellerId) для нашего стора.** `PartnerApiKey` (packages/db/schema.prisma:576)
+     не хранит внешний tenant id — нечем заполнить `sellerId` в body.
+  2. **RAOS product id для товаров, которые они же нам запушили.** Их
+     `SavdoOutboundService.createProduct` шлёт нам `{name,price,sku?,description?,imageUrl?,stock}`
+     — без своего id. А наш `PartnerCreateProductDto` не имеет поля для приёма внешнего id,
+     даже если бы они его прислали. Т.е. связки maxsavdo.productId ↔ raos.productId просто
+     не существует ни в одной БД.
+  - **Не чинил сам** — попросил владельца (Полат) переслать эту находку Ибрату, чтобы
+    решить на уровне контракта (кто добавляет какое поле) до реализации, а не гадать.
+    Готовый текст для пересылки — см. чат с Полатом 31.07.2026.
+- **Когда снимется блок:** после ответа Ибрата (или текста issue #6, если там это уже
+  предусмотрено иначе, чем я предположил по коду).
+- **Что осталось (issue #6, реализация после разблокировки):** слать заказы maxsavdo → RAOS на
+  `POST api.raos.uz/api/v1/savdo/orders` (RAOS уже принимает, идемпотентно через
+  `IntegrationOrderImport`, `@@unique([provider, externalOrderId])`). **Важно:**
+  `400 Insufficient stock` от RAOS = наш заказ надо отменять, НЕ ретраить.
+- **Блокер запуска (отдельно, со стороны RAOS):** RAOS ждёт от себя #427 — activation gate
+  `savdoVisible` (у них флаг видимости товара сейчас включается только напрямую в БД; они
+  делают чекбокс/API на своей стороне — это их задача, не наша).
+- **План запуска (со слов Ибрата):** их #427 (savdoVisible через API+админку) → наш #6 →
+  пилот на одном реальном магазине (товар обязательно с фото — без фото витрина не примет) →
+  полный круг товар→витрина→заказ→списание склада→чек.
+- **Ссылки:** Swagger RAOS-стороны `https://api.raos.uz/api/v1/savdo/docs`, полная схема
+  https://claude.ai/code/artifact/b13ba00c-e52d-4797-9753-9d14da42d933 (прислал Ибрат).
+- **⚠️ Известный баг на RAOS-стороне (не наша зона, но блокирует их create-flow):**
+  `SavdoOutboundService.createProduct` (raos-pos-cosmetics, `integrations/savdo/savdo-outbound.service.ts`)
+  распаковывает ответ как `res.product.id` после `json.data`-развёртки, но наш Partner API
+  отдаёт плоский JSON без `data`/`product`-обёртки (см. `docs/contracts/partner-api-raos.md`
+  и реальный `partner.controller.ts` — так было задокументировано с самого начала). Значит
+  `res.product.id` упадёт с TypeError на их стороне в момент первого реального push товара
+  (пока не бьёт, т.к. `savdoVisible` нигде не проставляется — см. issue #427). Надо сообщить
+  Ибрату отдельно, чинить у них, не у нас.
+
+---
+
 ## 🟠 [LEGAL-OFFER-CONTENT-GAPS-001] Оферта maxsavdo — не хватает разделов, обязательных по ст.16 Закона «Об э-коммерции» + рыночной норме
 - **Домен:** apps/web-buyer (Азим, файл) — но формулировки юридические, финальный текст
   нужно утвердить владельцу/юристу, не чисто техзадача · **Кто взял:** не назначено

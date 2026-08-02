@@ -37,8 +37,8 @@ space, золото — точечно. Не игривый, не геймифи
 
 ## Цвет — как применять (источник HEX: brand-v2 §2)
 
-- **Background / text** — Rich Black `#0A0A0A` ↔ Pure White `#FFFFFF` (инверсия по теме).
-- **Accent / CTA / активные состояния** — Champagne Gold `#C9A876`. Золото — **дефицитный
+- **Background / text** — Rich Black `#0F0F0F` ↔ Pure White `#FFFFFF` (инверсия по теме).
+- **Accent / CTA / активные состояния** — Champagne Gold `#E8A552`. Золото — **дефицитный
   ресурс**: одна главная золотая CTA на экран, остальное нейтрали. Перебор золота убивает premium.
 - **Surfaces / borders** — нейтрали из brand-v2 §2 «Supporting» (`#1A1A1A`/`#2A2A2A`/`#3A3A3A`
   на dark, `#F8F8F8`/`#E5E5E5` на light).
@@ -141,8 +141,8 @@ Caption 14/500 · Small 12/400.
 
 | Liquid Authority v1.0 | maxsavdo Design v2 |
 |------------------------|---------------------|
-| Primary violet `#818CF8` | **Champagne Gold `#C9A876`** (accent, дефицитный) |
-| BG slate `#0F172A` / `#F8FAFC` | **Rich Black `#0A0A0A` / Pure White `#FFFFFF`** |
+| Primary violet `#818CF8` | **Champagne Gold `#E8A552`** (accent, дефицитный; было `#C9A876` до 28.07.2026, см. brand-v2 §2) |
+| BG slate `#0F172A` / `#F8FAFC` | **Rich Black `#0F0F0F` / Pure White `#FFFFFF`** |
 | Один тон «admin/dashboard» | **Две поверхности:** storefront (brand-forward) + dashboard (functional) |
 | Шрифт Inter/Geist | **Inter** (один, full Cyrillic) |
 | — | Default темы зафиксированы (ADR-009: buyer `system`, seller `dark`) |
