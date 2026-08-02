@@ -7,7 +7,7 @@
 - Website: https://maxsavdo.uz
 - Storefront (buyer) app: https://shop.maxsavdo.uz
 - Seller dashboard: https://seller.maxsavdo.uz
-- Telegram bot: https://t.me/savdo_builderBOT
+- Telegram bot: https://t.me/maxsavdo_bot
 - Contact: hello@maxsavdo.uz
 - Coverage: Uzbekistan (uz, ru)
 

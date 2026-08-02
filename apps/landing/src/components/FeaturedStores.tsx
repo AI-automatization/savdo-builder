@@ -1,5 +1,5 @@
 import type { FeaturedStore } from '@/types/store';
-import { Store } from 'lucide-react';
+import { BadgeCheck, Star, Store } from 'lucide-react';
 
 export type Locale = 'uz' | 'ru';
 
@@ -7,7 +7,7 @@ export type FeaturedStoresDict = {
   title: string;
   subtitle?: string;
   empty: string;
-  productsLabel: (count: number) => string;
+  verified: string;
   open: string;
 };
 
@@ -51,7 +51,7 @@ function StoreCard({
   store: FeaturedStore;
   dict: FeaturedStoresDict;
 }) {
-  const href = `https://savdo-builder-by-production.up.railway.app/${store.slug}`;
+  const href = `https://shop.maxsavdo.uz/${store.slug}`;
 
   return (
     <li>
@@ -59,7 +59,7 @@ function StoreCard({
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="card-glass group flex h-full items-center gap-4 p-5 transition-all"
+        className="card-glass group flex h-full items-center gap-4 p-5 transition-all hover:-translate-y-0.5 hover:border-brand-accent/40"
       >
         <div
           className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl"
@@ -74,8 +74,21 @@ function StoreCard({
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="truncate text-base font-semibold text-brand-text">{store.name}</div>
-          <div className="mt-1 text-xs text-brand-muted">{dict.productsLabel(store.productsCount)}</div>
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-base font-semibold text-brand-text">{store.name}</span>
+            {store.isVerified && <BadgeCheck size={15} style={{ color: '#E8A552' }} aria-label={dict.verified} />}
+          </div>
+          {(store.city || store.avgRating != null) && (
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-brand-muted">
+              {store.city && <span className="truncate">{store.city}</span>}
+              {store.city && store.avgRating != null && <span>·</span>}
+              {store.avgRating != null && (
+                <span className="inline-flex items-center gap-0.5">
+                  <Star size={11} fill="#E8A552" style={{ color: '#E8A552' }} /> {store.avgRating.toFixed(1)}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         <span className="hidden text-xs font-medium group-hover:inline" style={{ color: '#E8A552', flexShrink: 0 }}>

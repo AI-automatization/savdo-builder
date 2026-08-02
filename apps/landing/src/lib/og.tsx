@@ -1,15 +1,23 @@
 import { ImageResponse } from 'next/og';
+import { t, type Locale } from '@/lib/i18n';
 
-export const runtime = 'edge';
-
-export const alt = 'MaxSavdo — 3 sotuv kanali';
-export const size = {
-  width: 1200,
-  height: 630,
-};
+export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-export default async function OpengraphImage() {
+/** Short, verifiable badge. The previous "14 kun bepul" was wrong — there is no
+ *  trial period; the Free tier simply has no time limit (see FAQ). */
+const BADGE: Record<Locale, string> = {
+  uz: 'Komissiyasiz',
+  ru: 'Без комиссии',
+};
+
+export function ogAlt(locale: Locale) {
+  return t(locale).meta.ogTitle;
+}
+
+export function renderOgImage(locale: Locale) {
+  const dict = t(locale);
+
   return new ImageResponse(
     (
       <div
@@ -56,23 +64,17 @@ export default async function OpengraphImage() {
           MaxSavdo
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '24px',
-          }}
-        >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div
             style={{
-              fontSize: '88px',
+              fontSize: '76px',
               fontWeight: 800,
               lineHeight: 1.05,
               letterSpacing: '-0.04em',
               maxWidth: '1000px',
             }}
           >
-            MaxSavdo — 3 sotuv kanali
+            {dict.meta.ogTitle}
           </div>
           <div
             style={{
@@ -82,7 +84,7 @@ export default async function OpengraphImage() {
               maxWidth: '900px',
             }}
           >
-            Bot, sayt-vitrina va Telegram kanal — bitta akkauntdan
+            {dict.meta.ogDescription}
           </div>
         </div>
 
@@ -97,12 +99,10 @@ export default async function OpengraphImage() {
           }}
         >
           <span>maxsavdo.uz</span>
-          <span style={{ fontWeight: 600 }}>14 kun bepul</span>
+          <span style={{ fontWeight: 600 }}>{BADGE[locale]}</span>
         </div>
       </div>
     ),
-    {
-      ...size,
-    },
+    { ...size },
   );
 }

@@ -47,7 +47,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
         <button
           onClick={() => { this.setState({ hasError: false, message: '' }); window.location.replace('/'); }}
           className="px-5 py-2.5 rounded-xl text-sm font-semibold"
-          style={{ background: 'var(--tg-accent)', color: '#0A0A0A' }}
+          style={{ background: 'var(--tg-accent)', color: '#0F0F0F' }}
         >
           На главную
         </button>

@@ -1,5 +1,135 @@
 # Logs — локальные тесты и баги
 
+## [2026-07-26] [LANDING-BUILD-BROKEN-LOCKFILE-003] Railway build упал `sh: next: not found` — battle package-lock.json
+- **Статус:** ✅ Исправлено (`22dae5f4`)
+- **Что случилось:** после мержа LANDING-REDESIGN-001 в `main` (`8fccf50a`) Railway-сборка
+  `apps/landing` упала на шаге `npm run build` с `sh: next: not found`, exit 127. Причина —
+  `package-lock.json`, закоммиченный в `661e9ec5`, был неполным (912 строк / 16 пакетов вместо
+  ожидаемых ~6800 строк / ~360 пакетов). Root cause: `apps/landing/node_modules` на диске уже
+  содержал symlink'и на `next`/`react` в корневой pnpm-стор (артефакт более раннего `pnpm install`
+  на корне монорепо — `pnpm-workspace.yaml` включает `apps/*`). Локальный `npm install
+  --legacy-peer-deps` (для добавления `gsap`) увидел эти пакеты уже "разрешёнными" через symlink и
+  не выписал их полностью в lock-файл — только новую зависимость. Билд и тесты локально проходили
+  чисто (файлы физически были доступны через symlink), но чистый Docker-стейдж Railway копирует
+  только `package.json`+lock-файл без node_modules/pnpm-стора — там ставить было нечего.
+- **Что сделано:** `apps/landing/node_modules` и старый lock-файл стёрты полностью, поставлено с
+  нуля (`362 packages`, `6869` строк в lock-файле). Дополнительно проверено в изолированной
+  temp-папке только с `package.json`+lock-файлом (без node_modules вообще) — `next` ставится и
+  запускается, ровно как в Dockerfile deps-стейдже. `tsc --noEmit` + `next build` перепройдены
+  чисто. Antipattern записан в Obsidian `_antipatterns.md` — общее правило для любого
+  self-contained app в монорепо с pnpm workspace на корне.
+- **Урок:** для apps-подпроектов со своим package.json/lock-файлом (Docker собирает их изолированно,
+  не через корневой pnpm workspace) — при любом изменении зависимостей делать полностью чистую
+  переустановку (стереть node_modules+lock-файл), а не инкрементальный install поверх существующей
+  папки, которая может быть загрязнена pnpm-symlink'ами с корня.
+
+## [2026-07-26] [LANDING-BRANCH-STALE-002] Ветка `landing` (`.worktrees/landing`) разошлась с `main` на 15+ коммитов
+- **Статус:** 🟡 Предупреждение, не исправлено (сознательно вне скоупа LANDING-REDESIGN-001)
+- **Что случилось:** при работе над реcкином лендинга (`done.md` → LANDING-REDESIGN-001) сверял
+  `.worktrees/landing` с `main` — ветка `landing` не мержилась в `main` (и наоборот) с момента, когда
+  Railway-сервис `landing` переключили на сборку из `main` (25.07, см. SEO-AUDIT-001). На ветке
+  `landing` до сих пор стоит старый bot username (`savdo_builderBOT` вместо `maxsavdo_bot`), старый
+  Railway-домен в `FeaturedStores.tsx`, старый Free-лимит (20/10 вместо честных 50) — все три уже
+  почищены на `main`. Ветка также тащит отдельный `package-lock.json`, которого на `main` не было
+  (до этой сессии) — несовпадающий с корневым pnpm workspace.
+- **Что сделано:** ничего — просто не брал эту ветку за базу (работал от `main`). Отдельного
+  коммита/PR для реконсиляции не заводил, только фиксирую находку здесь.
+- **🔲 Кому решать:** Азиму — либо смержить актуальные фиксы `main` → `landing` и решить, зачем вообще
+  нужна отдельная ветка теперь, когда Railway её не использует, либо просто удалить ветку/worktree,
+  если она осталась от прошлой deploy-топологии и никому не нужна.
+
+## [2026-07-26] [PLATFORM-ZERO-INVENTORY-001] Прод-сторфронт без единого товара — блокирует live-проверку чекаута
+- **Статус:** 🟡 Предупреждение (не баг кода, факт состояния прод-данных)
+- **Что случилось:** при попытке живой проверки `API-CHECKOUT-CONFIRM-500-001` /
+  `VERIFY-CHECKOUT-CONFIRM-500-001` на `shop.maxsavdo.uz` обнаружено: старый
+  тест-стор `azim-mnx4na25` (использовался в прогоне 21.05.2026) — 404, больше
+  не существует; `/stores` показывает единственный магазин (реальный партнёрский);
+  `/products` (весь сайт) — 0 товаров. Купить сейчас нечего нигде на площадке.
+- **Что сделано:** попытался поднять один синтетический тестовый товар для
+  прогона, оставаясь в своей зоне (`apps/api`, `packages/db`) и без обращения к
+  чужому магазину:
+  1. `packages/db/prisma/seed.ts` создаёт `test-store` со статусом
+     `PENDING_REVIEW` — не будет виден на сторфронте без approve через admin,
+     плюс нет прод-`DATABASE_URL` (в репо только `apps/api/.env.test` →
+     `localhost:5433`).
+  2. Прямой `POST /products` требует JWT продавца — тестовых seller-credentials
+     для прода в репо нет.
+  3. Admin-панель (`adminsb.up.railway.app`) требует MFA-сессию владельца.
+  4. Партнёрский `X-Api-Key` привязан к реальному чужому магазину — не
+     использовал.
+- **Итог:** без прод-DATABASE_URL, тестовых seller-credentials или доступа в
+  admin создать проверяемый товар нельзя. Задача осталась открытой в
+  `tasks.md`. Плюс OTP-степ проверки в любом случае требует реального
+  Telegram-номера — не автоматизируется без участия человека.
+
+**🆕 26.07 — доступ выдан, новый блокер найден (фото товара, не credentials):**
+владелец выдал доступ (admin MFA-сессия + тестовый Telegram-аккаунт
+`...4840748`). Прошёл реальный seller-onboarding через `web.telegram.org`
+(уже залогиненная сессия владельца, никаких новых credentials не вводил) —
+магазин `test-udalit-ms1gi4um` создан, форма товара заполнена полностью
+(title/price/категория/размер/цвет/остаток). Застрял на загрузке фото:
+клик "Добавить фото" в TMA дергает нативный file-dialog bridge Telegram Web
+(`appDialogsManager`), а не обычный `<input type=file>` внутри iframe
+(в iframe таких инпутов 0 — подтверждено `document.querySelectorAll` из
+top-frame). Программная загрузка через единственный глобальный
+`<input type=file>` Telegram Web технически принимается (`file_upload`
+репортит успех), но внутренний обработчик Telegram Web падает с
+`TypeError: Cannot read properties of undefined (reading 'resolve')` —
+похоже, что resolver инициализируется только при реальном user-gesture
+клике. Backend фото не требует (`create-product.dto.ts` без поля `images`) —
+блокер чисто в UI/автоматизации, не в бэкенде и не в правах доступа.
+**Обход:** нужен один реальный тап человека на "Добавить фото" в Telegram
+(любое устройство, тот же аккаунт) — дальше форма досабмитится и чекаут
+можно гонять.
+
+## [2026-07-25] [SEO-DOC-DRIFT-001] Задокументированный фикс не совпал с реальным кодом — 2 инстанса
+- **Статус:** ✅ Исправлено (детали в SEO-AUDIT-001/SEO-GEO-AEO-RESEARCH-002, analiz/tasks.md)
+- **Что случилось:** при доработке SEO (доэмитить товары в sitemap + SSR-фикс отзывов + TezCode
+  JSON-LD) наткнулся на два места, где `analiz/tasks.md`/коммит-сообщения утверждали "готово", а
+  живой grep показывал другое:
+  1. Запись "тип `StorefrontSitemapProduct` дополнен [storeSlug]" (14.07.2026) — неточная.
+     `packages/types/src/api/storefront.ts` до сих пор `{ id, updatedAt }` без `storeSlug`.
+     Рантайм API (`products.repository.ts:503`) реально отдаёт `storeSlug` — значит расхождение
+     именно в объявлении shared-типа, не в поведении. Обошёл локальным типом в web-buyer
+     (не трогал `packages/types` — зона Полата), но сам shared-тип остаётся неточным.
+  2. Коммит `e837b1ae` "LANDING-STALE-BOT-USERNAME-001 — savdo_builderBOT -> maxsavdo_bot
+     everywhere" (25.07.2026) был scoped на `apps/landing`, но `savdo_builderBOT` также сидел в
+     `apps/landing/src/components/JsonLd.tsx` (не задетый тем же коммитом почему-то) и в отдельной
+     копии Organization JSON-LD в `apps/web-buyer/src/app/layout.tsx` — про эту копию коммит вообще
+     не знал, т.к. не искал за пределами `apps/landing`.
+- **Причина класса:** "everywhere"/"дополнен" в коммит-сообщении или tasks.md — это утверждение
+  автора на момент записи, не гарантия. Дублирующиеся JSON-LD-блоки (один и тот же Organization
+  schema скопирован в 2+ app) и dev-типы, объявленные отдельно от общего пакета — оба паттерна
+  создают места, куда "фикс везде" не долетает.
+- **Что делать в следующий раз:** после любого "переименовать/дополнить X everywhere" — `grep -r`
+  по старому значению на весь монорепо (не только затронутый app), прежде чем закрывать задачу.
+
+- **Статус:** ✅ Исправлено и подтверждено на проде (health 200)
+- **Что случилось:** в рамках ONBOARD-SLUG-TRANSLIT-DEDUP-001 вынес `toLatinSlug` в
+  `packages/types/src/slug.ts` и заменил локальную копию в `telegram-demo.handler.ts` на
+  `import { toLatinSlug } from 'types'`. Локально `pnpm --filter api build` (tsc) проходил чисто —
+  tsc резолвит `.ts` файлы напрямую, ему всё равно, как это будет грузиться в рантайме.
+  На Railway деплой падал на **Network > Healthcheck** — реальная причина видна только в Deploy Logs:
+  `Error: Cannot find module '/app/apps/api/node_modules/types/src/index.ts'`. `packages/types/
+  package.json` имеет `"main": "./src/index.ts"` — без build-шага в JS. Next.js апы (web-buyer/
+  web-seller) это переживают, потому что их бандлер (webpack) сам транспилирует TS при импорте.
+  NestJS-прод-рантайм — это plain `node dist/src/main.js` (CommonJS `require`, без ts-node) —
+  требовать `.ts` файл он не может, процесс падал на старте ещё до открытия порта → healthcheck
+  закономерно валился. Старая (вчерашняя) версия осталась ACTIVE, новый код (включая
+  TG-BOT-SELLER-TERMS-001) на прод не попал, хотя выглядело так, будто пуш прошёл нормально.
+- **Что сделано:** откатил runtime-импорт в `telegram-demo.handler.ts` — вернул локальную копию
+  `CYRILLIC_MAP`/`toLatinSlug` (идентичную по логике `packages/types/src/slug.ts`, maxLength=40).
+  `packages/types/src/slug.ts` оставлен как есть — годится для web-* апов при будущей миграции
+  Азимом (у них TS резолвится через бандлер, не через голый Node require). Проверено локально:
+  build EXIT 0, смоук-запуск `node dist/src/main.js` с фейковыми env — падает уже на штатной
+  Nest config-валидации (APP_URL/JWT_ACCESS_SECRET), а не на MODULE_NOT_FOUND. Задеплоено
+  (`api` ветка, `926c0ab`), Railway "Deployment successful", `api.maxsavdo.uz/api/v1/health` → 200.
+- **Урок на будущее:** `packages/types` (и любой workspace-пакет без build-шага, main → raw `.ts`)
+  **нельзя импортировать в рантайме из apps/api** (или любого другого plain-Node/NestJS сервиса).
+  Безопасно только для апов, которые бандлят TS сами (web-buyer/web-seller через Next.js). Если
+  когда-нибудь понадобится расшарить рантайм-логику с api — сначала завести build-шаг
+  (`tsup`/`tsc` → `dist/`) в `packages/types`, поменять `main` на скомпилированный JS.
+
 ## [2026-07-16] [MODERATION-ORPHANS-001] Сироты в очереди модерации после hard-delete
 - **Статус:** ✅ Исправлено (чистка прода + фикс в purge-коде)
 - **Что случилось:** при чистке прод-базы в очереди модерации остались 3 OPEN-кейса

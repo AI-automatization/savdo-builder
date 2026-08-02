@@ -10,9 +10,9 @@ export default async function OpenGraphImage() {
     (
       <div
         style={{
-          background: '#0A0A0A',
+          background: '#0F0F0F',
           backgroundImage:
-            'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(201,168,118,0.12), transparent)',
+            'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(232,165,82,0.12), transparent)',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -29,8 +29,8 @@ export default async function OpenGraphImage() {
           style={{
             width: 220,
             height: 220,
-            background: '#0A0A0A',
-            border: '4px solid rgba(201,168,118,0.4)',
+            background: '#0F0F0F',
+            border: '4px solid rgba(232,165,82,0.4)',
             borderRadius: 36,
             display: 'flex',
             alignItems: 'center',
@@ -45,7 +45,7 @@ export default async function OpenGraphImage() {
               top: 30,
               width: 80,
               height: 50,
-              border: '7px solid #C9A876',
+              border: '7px solid #E8A552',
               borderBottom: 'none',
               borderRadius: '100% 100% 0 0 / 100% 100% 0 0',
             }}
@@ -55,7 +55,7 @@ export default async function OpenGraphImage() {
             style={{
               fontSize: 180,
               fontWeight: 900,
-              color: '#C9A876',
+              color: '#E8A552',
               lineHeight: 1,
               marginTop: 26,
               letterSpacing: -8,
