@@ -191,28 +191,6 @@
 - **Что сделать:** в web-seller списке товаров дергать `search` вместо клиентского `.filter()`;
   debounce ~300ms; при активном поиске пагинация/лимит сохраняются.
 
-## 🔴 [TMA-BECOME-SELLER-GAP-001] TMA ProfilePage «Стать продавцом» — апгрейдит роль без создания магазина
-- **Домен:** apps/tma (Полат) · **Кто взял:** не назначено
-- **Контекст:** аудит онбординга 18.07.2026 (Азим/Claude) — расхождение между `ProfilePage.tsx:56-68`
-  и `SettingsPage.tsx:41-44`, оба реализуют кнопку «Стать продавцом» по-разному.
-  `ProfilePage.handleBecomeSeller` → `applyAsSeller()` (только role BUYER→SELLER) → `reauth()` →
-  `navigate('/seller')`, магазин НЕ создаёт. `SettingsPage.handleBecomeSeller` (как и web-buyer CTA
-  `(shop)/profile/page.tsx:287`) уводит в бот `t.me/maxsavdo_bot?start=become_seller`, где идёт полноценная
-  регистрация с созданием магазина (комментарий `TMA-HYBRID-SETTINGS-BECOMESELLER-012` в самом Settings
-  прямо описывает, что так и должно быть).
-- **Проблема:** `/seller` index-route (`DashboardPage.tsx`) не проверяет наличие магазина — только фетчит
-  `/seller/orders`+`/seller/products` через `Promise.allSettled`, ошибки глотаются молча. `SellerGuard`
-  (`App.tsx:86-92`) проверяет только `role`, не `hasStore`. Продавец без магазина попадает на пустой
-  дашборд без единой подсказки — форма создания магазина есть только на `/seller/store`
-  (`SellerStorePage.tsx`, рендерится при 404 фетча стора, поля name/city/telegram), но пользователя туда
-  никто не ведёт.
-- **Варианты фикса:** (а) убрать флоу из ProfilePage, оставить только bot-flow как в Settings;
-  (б) после `applyAsSeller()` делать `navigate('/seller/store')` вместо `/seller`; (в) добавить
-  `hasStore`-редирект в `DashboardPage`/`SellerLayout` — по образцу web-seller
-  `(dashboard)/layout.tsx:225` (`router.replace('/onboarding')` при 404 стора).
-- **Файлы:** `apps/tma/src/pages/buyer/ProfilePage.tsx`, `apps/tma/src/pages/seller/DashboardPage.tsx`,
-  `apps/tma/src/App.tsx` (SellerLayout/SellerGuard, строки 86-92, 113-136).
-
 ## 🟡 [ONBOARD-SLUG-TRANSLIT-DEDUP-001] Транслитерация кириллицы в slug — API-сторона ОТКАЧЕНА (сломала прод), ждёт web-seller (Азим)
 - **Домен:** apps/web-seller (Азим) + apps/api/telegram (Полат/Claude)
 - **⚠️ 23.07.2026 — откачено:** изначально вынес `toLatinSlug()` в `packages/types/src/slug.ts` и

@@ -1,5 +1,20 @@
 # Done — Азим + Полат
 
+## 2026-08-02 (Claude) — TMA-BECOME-SELLER-GAP-001: seller без магазина попадал на пустой дашборд
+
+- **Важность:** 🔴 · **Дата:** 02.08.2026 · **Домен:** `apps/tma`
+- **Root cause:** `ProfilePage.handleBecomeSeller` → `applyAsSeller()` (`POST /seller/apply`) только
+  апгрейдит role BUYER→SELLER, магазин не создаёт. `SellerGuard` (`App.tsx:86-92`) проверял только
+  `role`, не наличие магазина — seller без стора попадал на `/seller` (DashboardPage), которая тихо
+  глотала ошибки своих fetch'ей (`Promise.allSettled`) и показывала пустой дашборд без единой подсказки.
+- **Фикс:** `SellerLayout` (`App.tsx`) уже резолвил `storeId` через `resolveStoreIdForSeller()` для
+  websocket-биндинга (`TMA-SELLER-WS-NOTIFY-001`) — переиспользовал тот же вызов (без нового запроса):
+  если `storeId` пуст и текущий путь не `/seller/store`, редиректим туда (`navigate(..., {replace:true})`).
+  `/seller/store` (`StorePage.tsx`) уже умеет рендерить форму создания при 404 — просто туда никто не вёл.
+  Решение (в) из вариантов задачи — минимальное изменение, без правки ProfilePage/DashboardPage.
+- **Проверено:** `tsc -b` + `vite build` чисто.
+- **Файлы:** `apps/tma/src/App.tsx` (SellerLayout).
+
 ## 2026-08-01 (Claude) — PIPELINE-TEST-001: полный Railway-like прогон apps/api перед пушем
 
 - **Важность:** 🟡 · **Дата:** 01.08.2026 · **Домен:** apps/api, docker-compose.yml
