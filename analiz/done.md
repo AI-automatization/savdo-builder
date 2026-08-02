@@ -1,5 +1,510 @@
 # Done — Азим + Полат
 
+## 2026-08-01 (Claude) — PIPELINE-TEST-001: полный Railway-like прогон apps/api перед пушем
+
+- **Важность:** 🟡 · **Дата:** 01.08.2026 · **Домен:** apps/api, docker-compose.yml
+- **Контекст:** просили не просто `docker build`, а полный пайплайн-тест "по меркам
+  билдинга в Railway" перед пушем кода #5 (INTEG-RAOS-002a). Использовал существующий
+  `docker-compose.yml` ("Локальная Railway-like среда") — postgres+redis+api, тот же
+  `apps/api/Dockerfile`, что и в `apps/api/railway.toml` (`builder=DOCKERFILE`).
+- **Нашёл и починил 2 реальных бага локального пайплайна (не в моём коде #5):**
+  1. `apps/api/start.sh` на диске был в CRLF (Windows `core.autocrlf=true` конвертировал
+     при чекауте) → `sh` внутри alpine падал на `set -e` ("illegal option"), контейнер
+     уходил в вечный crash-loop. Сам git-блоб (`git show HEAD:...`) — чистый LF, значит
+     **на Railway (чекаут с GitHub на Linux) это НЕ воспроизводится** — чисто локальный
+     Windows-артефакт. Восстановил файл из git (`git show HEAD:... > start.sh`) —
+     `git diff` пустой, реального изменения нет.
+  2. `docker-compose.yml` никогда не задавал `APP_URL`, а `env.validation.ts:12` требует
+     его (`Joi.required()`, добавлено при TMA-PHOTO-UPLOAD-DIAG-001) → контейнер падал
+     на старте с "Config validation error". На Railway переменная задана в дашборде —
+     прод не затронут, это пробел именно локального стенда. Добавил
+     `APP_URL: http://localhost:3000` в `docker-compose.yml`.
+- **После фиксов — полный цикл на реальных Postgres 16 + Redis 7:**
+  `prisma migrate deploy` — все 55 миграций применились чисто на свежей БД → Nest
+  поднялся, все роуты замаплены (включая 4 новых partner-эндпоинта из #5) → healthcheck
+  контейнера `healthy` (тот же путь `/api/v1/health`, что у Railway) → smoke-test:
+  `GET /health/live` 200, все 4 partner-эндпоинта без ключа → 401, с мусорным ключом →
+  корректный `401 {"code":"UNAUTHORIZED"}` JSON (не 500-крэш).
+- **Попутный security-note (не чинил, вне скоупа):** контейнер `runner`-стадии бежит от
+  root (`whoami` → root, нет `USER` в Dockerfile) — стандартная OWASP-рекомендация не
+  запускать процесс от root в контейнере. Не трогал — требует отдельной проверки
+  (pg_dump/backup-скрипт, права на volume), не тривиальный точечный фикс.
+- **Файлы:** `docker-compose.yml` (+APP_URL), `apps/api/start.sh` (line-ending fix,
+  content идентичен HEAD — `git diff` пустой).
+- **Вывод:** код #5 полностью проходит Railway-эквивалентный build+migrate+start+
+  healthcheck цикл. Локальный стенд (`docker-compose.yml`) был неполным для двух
+  независимых от #5 причин — теперь исправен для будущих прогонов.
+
+## 2026-07-31 (Claude) — TMA-LIGHT-THEME-AUDIT-001: 4 бага светлой темы
+
+- **Важность:** 🟡 · **Дата:** 31.07.2026 · **Домен:** `apps/tma`
+- **Контекст:** аудит по запросу владельца ("белая тема слишком неудобная"). Нашёл 4
+  конкретных бага статическим анализом (grep + расчёт WCAG-контраста), не на глаз.
+- **Что сделано:**
+  1. `pages/seller/ChatPage.tsx:664` — поле ввода сообщения: было `color: '#fff'`
+     хардкодом на `var(--tg-surface-hover)` (в light = `#F5F5F5`, текст фактически
+     невидим при наборе). → `var(--tg-text-primary)`. У покупательского чата это
+     место уже было правильным — пропустили при миграции палитры 28.07.
+  2. `index.css` — `--tg-bottomnav-shadow` не был определён нигде → `BottomNav.tsx`
+     всегда падал на inline-фоллбек `rgba(0,0,0,0.40)`, тюненный под тёмный фон.
+     В light тень нижней навигации была в ~6.7 раза тяжелее чем `--tg-card-shadow`.
+     Добавил токен в оба theme-блока (`dark: 0.40`, `light: 0.06`, как у card-shadow).
+  3. `--tg-text-dim`: было `#A3A3A3` в light — контраст на белом 2.53:1 (WCAG AA
+     требует 4.5:1 для текста). Используется как реальный текст (`.section-label` и
+     т.п.), не декоративно. → `#6E6E6E` (~5.1:1). Синхронизировано в `lib/themes.ts`
+     (не используется в рантайме, но держим как честный референс).
+  4. `.scroll-fade-x::after` — градиент затухания был `var(--tg-bg) → rgba(15,15,15,0)`
+     хардкодом. В dark совпадало (bg = rgb(15,15,15), чистое затухание). В light
+     (bg = белый) градиент шёл в прозрачный ЧЁРНЫЙ → серая муть на середине вместо
+     исчезновения в белое. Добавил `--tg-bg-rgb` (raw R,G,B без alpha) на тему,
+     переключил на `rgba(var(--tg-bg-rgb), 0)` — теперь работает в обеих темах одним
+     правилом.
+- **Проверено:** `tsc -b` чисто, `vite build` чисто. Живой браузер НЕ проверял —
+  TMA требует Telegram WebApp контекст (initData/JWT), локального dev-mock нет,
+  поднимать полноценную авторизованную сессию ради 4 CSS-токенов не стал.
+  Верификация — расчёт контраста (WCAG формула) + чистая сборка.
+- **Файлы:** `apps/tma/src/{index.css,lib/themes.ts,pages/seller/ChatPage.tsx}`
+- **Что НЕ трогал (отдельная, более крупная находка при аудите, не входила в
+  запрошенные 4):** белый текст (`color:'#fff'`) на золотом `var(--tg-accent)` фоне
+  в нескольких местах (`StorePage.tsx:375`, `OrdersPage.tsx:619`,
+  `BottomNav.tsx:115` и др.) — контраст ~2.1:1, тоже не проходит WCAG AA, но это
+  не light-theme-specific (тот же баг в обеих темах) и затрагивает design-system
+  паттерн кнопок сразу в нескольких компонентах — не стал трогать без отдельного ОК.
+
+## 2026-07-31 (Claude) — INTEG-RAOS-002a: Partner API update/stock/delete (issue #5)
+
+- **Важность:** 🔴 · **Дата:** 31.07.2026 · **Домен:** `apps/api/src/modules/partner`
+- **Контекст:** RAOS-сторона интеграции (`integrations/savdo/`) уже задеплоена (PR #426, Ибрат),
+  но у нас в Partner API был только `create` товара — RAOS'овские `updateProduct`/`updateStock`/
+  `deleteProduct` (см. `SavdoOutboundService` в raos-pos-cosmetics) слали запросы в никуда.
+- **Что сделано:**
+  - `PATCH /api/v1/partner/products/:id` — частичный update (name→title, price→basePrice,
+    description; переиспользует `UpdateProductUseCase`, значит и его валидацию цены).
+    `imageUrl` — замена обложки (скачать→залить→новая primary→удалить старую строку).
+    `isActive` — маппинг на state machine (`ChangeProductStatusUseCase`), идемпотентно
+    (no-op если товар уже в целевом статусе — партнёр может ретраить).
+  - `PATCH /api/v1/partner/products/:id/stock` — прямой `Product.totalStock` (партнёрские
+    товары создаются без вариантов → single-SKU режим, см. `product-presenter.service.ts`).
+    Явный 422, если у товара позже завели варианты (сток тогда per-variant, поле никто не
+    читает) — не молчим, объясняем.
+  - `DELETE /api/v1/partner/products/:id` — авто-архивирует ACTIVE перед soft-delete (INV-P04
+    запрещает удалять активный товар напрямую, RAOS не обязан знать наш state machine).
+    Отвечает `200 { id, deleted: true }`, не `204` — RAOS-клиент всегда делает
+    `await response.json()`, пустое тело сломало бы его парсинг.
+  - DRY: вынес download+anti-SSRF-валидацию фото из `PartnerCreateProductUseCase` в общий
+    `partner/utils/partner-image.util.ts` (второй потребитель — update).
+  - `ProductsModule`: экспортировал `UpdateProductUseCase` (не был exported).
+  - Тесты: 17 новых кейсов в `partner.use-cases.spec.ts` (27 итого в файле, все зелёные),
+    `tsc --noEmit` чист.
+- **Файлы:** `apps/api/src/modules/partner/{partner.controller.ts,partner.module.ts,
+  dto/partner-update-product.dto.ts,dto/partner-update-stock.dto.ts,
+  use-cases/partner-update-product.use-case.ts,use-cases/partner-update-stock.use-case.ts,
+  use-cases/partner-delete-product.use-case.ts,use-cases/partner-create-product.use-case.ts,
+  utils/partner-image.util.ts,use-cases/partner.use-cases.spec.ts}`,
+  `apps/api/src/modules/products/{products.module.ts,repositories/products.repository.ts}`
+  (добавлен `setTotalStock`), `docs/contracts/partner-api-raos.md`.
+- **⚠️ Найден баг НЕ у нас, а на RAOS-стороне** (не чинил — чужой репозиторий/зона, сообщить
+  Ибрату): `SavdoOutboundService.createProduct` в raos-pos-cosmetics ожидает
+  `{ data: { product: { id } } }`, но наш ответ плоский `{ id, ... }` — `res.product.id` упадёт
+  при первом реальном push товара. Пока не проявляется, т.к. `savdoVisible` нигде не
+  проставляется (issue #427 на их стороне). Записано в `analiz/tasks.md` (`INTEG-RAOS-002b`).
+- **Что осталось:** issue #6 (order-export webhook, наш → RAOS) — отдельная задача,
+  `INTEG-RAOS-002b` в `analiz/tasks.md`.
+
+## 2026-07-28 (Claude) — AUTH-OTP-ERROR-MESSAGE-SWALLOWED-001: непонятная ошибка при TELEGRAM_NOT_LINKED
+
+- **Важность:** 🟡 · **Дата:** 28.07.2026 · **Домен:** `apps/web-seller`, `apps/web-buyer`
+- **Root cause:** OTP в проекте идёт только через Telegram-бот (`@maxsavdo_bot`, никакого SMS/Eskiz).
+  `apps/api/src/modules/auth/services/otp.service.ts:118-124` корректно кидает `TELEGRAM_NOT_LINKED`
+  с явным текстом ("Откройте @maxsavdo_bot и поделитесь номером телефона"), если у телефона ещё нет
+  привязанного `telegramId` — то есть для СОВСЕМ нового юзера, который ни разу не писал боту. Но
+  фронтенд не показывал этот текст:
+  - `apps/web-seller/src/app/(auth)/login/page.tsx:70-71` (было) — брал `error.message` (сырой axios,
+    "Request failed with status code 400") вместо `error.response.data.message`.
+  - `apps/web-buyer/src/components/auth/OtpGate.tsx:32-33,41-42` (было) — вообще хардкодил generic
+    текст на любую ошибку через пустой `catch {}`, backend-сообщение никогда не доходило до экрана.
+  Итог: новый продавец/покупатель, зашедший напрямую на web (минуя бота), утыкался в бесполезную
+  ошибку без единой подсказки, что регистрация физически невозможна без предварительного открытия бота.
+- **Что сделано:** в обоих файлах добавлен unwrap `err.response?.data?.message ?? err.message ?? fallback`
+  (паттерн уже был в `apps/web-seller/.../chat/page.tsx:167-172`, просто скопирован в auth-флоу). Плюс
+  добавлена явная ссылка на `@maxsavdo_bot` рядом с ошибкой на шаге ввода телефона в обоих приложениях
+  (раньше ссылка на бота была только на шаге ввода кода, т.е. уже после того как код физически не
+  мог уйти).
+- **Не сделано:** глубокая переработка регистрационного флоу (например, принудительный редирект на
+  deep-link бота вместо формы на сайте) — не просили, обошлись минимальным UX-фиксом ошибки.
+
+## 2026-07-28 (Claude) — BRAND-PALETTE-CANON-LANDING-001: перевод shop/seller/TMA под палитру лендинга
+
+- **Важность:** 🟡 · **Дата:** 28.07.2026 · **Домен:** `apps/web-buyer`, `apps/web-seller`, `apps/tma`,
+  `docs/brand`, `docs/design`
+- **Контекст:** владелец указал, что после рескина `apps/landing` (27.07, коммит `661e9ec`, зона
+  Юсуфа) три остальных клиента визуально разошлись с лендингом. Проверка показала обратное тому,
+  что предполагалось: web-buyer/web-seller/TMA были согласованы МЕЖДУ СОБОЙ и с задокументированной
+  `docs/brand/maxsavdo-brand-v2.md` (`#0A0A0A`/`#C9A876`, eyedropper от 25.05.2026) — расхождение
+  было только в лендинге (`#0F0F0F`/`#E8A552`). Владелец подтвердил явно: **палитра лендинга — новый
+  канон**, привести остальное под неё.
+- **Что сделано:**
+  1. Rich Black `#0A0A0A → #0F0F0F`, Champagne Gold `#C9A876 → #E8A552` — заменено во всех
+     hex/rgba-вхождениях в `apps/web-buyer`, `apps/web-seller`, `apps/tma` (globals.css, icon/apple-icon/
+     opengraph-image, manifest.ts, MaxsavdoLogo/Mark, index.css, styles.ts, themes.ts и т.д. — 23 файла).
+  2. Hover/light-состояния золота разведены по смыслу (раньше был один "Champagne Gold Light"):
+     **`#D4922E`** (темнее — filled-кнопки на светлом фоне, ровно формула из
+     `apps/landing/tailwind.config.ts`) и **`#FFC574`** (светлее — только там, где gold используется
+     как ТЕКСТ на тёмном фоне: `--tg-accent-text` dark theme, SELLER-role accent в TMA, который по
+     дизайну должен быть ярче BUYER — если бы взял везде `#D4922E`, SELLER стал бы темнее вместо ярче,
+     а текст-акцент на тёмном фоне потерял бы контраст). Посчитано сохранением исходной дельты
+     осветления `C9A876→E8C898`, применённой к новому базовому gold.
+  3. `docs/brand/maxsavdo-brand-v2.md` §2 (Core) и §5 (tokens) — обновлён HEX, добавлена запись v3
+     с датой/причиной смены канона. `docs/design/maxsavdo-design-v2.md` — синхронизированы ссылки на HEX.
+  4. Попутно пофикшен `debug/hooks/pre-edit-check.ps1` — блокировал правки в `apps/web-buyer`/
+     `web-seller` по устаревшему правилу зон (до реорганизации 27.07.2026 v2); поправлен под актуальное
+     (`apps/landing` = зона Юсуфа), плюс исправлен захардкоженный путь `debug/savdo-builder` →
+     `debug/projects/savdo-builder`.
+- **Не тронуто:** `apps/landing` (источник канона, зона Юсуфа), `apps/admin` (не упоминался владельцем).
+- **Проверка:** `grep` подтвердил отсутствие старых hex/rgba во всех файлах; не собирал/не деплоил
+  (деплой отдельным решением владельца — прод, без staging).
+
+## 2026-07-27 (Claude) — LANDING-SEO-FIX-001: технический SEO лендинга (P0/P1 из аудита 26.07)
+
+- **Важность:** 🟡 · **Дата:** 27.07.2026 · **Домен:** `apps/landing`
+- **Контекст:** аудит живого `maxsavdo.uz` (Obsidian `PROJECTS/savdo-builder/decisions/
+  2026-07-26-maxsavdo-seo-geo-aeo-audit.md`). Не пересекается с `analiz/seo-geo-aeo-report-2026-07-24.md`
+  — тот про `web-buyer`, этот про `landing`. Deploy-topology из ADR 18.07 подтверждён исправленным.
+
+### Что исправлено
+
+1. **`/ru` отдавался как `<html lang="uz">`** (hreflang говорил `ru`) — главный баг. Вложенный
+   `ru/layout.tsx` физически не может переопределить `<html>` root-лейаута. Перешли на **две
+   root-группы**: `src/app/(uz)/` и `src/app/(ru)/ru/`, у каждой свой root layout со своим `lang`.
+   URL не изменились. Общая разметка вынесена в `components/RootShell.tsx`, шрифт — в `lib/fonts.ts`.
+2. **`twitter:image` вёл на `/og-image.png` → 404** (файла не существует; `og:image` при этом брался
+   из file-convention). Добавлены `twitter-image.tsx` + `opengraph-image.tsx` в обе локали, рендерер
+   вынесен в `lib/og.tsx` (текст берётся из i18n, т.е. RU-картинка теперь на русском). Явные
+   `images` из metadata убраны — иначе хардкодился URL с меняющимся build-хешем.
+   Заодно: убран `runtime = 'edge'` → картинки генерируются на билде статически, а не по запросу.
+   Заодно: бейдж «14 kun bepul» заменён на «Komissiyasiz» — 14-дневного триала не существует
+   (FAQ: «Free тариф работает без ограничения по времени»).
+3. **`title` на `/ru` дублировался** (`... | Бот + Сайт + Канал | MaxSavdo`) — `title.absolute`.
+4. **sitemap:** убраны фрагментные URL `/#pricing` и `/#faq` (Google не считает фрагмент отдельной
+   страницей — это были дубли `/`); добавлены `alternates.languages` (hreflang в самом sitemap);
+   `lastModified` обновлён на дату реального изменения копирайта.
+5. **JSON-LD стал единым графом:** у `Organization`/`WebSite`/`SoftwareApplication` появились
+   стабильные `@id`, добавлен узел `WebPage`, все ссылаются друг на друга (`publisher`/`isPartOf`/
+   `about`/`seller`). Раньше это были 4 несвязанных блоба. `Organization` дополнена `legalName`
+   (MCHJ «TEZ KOD» — из публичной оферты `web-buyer/src/app/offer/page.tsx` §9), `address`
+   (Toshkent/UZ) и `contactPoint`. Ничего не выдумано.
+6. **`next.config.ts`:** `Strict-Transport-Security` (2 года, preload) + 308-редирект
+   `www.maxsavdo.uz` → apex (раньше оба хоста отдавали 200; канонникал спасал лишь частично).
+7. **`robots.googleBot`:** `max-image-preview: large`, `max-snippet: -1`.
+8. **Keywords:** было 8 общих слов, стало ~40 — бренд/категория/интент/JTBD/гео, uz+ru в обеих локалях.
+9. **Аналитики не было вообще** (ни GA4, ни Метрики). Добавлен `components/Analytics.tsx` —
+   **env-gated**: без `NEXT_PUBLIC_GA_ID` / `NEXT_PUBLIC_YANDEX_METRICA_ID` не рендерит ничего.
+   `strategy="afterInteractive"`, чтобы не трогать LCP/INP.
+10. **Верификация вебмастеров** заведена через env (`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`,
+    `NEXT_PUBLIC_YANDEX_VERIFICATION`, `NEXT_PUBLIC_BING_SITE_VERIFICATION`) — коды добавляются
+    на Railway без правки кода. Все переменные описаны в `.env.example`.
+
+### Файлы
+
+`src/app/(uz)/{layout,page,opengraph-image,twitter-image}.tsx` ·
+`src/app/(ru)/layout.tsx` · `src/app/(ru)/ru/{page,opengraph-image,twitter-image}.tsx` ·
+`src/components/{RootShell,Analytics}.tsx` · `src/lib/{seo,og,fonts,jsonld}.ts(x)` ·
+`src/app/sitemap.ts` · `next.config.ts` · `.env.example`.
+Удалены: `src/app/layout.tsx`, `src/app/ru/layout.tsx`.
+
+### Проверено (не «должно работать», а поднято и проверено)
+
+`tsc --noEmit` EXIT 0 · `next build` EXIT 0, 12 статических роутов, ни одного динамического ·
+standalone-сервер поднят на :3999 и проверен запросами:
+`/` → `lang="uz"`, `/ru` → `lang="ru"` · og/twitter картинки обеих локалей → 200 `image/png` ·
+sitemap содержит только 2 реальных URL с hreflang · HSTS в заголовках ·
+`Host: www.maxsavdo.uz` → 308 на `https://maxsavdo.uz/ru` · без env аналитика в HTML отсутствует.
+
+### Осталось (не код — решение владельца)
+
+- Подключить GSC / Яндекс.Вебмастер / Bing и положить коды + GA4/Метрику в Railway env.
+  **Без этого весь SEO измерять нечем.**
+- GEO (off-site) и AEO (контент-слой) — отдельные задачи, см. аудит в Obsidian.
+
+## 2026-07-26 (Azim/Claude) — LANDING-REDESIGN-001 хвосты: сломанный билд + некликабельные кнопки + `#how` + иллюстрации
+- **Важность:** 🔴 (два прод-инцидента подряд после мержа) → 🟢 (контент-полировка) · **Дата:** 26.07.2026
+- **Домен:** apps/landing (Азим)
+- **🔴 Инцидент 1 — Railway build упал `sh: next: not found` (`22dae5f4`):** `package-lock.json`,
+  закоммиченный вместе с редизайном, был неполным — локальный `node_modules` уже содержал
+  symlink'и на `next`/`react` в корневой pnpm-стор (артефакт более раннего `pnpm install` на
+  корне монорепо), поэтому `npm install` для добавления `gsap` не выписал полное дерево зависимостей.
+  Локально всё собиралось (файлы физически были доступны через symlink), но чистый Docker-стейдж
+  Railway — нет. Пересобрал lock-файл с нуля (362 пакета вместо 16), проверил в изолированной
+  temp-папке ровно как это делает Dockerfile. Подробности + antipattern на будущее — `logs.md`
+  LANDING-BUILD-BROKEN-LOCKFILE-003, Obsidian `_antipatterns.md`.
+- **🔴 Инцидент 2 — кнопки Hero не кликались (`1a2a8c4a`):** три невидимых crossfade-блока текста
+  сценария прокрутки (`absolute inset-0`) перекрывали зону с CTA/метриками — `opacity:0` не убирает
+  `pointer-events`, так что клики по «Bepul boshlash»/«Qanday ishlaydi» проваливались в невидимый
+  слой поверх. Добавлен `pointer-events-none` на этот слой (внутри только текст, интерактива нет).
+- **✅ `#how` вместо TMA-ссылки + иллюстрации к шагам (`41eb5570`):** вторая кнопка Hero
+  «Qanday ishlaydi»/«Как это работает» раньше открывала Telegram Mini App напрямую — не совпадало
+  с шапкой сайта, где та же надпись скроллит к блоку объяснения на странице. Приведено к единому
+  поведению (`#how`), `TMA_URL`-константа убрана как мёртвый код. По просьбе Азима — к каждому из
+  3 шагов в `How.tsx` добавлена стилизованная SVG-иллюстрация (не выдаётся за реальный скриншот
+  продукта — конфирм у Азима, что сейчас нужны именно иллюстрации, видео добавится позже).
+- **Проверено:** `tsc --noEmit` + `next build` чистые после каждого фикса, деплой на Railway
+  подтверждён curl'ом/PowerShell-поллингом по уникальным маркерам в HTML после каждого пуша.
+
+## 2026-07-26 (Azim/Claude) — LANDING-REDESIGN-001: полный реcкин apps/landing (main, `8fccf50a`)
+
+### ✅ Hero (GSAP scroll-story) + ProblemSection/WhyUs/FinalCta + честный beta-badge
+- **Важность:** 🟢 (продукт/маркетинг, задеплоено на прод) · **Дата:** 26.07.2026 · **Домен:** apps/landing (Азим)
+- **Что сделано:** визуал обкатан на throwaway-прототипе (`Desktop/maxsavdo-landing-wow-test`, вне репо),
+  затем перенесён в реальный `apps/landing` (Next 15) — реальные `dict` (uz+ru), реальные ссылки на
+  `@maxsavdo_bot`/TMA, реальный logo/language-switcher. Hero — GSAP ScrollTrigger 3-фазный сценарий
+  (телефон влетает → каталог → cart-toast → order-toast), рамка корпуса 7px, без 3D-гема (был в
+  промежуточной итерации, убран по фидбеку). Новые секции: ProblemSection, WhyUs (сравнение с Direct/
+  Marketplace/Tilda), FinalCta. `hero.badge` теперь честно говорит «Yopiq beta» — раньше live-Hero
+  вообще не упоминал бета-статус. `hero.title`/`subtitle`/цены/FAQ — не тронуты (визуальный реskin,
+  не смена оффера). Добавлена зависимость `gsap` (`apps/landing/package.json` + committed
+  `package-lock.json` — это единственный лок-файл, который реально использует Railway-сборка этого апа,
+  `Dockerfile` копирует только `apps/landing/`, не трогает корневой pnpm workspace).
+- **🔎 Побочная находка + фикс (вне исходного скоупа, но внутри apps/landing):**
+  `GetFeaturedStorefrontUseCase` (`apps/api`) уже давно отдаёт `{topStores, featuredProducts}`, но
+  `apps/landing/src/lib/api.ts` всё ещё ждал плоский массив (`Array.isArray(data) ? data : []`) —
+  секция «Bizning doʻkonlar» была молча пустой независимо от реальных данных, задолго до этой сессии.
+  `FeaturedStore`-тип (`productsCount`, которого в API нет) заменён на реальные поля `topStores`
+  (`city`, `avgRating`, `reviewCount`, `isVerified`) — карточка магазина теперь показывает город/
+  рейтинг/бейдж «Tasdiqlangan» вместо несуществующего счётчика товаров.
+- **Проверено:** `tsc --noEmit` + `next build` (prod-сборка, идентична Docker-стадии Railway) — оба
+  чистые. `/` и `/ru` дают 200 с реальным контентом (curl), JSON-LD (`organizationJsonLd`/`pageJsonLd`)
+  не задет. Полноценный визуальный QA (Playwright) прерван на середине — MCP-сервер отвалился после
+  restart node-процессов в сессии, дальше проверял через curl+HTML.
+- **Обнаружено, НЕ трогалось (см. logs.md):** ветка `landing` (`.worktrees/landing`) разошлась с
+  `main` на 15+ коммитов и отстаёт по важным фиксам (bot username, store-домен, Free-лимит) — Railway
+  её больше не использует (переключено на `main` 25.07). Требует отдельного решения — смержить или
+  удалить.
+
+## 2026-07-25 (Azim/Claude) — SEO/GEO-хвосты + FRONT-SERVER-SEARCH-001 + SELLER-PAYMENT-REQUISITES-001
+
+### ✅ SEO-AUDIT-001 п.2 + SEO-GEO-AEO-RESEARCH-002 п.4 — товары в sitemap + SSR отзывов
+- **Важность:** 🔴/🟡 · **Дата:** 25.07.2026 · **Домен:** apps/web-buyer (`.worktrees/web-buyer`)
+- **Что сделано:**
+  1. `sitemap.ts` эмитит `feed.products` → `/{storeSlug}/products/{id}` (Полат разблокировал
+     `storeSlug` в API 14.07, но фронт не был доделан).
+  2. Найден и зафикшен реальный баг: текст отзывов на product-странице рендерился только
+     клиентским `useProductReviews` без `initialData` — невидим в первом server-HTML (Googlebot
+     без полного JS-рендера, все AI-краулеры), хотя `aggregateRating` в JSON-LD уже был там —
+     расхождение structured data и видимого контента. Фикс по паттерну SEO-AUDIT-001 п.3/4:
+     `page.tsx` server-фетчит первую страницу отзывов → `initialReviews` до `ProductReviews`,
+     `items`-state сидируется синхронно (не через useEffect).
+- **Проверено:** `tsc --noEmit` EXIT 0 (web-buyer).
+
+### ✅ TezCode parentOrganization в JSON-LD + добит баг переименования бота
+- **Важность:** 🟡 · **Дата:** 25.07.2026 · **Домен:** apps/landing + apps/web-buyer
+- **Что сделано:** `parentOrganization` (TezCode, `sameAs` на верифицированный
+  `github.com/AI-automatization`, т.к. `tezcode.uz` не резолвится) добавлен в
+  `apps/landing/JsonLd.tsx` и `apps/web-buyer/layout.tsx`. Заодно нашёл: коммит
+  `LANDING-STALE-BOT-USERNAME-001` (сегодня, `e837b1ae`) пропустил `apps/landing/JsonLd.tsx` и
+  отдельную копию Organization-schema в `apps/web-buyer/layout.tsx` — обе тоже переведены на
+  `maxsavdo_bot`. Урок (лог `SEO-DOC-DRIFT-001`): после "переименовать везде" — `grep -r` по
+  всему монорепо, не только по затронутому app.
+- **Проверено:** `tsc --noEmit` EXIT 0 в обоих apps.
+
+### ✅ FRONT-SERVER-SEARCH-001 — серверный поиск в web-seller
+- **Важность:** 🟡 · **Дата:** 25.07.2026 · **Домен:** apps/web-seller (`.worktrees/web-seller`)
+- **Что сделано:** `/seller/products?search=` вместо клиентского `.filter()`, debounce 300мс
+  (`useDebouncedValue`, паттерн из web-buyer `use-search.ts`). Статус-фильтр остался клиентским
+  (не в скоупе). Empty-state починен: "нет товаров" vs "ничего не найдено" через явный флаг
+  `isFiltering`, а не сырой `products.length` (тот после серверного поиска стал бы врать).
+- **Проверено:** `tsc --noEmit` EXIT 0.
+
+### ✅ SELLER-PAYMENT-REQUISITES-001 — реквизиты оплаты, web-seller + web-buyer
+- **Важность:** 🟢 · **Дата:** 25.07.2026 · **Домен:** apps/web-seller + apps/web-buyer
+- **web-seller:** `PaymentRequisitesSection` в `settings/page.tsx` — toggle наличные/перевод на
+  карту, поля карты/держателя/Click/Payme, client-валидация зеркалит backend (13-24 цифры,
+  https-only), реальные 422 через `errorText()`.
+- **web-buyer:** `StorePaymentInfo.tsx` на странице магазина — карта с copy-to-clipboard +
+  Click/Payme кнопки, только при `acceptsCardTransfer && cardNumber`. **Осознанно НЕ привязано
+  к checkout/`paymentMethod`** — нашлась развилка: disabled-кнопка «card» в checkout это
+  «картой курьеру» (`CheckoutPaymentMethod` enum), не «перевод заранее» — у второго нет своего
+  значения в enum. Азим выбрал информационный блок вместо похода к Полату за новым enum-значением.
+- **Проверено:** `tsc --noEmit` EXIT 0 в обоих apps.
+
+### ⚠️ Системная находка — branch-sync разрыв `packages/types`, 4 раза за сессию
+- `slug.ts` (транслитерация), `storeSlug` в `StorefrontSitemapProduct`, `StorePaymentRequisites`/
+  `UpdateStorePaymentRequisitesRequest` — всё это существует только на `main`, отсутствует на
+  `web-seller`/`web-buyer` (долгоживущие ветки, `main` в них не мержится автоматически).
+  Обходились локальными типами в каждом случае (не трогали `packages/types` — зона Полата).
+  **Полату:** возможно стоит завести регулярный процесс синка `packages/types` в ветки web-*,
+  а не находить дыры по одной. Детали каждого случая — `analiz/tasks.md`.
+- **ONBOARD-SLUG-TRANSLIT-DEDUP-001 остаётся открытым** — упирается именно в этот разрыв +
+  расхождение таблиц транслитерации (`й→y`/`щ→sch` в web-seller живёт в БД, `й→j`/`щ→shch` в
+  packages/types никогда не обрабатывала прод-трафик) — канонической должна стать web-seller-таблица.
+
+---
+
+## 2026-07-25 (Claude) — FULL-AUDIT-LANDING-2026-07-20: 2 живых прод-бага на apps/landing (main)
+
+### ✅ FeaturedStores.tsx хардкод + Free-тариф лимит 20/10 vs реальные 50
+- **Важность:** 🔴 (оба бага сейчас реально живые в проде — main деплоится с сегодняшнего дня)
+- **Дата:** 25.07.2026
+- **Контекст:** нашёл незакоммиченный с 20.07 аудит `FULL-AUDIT-LANDING-2026-07-20` в
+  worktree `landing` (тот же паттерн, что `FULL-AUDIT-WS-2026-07-20` на web-seller — параллельная
+  сессия аудировала, не закоммитила). 6 из 8 находок были против ветки `landing`, которая
+  сегодня перестала быть источником деплоя (переключил Railway-сервис `landing` на `main`
+  раньше в этой сессии) — JSON-LD/домен-в-railway.toml/канал-в-футере уже решены как побочный
+  эффект. Проверил оставшиеся 2 против реального `main` — подтвердились как живые баги.
+- **Что сделано:**
+  1. `FeaturedStores.tsx:54` — хардкод `savdo-builder-by-production.up.railway.app` →
+     `shop.maxsavdo.uz` (клик «Открыть магазин» на главной вёл на внутренний Railway-домен).
+  2. `lib/i18n.ts` — Free-тариф указывал «20 товаров» в pricing-блоке и «10 товаров» в FAQ
+     одновременно (ru+uz, 4 места) — реальный лимит по `plan-config.ts` (`productsLimit: 50`)
+     — оба места приведены к «До 50 товаров».
+- **Проверено:** `tsc --noEmit` EXIT 0.
+- **Осталось (не блокер, низкий приоритет):** OG-картинка обещает «14 kun bepul» (противоречит
+  FAQ — Free без ограничения по времени) + синяя палитра вместо амбер-бренда;
+  `.env.example` — `NEXT_PUBLIC_BOT_USERNAME=savdobuilderBOT` опечатка (не читается в src/,
+  не влияет на рантайм). Полный список — `analiz/logs.md` на worktree `landing`.
+
+---
+
+## 2026-07-25 (Claude) — WEB-SELLER-ONBOARDING-AUDIT-002 + SCREENS-AUDIT-003 — 11 находок закрыты на ветке web-seller
+
+### ✅ 11 UX/честность-копирайта находок из двух аудитов (23-24.07) — код на `.worktrees/web-seller`
+- **Важность:** 🔴/🟠/🟡 (P0-краш из того же захода — отдельная запись ниже)
+- **Дата:** 25.07.2026
+- **⚠️ Процессный урок (дорогой):** начал править эти находки на `main`, где `apps/web-seller`
+  — устаревший форк (88 файлов расхождения с `origin/web-seller`, включая всю i18n-систему).
+  Откатил, переделал на `.worktrees/web-seller`. **Правило на будущее: для apps/web-seller
+  ВСЕГДА работать в `.worktrees/web-seller` (или ветке `web-seller`), никогда на `main`** —
+  так же для apps/web-buyer/landing, см. `apps/web-seller/CLAUDE.md`/`tasks-azim.md`.
+- **Что сделано (коммит `c9446078`, ветка `web-seller`):** см. полный список в `tasks.md` записях
+  выше (теперь ✅) — реальные ошибки backend вместо generic-текста (новый `lib/error-text.ts`,
+  переиспользован в 6 экранах), DRAFT-баннер на дашборде, честный копирайт тарифов (убраны
+  несуществующие «свой домен»/«AI-подача»/«без бейджа», поправлены лимиты и годовая скидка),
+  фикс сырого enum на profile, мобильные подписи прогресс-бара, кнопка «Назад», перевод
+  захардкоженной английской строки в analytics, фикс auto-mark-read в уведомлениях, ссылка на
+  поддержку у скрытых товаров, переименование "Номер аккаунта".
+- **Проверено:** `tsc --noEmit` EXIT 0, `next build` 21/21 страниц чисто.
+- **Побочная находка при работе в worktree:** незакоммиченный с 20.07 P0-баг (`/pricing` краш) —
+  см. отдельную запись `FULL-AUDIT-WS-2026-07-20` в этом же файле (worktree), stop-gap закрыт
+  первым (коммит `ee986c15`) до того, как взялся за 11 находок выше.
+
+---
+
+## 2026-07-25 (Claude) — LANDING-STALE-BOT-USERNAME-001 + LANDING-DEPLOY-TOPOLOGY-001 Railway-фикс
+
+### ✅ [LANDING-STALE-BOT-USERNAME-001] apps/landing — старый Telegram-бот в 5 местах
+- **Важность:** 🔴
+- **Дата:** 25.07.2026
+- **Контекст:** Полат нашёл и залогировал 24.07 (`e2016ba7`) — owner заметил старое имя бота
+  живьём. Подтвердил grep'ом и расширил список: помимо 3 мест из его находки (`jsonld.ts:5`,
+  `Footer.tsx:20`, `llms.txt:10`) нашёл 4-е — `Hero.tsx:96` (декоративный tag в phone-mockup).
+- **Файлы:** `apps/landing/src/components/Footer.tsx`, `Hero.tsx`, `src/lib/jsonld.ts`,
+  `src/lib/i18n.ts`, `public/llms.txt`.
+- **Что сделано:** `savdo_builderBOT` → `maxsavdo_bot` во всех 4 местах. Канал `@savdobuilder`
+  (`Footer.tsx` пункт «Канал», `jsonld.ts` sameAs) — убран целиком, не заменён на другой URL:
+  публичного TG-канала `@maxsavdo` по `docs/business` ещё не существует (pre-launch roadmap
+  item), оставлять второй несуществующий адрес вместо первого не стали. `FooterDict`/`Dict.footer`
+  типы упрощены (убрано поле `channel`). tsc EXIT 0, `next build` 8/8 страниц чисто (standalone
+  trace-copy падает локально на Windows symlink EPERM — не билд-ошибка, на Railway/Linux не
+  воспроизводится). Коммиты `94338136`, `e837b1ae` (main).
+
+### ✅ [LANDING-DEPLOY-TOPOLOGY-001] Настоящая причина 404 apex — не edge-кэш, а build-конфиг сервиса
+- **Важность:** 🔴
+- **Дата:** 25.07.2026
+- **Контекст:** SEO-AUDIT-001 P0 диагноз "remove+re-add custom domain" (предполагал edge-routing
+  кэш) не подтвердился при живой проверке Railway Settings. Реальная причина: Railway-сервис
+  `landing` (домен `maxsavdo.uz`) был настроен собирать **`apps/web-seller`**
+  (Dockerfile Path `/apps/web-seller/Dockerfile`, Start Command `node apps/web-seller/server.js`,
+  Watch Paths `apps/web-seller/**`, ветка `landing`) — не `apps/landing`. Отсюда и 404 на
+  `/robots.txt`/`/sitemap.xml` с телом от web-seller (в web-seller этих роутов просто нет).
+  Живьём подтверждено curl'ом ДО фикса: `/` → 200 landing-контент (он физически лежит внутри
+  apps/web-seller на ветке `landing`), `/robots.txt`+`/sitemap.xml` → 404 с title
+  «Seller Dashboard».
+- **Что сделано (Railway dashboard, сервис `landing`, project `savdo builder`):**
+  1. Source Branch: `landing` → `main` (там же теперь и фикс бота выше, и весь SEO-пакет
+     17-18.07 от Fable 5 — JSON-LD, llms.txt, honest sitemap dates).
+  2. Build → Dockerfile Path: `/apps/web-seller/Dockerfile` → `/apps/landing/Dockerfile`.
+  3. Build → Watch Paths: `apps/web-seller/**` → `apps/landing/**`.
+  4. Deploy → Start Command: `node apps/web-seller/server.js` → `node server.js`
+     (соответствует `apps/landing/Dockerfile` — standalone-сборка кладёт `server.js` в
+     `/app`, без вложенного `apps/landing/` пути, в отличие от web-seller-сборки).
+  5. Apply 4 changes → Deploy. Билд запущен на коммите `e837b1ae` (main).
+- **✅ Первый деплой подтверждён curl'ом:** `robots.txt` + `sitemap.xml` → 200, реальный контент
+  вместо web-seller-404.
+- **🔴 НАЙДЕН и исправлен доп. баг сразу после первого деплоя:** `sitemap.xml` отдавал
+  **относительные** URL (`<loc>/</loc>` вместо `<loc>https://maxsavdo.uz/</loc>`), `robots.txt`
+  — `Sitemap: /sitemap.xml` вместо абсолютного. По sitemap-протоколу `<loc>` обязан быть
+  абсолютным — краулеры такой sitemap могут игнорировать. **Причина:** переменная
+  `NEXT_PUBLIC_SITE_URL` не была задана в Railway Variables сервиса `landing`; я ошибочно
+  посчитал это некритичным из-за `?? 'https://maxsavdo.uz'` в коде (`sitemap.ts`/`robots.ts`/
+  `jsonld.ts`/`layout.tsx`) — но Docker `ARG` без переданного значения превращается в **пустую
+  строку `""`**, а не `undefined`, и `?? ` на `""` не срабатывает (нужен был `||`, не `??`, либо
+  сам факт задать переменную). Итог: `SITE_URL` реально был `""` во всей сборке.
+  **Фикс:** добавлена Variable `NEXT_PUBLIC_SITE_URL=https://maxsavdo.uz` в Railway → сервис
+  `landing`, задеплоено повторно (NEXT_PUBLIC_* инлайнятся на build-time, нужен полный ребилд,
+  runtime-рестарта недостаточно).
+- **⚠️ Побочная находка (не блокер, отметить владельцу):** воркспейс TezCode Team показывает
+  баннер "Your subscription is past due" в Railway dashboard — тот же `INFRA-RAILWAY-PAST-DUE-001`
+  из чекпоинта 29.06, всё ещё не оплачено. Оба деплоя в этой сессии прошли несмотря на баннер
+  (не заблокированы), но грузить дальше — риск.
+- **✅ Второй деплой подтверждён curl'ом (25.07, в этой же сессии):** `sitemap.xml` теперь
+  `<loc>https://maxsavdo.uz/</loc>` (было `<loc>/</loc>`), `robots.txt` — `Sitemap:
+  https://maxsavdo.uz/sitemap.xml` (было относительный). JSON-LD на главной: `"url":
+  "https://maxsavdo.uz"`, `"logo":"https://maxsavdo.uz/logo-maxsavdo.svg"` — абсолютные.
+  Все ключевые роуты 200: `/robots.txt`, `/sitemap.xml`, `/`, `/ru`, `www.maxsavdo.uz`.
+  **LANDING-DEPLOY-TOPOLOGY-001 полностью закрыт** — перенесено из tasks.md.
+
+## 2026-07-25 (Claude) — инвентаризация open Infra/API задач
+
+### ✅ [INFRA-BACKUP-DRILL-FIRST-RUN-001] Первый restore drill — фактически PASS ещё 25.06, трекер не обновили
+- **Важность:** 🟡
+- **Дата обнаружения расхождения:** 25.07.2026 (сама задача выполнена 25.06.2026)
+- **Контекст:** задача висела в `tasks.md` как открытая, хотя `analiz/logs.md:441` уже содержит
+  `drill_status: PASS` от 25.06.2026 (users=12, sellers=9, stores=9, products=34, orders=22,
+  0 orphan-строк, 0 null_totalAmount). Никто не перенёс запись в done.md и не удалил из tasks.md —
+  реальность обогнала трекер (как и с `LEGAL-OFFER-REQUISITES-001` 24.07).
+- **Что сделано (25.07):** перенёс сюда, удалил из tasks.md.
+- **🔲 Открытый хвост:** следующий drill планировался «последняя пятница июня или июля» —
+  если июльский прогон ещё не делали, стоит сделать до конца месяца (не блокер, обычный
+  cadence-чек, не заводил как P0).
+
+## 2026-07-23 (Claude) — TG-BOT-SELLER-TERMS-001 + ONBOARD-SLUG-TRANSLIT-DEDUP-001 (API-часть)
+
+### ✅ [TG-BOT-SELLER-TERMS-001] TG-бот: регистрация продавца без согласия с офертой — фикс
+- **Важность:** 🔴
+- **Дата:** 23.07.2026
+- **Контекст:** owner заметил, что бот вообще не спрашивает согласие с условиями платформы
+  перед созданием магазина. Прочитал `telegram-demo.handler.ts:403-528` — подтверждено: флоу
+  был name→storeName→description→**сразу create**, шага consent не было ни разу.
+- **Файлы:** `apps/api/src/modules/telegram/telegram-demo.handler.ts`,
+  `apps/api/src/modules/telegram/telegram-webhook.controller.ts`,
+  `apps/api/src/modules/telegram/telegram-bot-i18n.ts` (ru+uz),
+  `packages/db/prisma/schema.prisma` + миграция `20260723000001_seller_terms_accepted_at`.
+- **Что сделано:**
+  - Новый шаг 4/4 в регистрации продавца: `askSellerTerms()` — сообщение со ссылкой на
+    уже существующую публичную оферту (`apps/web-buyer/src/app/offer/page.tsx`, ссылка
+    `{BUYER_URL}/offer`) + инлайн-кнопки «Принимаю условия» / «Отмена».
+  - `finishSellerRegistration()` больше не вызывается напрямую из шага описания — только
+    после `seller_reg_terms_accept`; описание теперь читается из tmp (`sellerDescription`),
+    не передаётся параметром.
+  - `declineSellerRegistration()` — новый метод, чистит state, показывает сообщение об отмене.
+  - Schema: `Seller.termsAcceptedAt DateTime?` (ADD-only, nullable — старые продавцы без
+    согласия остаются NULL, историю не подделываем). `sellerNested.termsAcceptedAt = new Date()`
+    проставляется в момент создания.
+  - `pnpm db:generate` + `pnpm --filter api build` EXIT 0, `pnpm --filter api test`:
+    75/75 сьютов, 956/956 тестов зелёные (без регрессий).
+- **🔲 Не в этой сессии (owner/бизнес):** реальные реквизиты юрлица в `/offer` — placeholder
+  (ждёт регистрации ИП/ООО, см. `LEGAL-OFFER-REQUISITES-001` в readiness-доке) — согласие
+  ссылается на документ, который сам по себе пока не юридически полный; это отдельный блокер,
+  не относится к самому факту наличия consent-шага.
+- **🔲 Азим (web-seller, не мой домен):** у `apps/web-seller` онбординга (форма создания
+  магазина на вебе) тоже нет чекбокса согласия с офертой — та же дыра, другая платформа.
+  Завести отдельным пунктом при следующем заходе в web-seller онбординг.
+
+### ⚠️ [ONBOARD-SLUG-TRANSLIT-DEDUP-001] API-часть — ОТКАЧЕНА тем же днём, сломала прод-деплой
+Изначальный вариант (`import { toLatinSlug } from 'types'` в боте) уронил healthcheck на Railway —
+`packages/types` не собирается в JS, NestJS-прод-рантайм не может require'ить raw `.ts`. Откачено
+на локальную копию функции в тот же день. Полный разбор — `analiz/logs.md → INFRA-TYPES-PKG-
+RUNTIME-001`, текущий статус задачи — `analiz/tasks.md`.
+
 ## 2026-07-19 (Fable 5) — UIUX-ADMIN-TMA-001: server search + skeletons + a11y (admin, tma)
 
 ### ✅ [UIUX-ADMIN-TMA-001] Admin/TMA: серверный поиск, skeleton-загрузка, a11y модалов

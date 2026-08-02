@@ -515,7 +515,7 @@ export function DeleteAccountModal({ open, onClose }: Props) {
                 className="w-full py-2.5 rounded-xl text-sm font-semibold"
                 style={{
                   background: 'var(--tg-accent)',
-                  color: '#0A0A0A',
+                  color: '#0F0F0F',
                   minHeight: 44,
                 }}
               >

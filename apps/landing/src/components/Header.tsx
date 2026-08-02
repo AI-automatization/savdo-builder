@@ -5,10 +5,14 @@ export type Locale = 'uz' | 'ru';
 
 export type HeaderDict = {
   nav: {
+    how: string;
     features: string;
+    stores: string;
     pricing: string;
     faq: string;
     start: string;
+    cases: string;
+    blog: string;
   };
 };
 
@@ -22,6 +26,8 @@ const BOT_URL = 'https://t.me/maxsavdo_bot';
 export default function Header({ locale, dict }: HeaderProps) {
   const otherLocale: Locale = locale === 'uz' ? 'ru' : 'uz';
   const otherHref = otherLocale === 'uz' ? '/' : '/ru';
+  const home = locale === 'uz' ? '/' : '/ru';
+  const p = (path: string) => (locale === 'uz' ? `/${path}` : `/ru/${path}`);
 
   return (
     <header
@@ -55,15 +61,26 @@ export default function Header({ locale, dict }: HeaderProps) {
           className="hidden items-center gap-7 text-sm text-brand-muted md:flex"
           aria-label="primary"
         >
-          <a href="#features" className="transition-colors hover:text-brand-accent">
-            {dict.nav.features}
-          </a>
-          <a href="#pricing" className="transition-colors hover:text-brand-accent">
-            {dict.nav.pricing}
-          </a>
-          <a href="#faq" className="transition-colors hover:text-brand-accent">
-            {dict.nav.faq}
-          </a>
+          {[
+            { href: `${home}#how`, label: dict.nav.how },
+            { href: `${home}#features`, label: dict.nav.features },
+            { href: `${home}#pricing`, label: dict.nav.pricing },
+            { href: p('cases'), label: dict.nav.cases },
+            { href: p('blog'), label: dict.nav.blog },
+            { href: p('faq'), label: dict.nav.faq },
+          ].map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className="group relative transition-colors hover:text-brand-accent"
+            >
+              {item.label}
+              <span
+                aria-hidden
+                className="absolute -bottom-1.5 left-1/2 h-px w-0 -translate-x-1/2 bg-brand-accent transition-all duration-200 group-hover:w-full"
+              />
+            </a>
+          ))}
         </nav>
 
         <div className="flex items-center gap-3">

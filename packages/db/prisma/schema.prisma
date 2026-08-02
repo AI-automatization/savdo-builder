@@ -408,6 +408,7 @@ model Seller {
   isBlocked                   Boolean                  @default(false)
   blockedReason               String?
   avatarUrl                   String?
+  termsAcceptedAt             DateTime?
   createdAt                   DateTime                 @default(now())
   updatedAt                   DateTime                 @updatedAt
 

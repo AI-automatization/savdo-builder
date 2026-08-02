@@ -19,18 +19,18 @@
   --color-divider:           #E5E5E5;     /* structural separators */
   --color-border:            #E5E5E5;     /* interactive element edges */
   --color-border-strong:     #D4D4D4;
-  --color-text-primary:      #0A0A0A;     /* Rich Black */
+  --color-text-primary:      #0F0F0F;     /* Rich Black */
   --color-text-muted:        #737373;
   --color-text-dim:          #A3A3A3;
   --color-text-body:         #262626;
-  --color-text-strong:       #0A0A0A;
+  --color-text-strong:       #0F0F0F;
 
   /* Brand — Champagne Gold (CTA, accent, premium markers) */
-  --color-brand:             #C9A876;     /* Champagne Gold */
-  --color-brand-hover:       #B89868;     /* darker on hover for light bg */
-  --color-brand-muted:       rgba(201,168,118,0.12);
-  --color-brand-border:      rgba(201,168,118,0.34);
-  --color-brand-text-on-bg:  #0A0A0A;     /* black text on gold — 8.94:1 contrast */
+  --color-brand:             #E8A552;     /* Champagne Gold */
+  --color-brand-hover:       #D4922E;     /* darker on hover for light bg */
+  --color-brand-muted:       rgba(232,165,82,0.12);
+  --color-brand-border:      rgba(232,165,82,0.34);
+  --color-brand-text-on-bg:  #0F0F0F;     /* black text on gold — 8.94:1 contrast */
 
   /* Accent — alias for brand to keep existing components working */
   --color-accent:            var(--color-brand);
@@ -58,7 +58,7 @@
   /* ── Dark — maxsavdo Rich Black base + Champagne Gold accent ─────────────── */
   /* Pure deep black surfaces (luxury feel), gold pops as the only chromatic accent. */
   /* Neutral base */
-  --color-bg:                #0A0A0A;     /* Rich Black */
+  --color-bg:                #0F0F0F;     /* Rich Black */
   --color-surface:           #141414;
   --color-surface-muted:     #101010;
   --color-surface-elevated:  #1F1F1F;     /* popovers, modals, elevated cards */
@@ -73,11 +73,11 @@
   --color-text-strong:       #FFFFFF;
 
   /* Brand — Champagne Gold (same hue, brighter hover on dark) */
-  --color-brand:             #C9A876;
-  --color-brand-hover:       #E8C898;     /* Champagne Gold Light — brighter on dark hover */
-  --color-brand-muted:       rgba(201,168,118,0.18);
-  --color-brand-border:      rgba(201,168,118,0.42);
-  --color-brand-text-on-bg:  #0A0A0A;     /* black text on gold — 8.94:1 contrast */
+  --color-brand:             #E8A552;
+  --color-brand-hover:       #FFC574;     /* Champagne Gold Light — brighter on dark hover */
+  --color-brand-muted:       rgba(232,165,82,0.18);
+  --color-brand-border:      rgba(232,165,82,0.42);
+  --color-brand-text-on-bg:  #0F0F0F;     /* black text on gold — 8.94:1 contrast */
 
   /* Accent — alias for brand to keep existing components working */
   --color-accent:            var(--color-brand);
