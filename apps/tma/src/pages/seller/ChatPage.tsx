@@ -661,7 +661,7 @@ export default function SellerChatPage() {
                     }
                   }}
                   placeholder={editingId ? 'Изменить сообщение... (Enter ↵)' : 'Сообщение... (Enter ↵)'}
-                  style={{ flex: 1, background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', borderRadius: 12, color: '#fff', fontSize: 14, padding: '10px 14px', outline: 'none' }}
+                  style={{ flex: 1, background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', borderRadius: 12, color: 'var(--tg-text-primary)', fontSize: 14, padding: '10px 14px', outline: 'none' }}
                 />
                 <button
                   onClick={() => { if (!editingId) emitTyping(false); (editingId ? submitEdit : sendMsg)(); }}
