@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ModerationController } from './moderation.controller';
 import { ModerationRepository } from './repositories/moderation.repository';
 import { ModerationTriggerService } from './services/moderation-trigger.service';
@@ -11,7 +11,7 @@ import { SellersModule } from '../sellers/sellers.module';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [StoresModule, SellersModule, AuthModule],
+  imports: [forwardRef(() => StoresModule), SellersModule, AuthModule],
   controllers: [ModerationController],
   providers: [
     ModerationRepository,

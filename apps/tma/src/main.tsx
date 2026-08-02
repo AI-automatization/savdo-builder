@@ -6,6 +6,18 @@ import { ThemeProvider } from './providers/ThemeProvider';
 import { AuthProvider } from './providers/AuthProvider';
 import { I18nProvider } from './lib/i18n';
 import App from './App';
+
+// Inter font (maxsavdo design-v2). Подгружаем все используемые веса один раз
+// на entry — каждый weight ≈ 30-50KB, итого ~250KB шрифтов. self-host через
+// @fontsource убирает зависимость от Google Fonts CDN (нужно для TG WebView
+// без внешних доменов).
+import '@fontsource/inter/300.css';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/inter/800.css';
+
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

@@ -1,5 +1,2429 @@
 # Done — Азим + Полат
 
+## 2026-08-01 (Claude) — PIPELINE-TEST-001: полный Railway-like прогон apps/api перед пушем
+
+- **Важность:** 🟡 · **Дата:** 01.08.2026 · **Домен:** apps/api, docker-compose.yml
+- **Контекст:** просили не просто `docker build`, а полный пайплайн-тест "по меркам
+  билдинга в Railway" перед пушем кода #5 (INTEG-RAOS-002a). Использовал существующий
+  `docker-compose.yml` ("Локальная Railway-like среда") — postgres+redis+api, тот же
+  `apps/api/Dockerfile`, что и в `apps/api/railway.toml` (`builder=DOCKERFILE`).
+- **Нашёл и починил 2 реальных бага локального пайплайна (не в моём коде #5):**
+  1. `apps/api/start.sh` на диске был в CRLF (Windows `core.autocrlf=true` конвертировал
+     при чекауте) → `sh` внутри alpine падал на `set -e` ("illegal option"), контейнер
+     уходил в вечный crash-loop. Сам git-блоб (`git show HEAD:...`) — чистый LF, значит
+     **на Railway (чекаут с GitHub на Linux) это НЕ воспроизводится** — чисто локальный
+     Windows-артефакт. Восстановил файл из git (`git show HEAD:... > start.sh`) —
+     `git diff` пустой, реального изменения нет.
+  2. `docker-compose.yml` никогда не задавал `APP_URL`, а `env.validation.ts:12` требует
+     его (`Joi.required()`, добавлено при TMA-PHOTO-UPLOAD-DIAG-001) → контейнер падал
+     на старте с "Config validation error". На Railway переменная задана в дашборде —
+     прод не затронут, это пробел именно локального стенда. Добавил
+     `APP_URL: http://localhost:3000` в `docker-compose.yml`.
+- **После фиксов — полный цикл на реальных Postgres 16 + Redis 7:**
+  `prisma migrate deploy` — все 55 миграций применились чисто на свежей БД → Nest
+  поднялся, все роуты замаплены (включая 4 новых partner-эндпоинта из #5) → healthcheck
+  контейнера `healthy` (тот же путь `/api/v1/health`, что у Railway) → smoke-test:
+  `GET /health/live` 200, все 4 partner-эндпоинта без ключа → 401, с мусорным ключом →
+  корректный `401 {"code":"UNAUTHORIZED"}` JSON (не 500-крэш).
+- **Попутный security-note (не чинил, вне скоупа):** контейнер `runner`-стадии бежит от
+  root (`whoami` → root, нет `USER` в Dockerfile) — стандартная OWASP-рекомендация не
+  запускать процесс от root в контейнере. Не трогал — требует отдельной проверки
+  (pg_dump/backup-скрипт, права на volume), не тривиальный точечный фикс.
+- **Файлы:** `docker-compose.yml` (+APP_URL), `apps/api/start.sh` (line-ending fix,
+  content идентичен HEAD — `git diff` пустой).
+- **Вывод:** код #5 полностью проходит Railway-эквивалентный build+migrate+start+
+  healthcheck цикл. Локальный стенд (`docker-compose.yml`) был неполным для двух
+  независимых от #5 причин — теперь исправен для будущих прогонов.
+
+## 2026-07-31 (Claude) — TMA-LIGHT-THEME-AUDIT-001: 4 бага светлой темы
+
+- **Важность:** 🟡 · **Дата:** 31.07.2026 · **Домен:** `apps/tma`
+- **Контекст:** аудит по запросу владельца ("белая тема слишком неудобная"). Нашёл 4
+  конкретных бага статическим анализом (grep + расчёт WCAG-контраста), не на глаз.
+- **Что сделано:**
+  1. `pages/seller/ChatPage.tsx:664` — поле ввода сообщения: было `color: '#fff'`
+     хардкодом на `var(--tg-surface-hover)` (в light = `#F5F5F5`, текст фактически
+     невидим при наборе). → `var(--tg-text-primary)`. У покупательского чата это
+     место уже было правильным — пропустили при миграции палитры 28.07.
+  2. `index.css` — `--tg-bottomnav-shadow` не был определён нигде → `BottomNav.tsx`
+     всегда падал на inline-фоллбек `rgba(0,0,0,0.40)`, тюненный под тёмный фон.
+     В light тень нижней навигации была в ~6.7 раза тяжелее чем `--tg-card-shadow`.
+     Добавил токен в оба theme-блока (`dark: 0.40`, `light: 0.06`, как у card-shadow).
+  3. `--tg-text-dim`: было `#A3A3A3` в light — контраст на белом 2.53:1 (WCAG AA
+     требует 4.5:1 для текста). Используется как реальный текст (`.section-label` и
+     т.п.), не декоративно. → `#6E6E6E` (~5.1:1). Синхронизировано в `lib/themes.ts`
+     (не используется в рантайме, но держим как честный референс).
+  4. `.scroll-fade-x::after` — градиент затухания был `var(--tg-bg) → rgba(15,15,15,0)`
+     хардкодом. В dark совпадало (bg = rgb(15,15,15), чистое затухание). В light
+     (bg = белый) градиент шёл в прозрачный ЧЁРНЫЙ → серая муть на середине вместо
+     исчезновения в белое. Добавил `--tg-bg-rgb` (raw R,G,B без alpha) на тему,
+     переключил на `rgba(var(--tg-bg-rgb), 0)` — теперь работает в обеих темах одним
+     правилом.
+- **Проверено:** `tsc -b` чисто, `vite build` чисто. Живой браузер НЕ проверял —
+  TMA требует Telegram WebApp контекст (initData/JWT), локального dev-mock нет,
+  поднимать полноценную авторизованную сессию ради 4 CSS-токенов не стал.
+  Верификация — расчёт контраста (WCAG формула) + чистая сборка.
+- **Файлы:** `apps/tma/src/{index.css,lib/themes.ts,pages/seller/ChatPage.tsx}`
+- **Что НЕ трогал (отдельная, более крупная находка при аудите, не входила в
+  запрошенные 4):** белый текст (`color:'#fff'`) на золотом `var(--tg-accent)` фоне
+  в нескольких местах (`StorePage.tsx:375`, `OrdersPage.tsx:619`,
+  `BottomNav.tsx:115` и др.) — контраст ~2.1:1, тоже не проходит WCAG AA, но это
+  не light-theme-specific (тот же баг в обеих темах) и затрагивает design-system
+  паттерн кнопок сразу в нескольких компонентах — не стал трогать без отдельного ОК.
+
+## 2026-07-31 (Claude) — INTEG-RAOS-002a: Partner API update/stock/delete (issue #5)
+
+- **Важность:** 🔴 · **Дата:** 31.07.2026 · **Домен:** `apps/api/src/modules/partner`
+- **Контекст:** RAOS-сторона интеграции (`integrations/savdo/`) уже задеплоена (PR #426, Ибрат),
+  но у нас в Partner API был только `create` товара — RAOS'овские `updateProduct`/`updateStock`/
+  `deleteProduct` (см. `SavdoOutboundService` в raos-pos-cosmetics) слали запросы в никуда.
+- **Что сделано:**
+  - `PATCH /api/v1/partner/products/:id` — частичный update (name→title, price→basePrice,
+    description; переиспользует `UpdateProductUseCase`, значит и его валидацию цены).
+    `imageUrl` — замена обложки (скачать→залить→новая primary→удалить старую строку).
+    `isActive` — маппинг на state machine (`ChangeProductStatusUseCase`), идемпотентно
+    (no-op если товар уже в целевом статусе — партнёр может ретраить).
+  - `PATCH /api/v1/partner/products/:id/stock` — прямой `Product.totalStock` (партнёрские
+    товары создаются без вариантов → single-SKU режим, см. `product-presenter.service.ts`).
+    Явный 422, если у товара позже завели варианты (сток тогда per-variant, поле никто не
+    читает) — не молчим, объясняем.
+  - `DELETE /api/v1/partner/products/:id` — авто-архивирует ACTIVE перед soft-delete (INV-P04
+    запрещает удалять активный товар напрямую, RAOS не обязан знать наш state machine).
+    Отвечает `200 { id, deleted: true }`, не `204` — RAOS-клиент всегда делает
+    `await response.json()`, пустое тело сломало бы его парсинг.
+  - DRY: вынес download+anti-SSRF-валидацию фото из `PartnerCreateProductUseCase` в общий
+    `partner/utils/partner-image.util.ts` (второй потребитель — update).
+  - `ProductsModule`: экспортировал `UpdateProductUseCase` (не был exported).
+  - Тесты: 17 новых кейсов в `partner.use-cases.spec.ts` (27 итого в файле, все зелёные),
+    `tsc --noEmit` чист.
+- **Файлы:** `apps/api/src/modules/partner/{partner.controller.ts,partner.module.ts,
+  dto/partner-update-product.dto.ts,dto/partner-update-stock.dto.ts,
+  use-cases/partner-update-product.use-case.ts,use-cases/partner-update-stock.use-case.ts,
+  use-cases/partner-delete-product.use-case.ts,use-cases/partner-create-product.use-case.ts,
+  utils/partner-image.util.ts,use-cases/partner.use-cases.spec.ts}`,
+  `apps/api/src/modules/products/{products.module.ts,repositories/products.repository.ts}`
+  (добавлен `setTotalStock`), `docs/contracts/partner-api-raos.md`.
+- **⚠️ Найден баг НЕ у нас, а на RAOS-стороне** (не чинил — чужой репозиторий/зона, сообщить
+  Ибрату): `SavdoOutboundService.createProduct` в raos-pos-cosmetics ожидает
+  `{ data: { product: { id } } }`, но наш ответ плоский `{ id, ... }` — `res.product.id` упадёт
+  при первом реальном push товара. Пока не проявляется, т.к. `savdoVisible` нигде не
+  проставляется (issue #427 на их стороне). Записано в `analiz/tasks.md` (`INTEG-RAOS-002b`).
+- **Что осталось:** issue #6 (order-export webhook, наш → RAOS) — отдельная задача,
+  `INTEG-RAOS-002b` в `analiz/tasks.md`.
+
+## 2026-07-28 (Claude) — AUTH-OTP-ERROR-MESSAGE-SWALLOWED-001: непонятная ошибка при TELEGRAM_NOT_LINKED
+
+- **Важность:** 🟡 · **Дата:** 28.07.2026 · **Домен:** `apps/web-seller`, `apps/web-buyer`
+- **Root cause:** OTP в проекте идёт только через Telegram-бот (`@maxsavdo_bot`, никакого SMS/Eskiz).
+  `apps/api/src/modules/auth/services/otp.service.ts:118-124` корректно кидает `TELEGRAM_NOT_LINKED`
+  с явным текстом ("Откройте @maxsavdo_bot и поделитесь номером телефона"), если у телефона ещё нет
+  привязанного `telegramId` — то есть для СОВСЕМ нового юзера, который ни разу не писал боту. Но
+  фронтенд не показывал этот текст:
+  - `apps/web-seller/src/app/(auth)/login/page.tsx:70-71` (было) — брал `error.message` (сырой axios,
+    "Request failed with status code 400") вместо `error.response.data.message`.
+  - `apps/web-buyer/src/components/auth/OtpGate.tsx:32-33,41-42` (было) — вообще хардкодил generic
+    текст на любую ошибку через пустой `catch {}`, backend-сообщение никогда не доходило до экрана.
+  Итог: новый продавец/покупатель, зашедший напрямую на web (минуя бота), утыкался в бесполезную
+  ошибку без единой подсказки, что регистрация физически невозможна без предварительного открытия бота.
+- **Что сделано:** в обоих файлах добавлен unwrap `err.response?.data?.message ?? err.message ?? fallback`
+  (паттерн уже был в `apps/web-seller/.../chat/page.tsx:167-172`, просто скопирован в auth-флоу). Плюс
+  добавлена явная ссылка на `@maxsavdo_bot` рядом с ошибкой на шаге ввода телефона в обоих приложениях
+  (раньше ссылка на бота была только на шаге ввода кода, т.е. уже после того как код физически не
+  мог уйти).
+- **Не сделано:** глубокая переработка регистрационного флоу (например, принудительный редирект на
+  deep-link бота вместо формы на сайте) — не просили, обошлись минимальным UX-фиксом ошибки.
+
+## 2026-07-28 (Claude) — BRAND-PALETTE-CANON-LANDING-001: перевод shop/seller/TMA под палитру лендинга
+
+- **Важность:** 🟡 · **Дата:** 28.07.2026 · **Домен:** `apps/web-buyer`, `apps/web-seller`, `apps/tma`,
+  `docs/brand`, `docs/design`
+- **Контекст:** владелец указал, что после рескина `apps/landing` (27.07, коммит `661e9ec`, зона
+  Юсуфа) три остальных клиента визуально разошлись с лендингом. Проверка показала обратное тому,
+  что предполагалось: web-buyer/web-seller/TMA были согласованы МЕЖДУ СОБОЙ и с задокументированной
+  `docs/brand/maxsavdo-brand-v2.md` (`#0A0A0A`/`#C9A876`, eyedropper от 25.05.2026) — расхождение
+  было только в лендинге (`#0F0F0F`/`#E8A552`). Владелец подтвердил явно: **палитра лендинга — новый
+  канон**, привести остальное под неё.
+- **Что сделано:**
+  1. Rich Black `#0A0A0A → #0F0F0F`, Champagne Gold `#C9A876 → #E8A552` — заменено во всех
+     hex/rgba-вхождениях в `apps/web-buyer`, `apps/web-seller`, `apps/tma` (globals.css, icon/apple-icon/
+     opengraph-image, manifest.ts, MaxsavdoLogo/Mark, index.css, styles.ts, themes.ts и т.д. — 23 файла).
+  2. Hover/light-состояния золота разведены по смыслу (раньше был один "Champagne Gold Light"):
+     **`#D4922E`** (темнее — filled-кнопки на светлом фоне, ровно формула из
+     `apps/landing/tailwind.config.ts`) и **`#FFC574`** (светлее — только там, где gold используется
+     как ТЕКСТ на тёмном фоне: `--tg-accent-text` dark theme, SELLER-role accent в TMA, который по
+     дизайну должен быть ярче BUYER — если бы взял везде `#D4922E`, SELLER стал бы темнее вместо ярче,
+     а текст-акцент на тёмном фоне потерял бы контраст). Посчитано сохранением исходной дельты
+     осветления `C9A876→E8C898`, применённой к новому базовому gold.
+  3. `docs/brand/maxsavdo-brand-v2.md` §2 (Core) и §5 (tokens) — обновлён HEX, добавлена запись v3
+     с датой/причиной смены канона. `docs/design/maxsavdo-design-v2.md` — синхронизированы ссылки на HEX.
+  4. Попутно пофикшен `debug/hooks/pre-edit-check.ps1` — блокировал правки в `apps/web-buyer`/
+     `web-seller` по устаревшему правилу зон (до реорганизации 27.07.2026 v2); поправлен под актуальное
+     (`apps/landing` = зона Юсуфа), плюс исправлен захардкоженный путь `debug/savdo-builder` →
+     `debug/projects/savdo-builder`.
+- **Не тронуто:** `apps/landing` (источник канона, зона Юсуфа), `apps/admin` (не упоминался владельцем).
+- **Проверка:** `grep` подтвердил отсутствие старых hex/rgba во всех файлах; не собирал/не деплоил
+  (деплой отдельным решением владельца — прод, без staging).
+
+## 2026-07-27 (Claude) — LANDING-SEO-FIX-001: технический SEO лендинга (P0/P1 из аудита 26.07)
+
+- **Важность:** 🟡 · **Дата:** 27.07.2026 · **Домен:** `apps/landing`
+- **Контекст:** аудит живого `maxsavdo.uz` (Obsidian `PROJECTS/savdo-builder/decisions/
+  2026-07-26-maxsavdo-seo-geo-aeo-audit.md`). Не пересекается с `analiz/seo-geo-aeo-report-2026-07-24.md`
+  — тот про `web-buyer`, этот про `landing`. Deploy-topology из ADR 18.07 подтверждён исправленным.
+
+### Что исправлено
+
+1. **`/ru` отдавался как `<html lang="uz">`** (hreflang говорил `ru`) — главный баг. Вложенный
+   `ru/layout.tsx` физически не может переопределить `<html>` root-лейаута. Перешли на **две
+   root-группы**: `src/app/(uz)/` и `src/app/(ru)/ru/`, у каждой свой root layout со своим `lang`.
+   URL не изменились. Общая разметка вынесена в `components/RootShell.tsx`, шрифт — в `lib/fonts.ts`.
+2. **`twitter:image` вёл на `/og-image.png` → 404** (файла не существует; `og:image` при этом брался
+   из file-convention). Добавлены `twitter-image.tsx` + `opengraph-image.tsx` в обе локали, рендерер
+   вынесен в `lib/og.tsx` (текст берётся из i18n, т.е. RU-картинка теперь на русском). Явные
+   `images` из metadata убраны — иначе хардкодился URL с меняющимся build-хешем.
+   Заодно: убран `runtime = 'edge'` → картинки генерируются на билде статически, а не по запросу.
+   Заодно: бейдж «14 kun bepul» заменён на «Komissiyasiz» — 14-дневного триала не существует
+   (FAQ: «Free тариф работает без ограничения по времени»).
+3. **`title` на `/ru` дублировался** (`... | Бот + Сайт + Канал | MaxSavdo`) — `title.absolute`.
+4. **sitemap:** убраны фрагментные URL `/#pricing` и `/#faq` (Google не считает фрагмент отдельной
+   страницей — это были дубли `/`); добавлены `alternates.languages` (hreflang в самом sitemap);
+   `lastModified` обновлён на дату реального изменения копирайта.
+5. **JSON-LD стал единым графом:** у `Organization`/`WebSite`/`SoftwareApplication` появились
+   стабильные `@id`, добавлен узел `WebPage`, все ссылаются друг на друга (`publisher`/`isPartOf`/
+   `about`/`seller`). Раньше это были 4 несвязанных блоба. `Organization` дополнена `legalName`
+   (MCHJ «TEZ KOD» — из публичной оферты `web-buyer/src/app/offer/page.tsx` §9), `address`
+   (Toshkent/UZ) и `contactPoint`. Ничего не выдумано.
+6. **`next.config.ts`:** `Strict-Transport-Security` (2 года, preload) + 308-редирект
+   `www.maxsavdo.uz` → apex (раньше оба хоста отдавали 200; канонникал спасал лишь частично).
+7. **`robots.googleBot`:** `max-image-preview: large`, `max-snippet: -1`.
+8. **Keywords:** было 8 общих слов, стало ~40 — бренд/категория/интент/JTBD/гео, uz+ru в обеих локалях.
+9. **Аналитики не было вообще** (ни GA4, ни Метрики). Добавлен `components/Analytics.tsx` —
+   **env-gated**: без `NEXT_PUBLIC_GA_ID` / `NEXT_PUBLIC_YANDEX_METRICA_ID` не рендерит ничего.
+   `strategy="afterInteractive"`, чтобы не трогать LCP/INP.
+10. **Верификация вебмастеров** заведена через env (`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION`,
+    `NEXT_PUBLIC_YANDEX_VERIFICATION`, `NEXT_PUBLIC_BING_SITE_VERIFICATION`) — коды добавляются
+    на Railway без правки кода. Все переменные описаны в `.env.example`.
+
+### Файлы
+
+`src/app/(uz)/{layout,page,opengraph-image,twitter-image}.tsx` ·
+`src/app/(ru)/layout.tsx` · `src/app/(ru)/ru/{page,opengraph-image,twitter-image}.tsx` ·
+`src/components/{RootShell,Analytics}.tsx` · `src/lib/{seo,og,fonts,jsonld}.ts(x)` ·
+`src/app/sitemap.ts` · `next.config.ts` · `.env.example`.
+Удалены: `src/app/layout.tsx`, `src/app/ru/layout.tsx`.
+
+### Проверено (не «должно работать», а поднято и проверено)
+
+`tsc --noEmit` EXIT 0 · `next build` EXIT 0, 12 статических роутов, ни одного динамического ·
+standalone-сервер поднят на :3999 и проверен запросами:
+`/` → `lang="uz"`, `/ru` → `lang="ru"` · og/twitter картинки обеих локалей → 200 `image/png` ·
+sitemap содержит только 2 реальных URL с hreflang · HSTS в заголовках ·
+`Host: www.maxsavdo.uz` → 308 на `https://maxsavdo.uz/ru` · без env аналитика в HTML отсутствует.
+
+### Осталось (не код — решение владельца)
+
+- Подключить GSC / Яндекс.Вебмастер / Bing и положить коды + GA4/Метрику в Railway env.
+  **Без этого весь SEO измерять нечем.**
+- GEO (off-site) и AEO (контент-слой) — отдельные задачи, см. аудит в Obsidian.
+
+## 2026-07-26 (Azim/Claude) — LANDING-REDESIGN-001 хвосты: сломанный билд + некликабельные кнопки + `#how` + иллюстрации
+- **Важность:** 🔴 (два прод-инцидента подряд после мержа) → 🟢 (контент-полировка) · **Дата:** 26.07.2026
+- **Домен:** apps/landing (Азим)
+- **🔴 Инцидент 1 — Railway build упал `sh: next: not found` (`22dae5f4`):** `package-lock.json`,
+  закоммиченный вместе с редизайном, был неполным — локальный `node_modules` уже содержал
+  symlink'и на `next`/`react` в корневой pnpm-стор (артефакт более раннего `pnpm install` на
+  корне монорепо), поэтому `npm install` для добавления `gsap` не выписал полное дерево зависимостей.
+  Локально всё собиралось (файлы физически были доступны через symlink), но чистый Docker-стейдж
+  Railway — нет. Пересобрал lock-файл с нуля (362 пакета вместо 16), проверил в изолированной
+  temp-папке ровно как это делает Dockerfile. Подробности + antipattern на будущее — `logs.md`
+  LANDING-BUILD-BROKEN-LOCKFILE-003, Obsidian `_antipatterns.md`.
+- **🔴 Инцидент 2 — кнопки Hero не кликались (`1a2a8c4a`):** три невидимых crossfade-блока текста
+  сценария прокрутки (`absolute inset-0`) перекрывали зону с CTA/метриками — `opacity:0` не убирает
+  `pointer-events`, так что клики по «Bepul boshlash»/«Qanday ishlaydi» проваливались в невидимый
+  слой поверх. Добавлен `pointer-events-none` на этот слой (внутри только текст, интерактива нет).
+- **✅ `#how` вместо TMA-ссылки + иллюстрации к шагам (`41eb5570`):** вторая кнопка Hero
+  «Qanday ishlaydi»/«Как это работает» раньше открывала Telegram Mini App напрямую — не совпадало
+  с шапкой сайта, где та же надпись скроллит к блоку объяснения на странице. Приведено к единому
+  поведению (`#how`), `TMA_URL`-константа убрана как мёртвый код. По просьбе Азима — к каждому из
+  3 шагов в `How.tsx` добавлена стилизованная SVG-иллюстрация (не выдаётся за реальный скриншот
+  продукта — конфирм у Азима, что сейчас нужны именно иллюстрации, видео добавится позже).
+- **Проверено:** `tsc --noEmit` + `next build` чистые после каждого фикса, деплой на Railway
+  подтверждён curl'ом/PowerShell-поллингом по уникальным маркерам в HTML после каждого пуша.
+
+## 2026-07-26 (Azim/Claude) — LANDING-REDESIGN-001: полный реcкин apps/landing (main, `8fccf50a`)
+
+### ✅ Hero (GSAP scroll-story) + ProblemSection/WhyUs/FinalCta + честный beta-badge
+- **Важность:** 🟢 (продукт/маркетинг, задеплоено на прод) · **Дата:** 26.07.2026 · **Домен:** apps/landing (Азим)
+- **Что сделано:** визуал обкатан на throwaway-прототипе (`Desktop/maxsavdo-landing-wow-test`, вне репо),
+  затем перенесён в реальный `apps/landing` (Next 15) — реальные `dict` (uz+ru), реальные ссылки на
+  `@maxsavdo_bot`/TMA, реальный logo/language-switcher. Hero — GSAP ScrollTrigger 3-фазный сценарий
+  (телефон влетает → каталог → cart-toast → order-toast), рамка корпуса 7px, без 3D-гема (был в
+  промежуточной итерации, убран по фидбеку). Новые секции: ProblemSection, WhyUs (сравнение с Direct/
+  Marketplace/Tilda), FinalCta. `hero.badge` теперь честно говорит «Yopiq beta» — раньше live-Hero
+  вообще не упоминал бета-статус. `hero.title`/`subtitle`/цены/FAQ — не тронуты (визуальный реskin,
+  не смена оффера). Добавлена зависимость `gsap` (`apps/landing/package.json` + committed
+  `package-lock.json` — это единственный лок-файл, который реально использует Railway-сборка этого апа,
+  `Dockerfile` копирует только `apps/landing/`, не трогает корневой pnpm workspace).
+- **🔎 Побочная находка + фикс (вне исходного скоупа, но внутри apps/landing):**
+  `GetFeaturedStorefrontUseCase` (`apps/api`) уже давно отдаёт `{topStores, featuredProducts}`, но
+  `apps/landing/src/lib/api.ts` всё ещё ждал плоский массив (`Array.isArray(data) ? data : []`) —
+  секция «Bizning doʻkonlar» была молча пустой независимо от реальных данных, задолго до этой сессии.
+  `FeaturedStore`-тип (`productsCount`, которого в API нет) заменён на реальные поля `topStores`
+  (`city`, `avgRating`, `reviewCount`, `isVerified`) — карточка магазина теперь показывает город/
+  рейтинг/бейдж «Tasdiqlangan» вместо несуществующего счётчика товаров.
+- **Проверено:** `tsc --noEmit` + `next build` (prod-сборка, идентична Docker-стадии Railway) — оба
+  чистые. `/` и `/ru` дают 200 с реальным контентом (curl), JSON-LD (`organizationJsonLd`/`pageJsonLd`)
+  не задет. Полноценный визуальный QA (Playwright) прерван на середине — MCP-сервер отвалился после
+  restart node-процессов в сессии, дальше проверял через curl+HTML.
+- **Обнаружено, НЕ трогалось (см. logs.md):** ветка `landing` (`.worktrees/landing`) разошлась с
+  `main` на 15+ коммитов и отстаёт по важным фиксам (bot username, store-домен, Free-лимит) — Railway
+  её больше не использует (переключено на `main` 25.07). Требует отдельного решения — смержить или
+  удалить.
+
+## 2026-07-25 (Azim/Claude) — SEO/GEO-хвосты + FRONT-SERVER-SEARCH-001 + SELLER-PAYMENT-REQUISITES-001
+
+### ✅ SEO-AUDIT-001 п.2 + SEO-GEO-AEO-RESEARCH-002 п.4 — товары в sitemap + SSR отзывов
+- **Важность:** 🔴/🟡 · **Дата:** 25.07.2026 · **Домен:** apps/web-buyer (`.worktrees/web-buyer`)
+- **Что сделано:**
+  1. `sitemap.ts` эмитит `feed.products` → `/{storeSlug}/products/{id}` (Полат разблокировал
+     `storeSlug` в API 14.07, но фронт не был доделан).
+  2. Найден и зафикшен реальный баг: текст отзывов на product-странице рендерился только
+     клиентским `useProductReviews` без `initialData` — невидим в первом server-HTML (Googlebot
+     без полного JS-рендера, все AI-краулеры), хотя `aggregateRating` в JSON-LD уже был там —
+     расхождение structured data и видимого контента. Фикс по паттерну SEO-AUDIT-001 п.3/4:
+     `page.tsx` server-фетчит первую страницу отзывов → `initialReviews` до `ProductReviews`,
+     `items`-state сидируется синхронно (не через useEffect).
+- **Проверено:** `tsc --noEmit` EXIT 0 (web-buyer).
+
+### ✅ TezCode parentOrganization в JSON-LD + добит баг переименования бота
+- **Важность:** 🟡 · **Дата:** 25.07.2026 · **Домен:** apps/landing + apps/web-buyer
+- **Что сделано:** `parentOrganization` (TezCode, `sameAs` на верифицированный
+  `github.com/AI-automatization`, т.к. `tezcode.uz` не резолвится) добавлен в
+  `apps/landing/JsonLd.tsx` и `apps/web-buyer/layout.tsx`. Заодно нашёл: коммит
+  `LANDING-STALE-BOT-USERNAME-001` (сегодня, `e837b1ae`) пропустил `apps/landing/JsonLd.tsx` и
+  отдельную копию Organization-schema в `apps/web-buyer/layout.tsx` — обе тоже переведены на
+  `maxsavdo_bot`. Урок (лог `SEO-DOC-DRIFT-001`): после "переименовать везде" — `grep -r` по
+  всему монорепо, не только по затронутому app.
+- **Проверено:** `tsc --noEmit` EXIT 0 в обоих apps.
+
+### ✅ FRONT-SERVER-SEARCH-001 — серверный поиск в web-seller
+- **Важность:** 🟡 · **Дата:** 25.07.2026 · **Домен:** apps/web-seller (`.worktrees/web-seller`)
+- **Что сделано:** `/seller/products?search=` вместо клиентского `.filter()`, debounce 300мс
+  (`useDebouncedValue`, паттерн из web-buyer `use-search.ts`). Статус-фильтр остался клиентским
+  (не в скоупе). Empty-state починен: "нет товаров" vs "ничего не найдено" через явный флаг
+  `isFiltering`, а не сырой `products.length` (тот после серверного поиска стал бы врать).
+- **Проверено:** `tsc --noEmit` EXIT 0.
+
+### ✅ SELLER-PAYMENT-REQUISITES-001 — реквизиты оплаты, web-seller + web-buyer
+- **Важность:** 🟢 · **Дата:** 25.07.2026 · **Домен:** apps/web-seller + apps/web-buyer
+- **web-seller:** `PaymentRequisitesSection` в `settings/page.tsx` — toggle наличные/перевод на
+  карту, поля карты/держателя/Click/Payme, client-валидация зеркалит backend (13-24 цифры,
+  https-only), реальные 422 через `errorText()`.
+- **web-buyer:** `StorePaymentInfo.tsx` на странице магазина — карта с copy-to-clipboard +
+  Click/Payme кнопки, только при `acceptsCardTransfer && cardNumber`. **Осознанно НЕ привязано
+  к checkout/`paymentMethod`** — нашлась развилка: disabled-кнопка «card» в checkout это
+  «картой курьеру» (`CheckoutPaymentMethod` enum), не «перевод заранее» — у второго нет своего
+  значения в enum. Азим выбрал информационный блок вместо похода к Полату за новым enum-значением.
+- **Проверено:** `tsc --noEmit` EXIT 0 в обоих apps.
+
+### ⚠️ Системная находка — branch-sync разрыв `packages/types`, 4 раза за сессию
+- `slug.ts` (транслитерация), `storeSlug` в `StorefrontSitemapProduct`, `StorePaymentRequisites`/
+  `UpdateStorePaymentRequisitesRequest` — всё это существует только на `main`, отсутствует на
+  `web-seller`/`web-buyer` (долгоживущие ветки, `main` в них не мержится автоматически).
+  Обходились локальными типами в каждом случае (не трогали `packages/types` — зона Полата).
+  **Полату:** возможно стоит завести регулярный процесс синка `packages/types` в ветки web-*,
+  а не находить дыры по одной. Детали каждого случая — `analiz/tasks.md`.
+- **ONBOARD-SLUG-TRANSLIT-DEDUP-001 остаётся открытым** — упирается именно в этот разрыв +
+  расхождение таблиц транслитерации (`й→y`/`щ→sch` в web-seller живёт в БД, `й→j`/`щ→shch` в
+  packages/types никогда не обрабатывала прод-трафик) — канонической должна стать web-seller-таблица.
+
+---
+
+## 2026-07-25 (Claude) — FULL-AUDIT-LANDING-2026-07-20: 2 живых прод-бага на apps/landing (main)
+
+### ✅ FeaturedStores.tsx хардкод + Free-тариф лимит 20/10 vs реальные 50
+- **Важность:** 🔴 (оба бага сейчас реально живые в проде — main деплоится с сегодняшнего дня)
+- **Дата:** 25.07.2026
+- **Контекст:** нашёл незакоммиченный с 20.07 аудит `FULL-AUDIT-LANDING-2026-07-20` в
+  worktree `landing` (тот же паттерн, что `FULL-AUDIT-WS-2026-07-20` на web-seller — параллельная
+  сессия аудировала, не закоммитила). 6 из 8 находок были против ветки `landing`, которая
+  сегодня перестала быть источником деплоя (переключил Railway-сервис `landing` на `main`
+  раньше в этой сессии) — JSON-LD/домен-в-railway.toml/канал-в-футере уже решены как побочный
+  эффект. Проверил оставшиеся 2 против реального `main` — подтвердились как живые баги.
+- **Что сделано:**
+  1. `FeaturedStores.tsx:54` — хардкод `savdo-builder-by-production.up.railway.app` →
+     `shop.maxsavdo.uz` (клик «Открыть магазин» на главной вёл на внутренний Railway-домен).
+  2. `lib/i18n.ts` — Free-тариф указывал «20 товаров» в pricing-блоке и «10 товаров» в FAQ
+     одновременно (ru+uz, 4 места) — реальный лимит по `plan-config.ts` (`productsLimit: 50`)
+     — оба места приведены к «До 50 товаров».
+- **Проверено:** `tsc --noEmit` EXIT 0.
+- **Осталось (не блокер, низкий приоритет):** OG-картинка обещает «14 kun bepul» (противоречит
+  FAQ — Free без ограничения по времени) + синяя палитра вместо амбер-бренда;
+  `.env.example` — `NEXT_PUBLIC_BOT_USERNAME=savdobuilderBOT` опечатка (не читается в src/,
+  не влияет на рантайм). Полный список — `analiz/logs.md` на worktree `landing`.
+
+---
+
+## 2026-07-25 (Claude) — WEB-SELLER-ONBOARDING-AUDIT-002 + SCREENS-AUDIT-003 — 11 находок закрыты на ветке web-seller
+
+### ✅ 11 UX/честность-копирайта находок из двух аудитов (23-24.07) — код на `.worktrees/web-seller`
+- **Важность:** 🔴/🟠/🟡 (P0-краш из того же захода — отдельная запись ниже)
+- **Дата:** 25.07.2026
+- **⚠️ Процессный урок (дорогой):** начал править эти находки на `main`, где `apps/web-seller`
+  — устаревший форк (88 файлов расхождения с `origin/web-seller`, включая всю i18n-систему).
+  Откатил, переделал на `.worktrees/web-seller`. **Правило на будущее: для apps/web-seller
+  ВСЕГДА работать в `.worktrees/web-seller` (или ветке `web-seller`), никогда на `main`** —
+  так же для apps/web-buyer/landing, см. `apps/web-seller/CLAUDE.md`/`tasks-azim.md`.
+- **Что сделано (коммит `c9446078`, ветка `web-seller`):** см. полный список в `tasks.md` записях
+  выше (теперь ✅) — реальные ошибки backend вместо generic-текста (новый `lib/error-text.ts`,
+  переиспользован в 6 экранах), DRAFT-баннер на дашборде, честный копирайт тарифов (убраны
+  несуществующие «свой домен»/«AI-подача»/«без бейджа», поправлены лимиты и годовая скидка),
+  фикс сырого enum на profile, мобильные подписи прогресс-бара, кнопка «Назад», перевод
+  захардкоженной английской строки в analytics, фикс auto-mark-read в уведомлениях, ссылка на
+  поддержку у скрытых товаров, переименование "Номер аккаунта".
+- **Проверено:** `tsc --noEmit` EXIT 0, `next build` 21/21 страниц чисто.
+- **Побочная находка при работе в worktree:** незакоммиченный с 20.07 P0-баг (`/pricing` краш) —
+  см. отдельную запись `FULL-AUDIT-WS-2026-07-20` в этом же файле (worktree), stop-gap закрыт
+  первым (коммит `ee986c15`) до того, как взялся за 11 находок выше.
+
+---
+
+## 2026-07-25 (Claude) — LANDING-STALE-BOT-USERNAME-001 + LANDING-DEPLOY-TOPOLOGY-001 Railway-фикс
+
+### ✅ [LANDING-STALE-BOT-USERNAME-001] apps/landing — старый Telegram-бот в 5 местах
+- **Важность:** 🔴
+- **Дата:** 25.07.2026
+- **Контекст:** Полат нашёл и залогировал 24.07 (`e2016ba7`) — owner заметил старое имя бота
+  живьём. Подтвердил grep'ом и расширил список: помимо 3 мест из его находки (`jsonld.ts:5`,
+  `Footer.tsx:20`, `llms.txt:10`) нашёл 4-е — `Hero.tsx:96` (декоративный tag в phone-mockup).
+- **Файлы:** `apps/landing/src/components/Footer.tsx`, `Hero.tsx`, `src/lib/jsonld.ts`,
+  `src/lib/i18n.ts`, `public/llms.txt`.
+- **Что сделано:** `savdo_builderBOT` → `maxsavdo_bot` во всех 4 местах. Канал `@savdobuilder`
+  (`Footer.tsx` пункт «Канал», `jsonld.ts` sameAs) — убран целиком, не заменён на другой URL:
+  публичного TG-канала `@maxsavdo` по `docs/business` ещё не существует (pre-launch roadmap
+  item), оставлять второй несуществующий адрес вместо первого не стали. `FooterDict`/`Dict.footer`
+  типы упрощены (убрано поле `channel`). tsc EXIT 0, `next build` 8/8 страниц чисто (standalone
+  trace-copy падает локально на Windows symlink EPERM — не билд-ошибка, на Railway/Linux не
+  воспроизводится). Коммиты `94338136`, `e837b1ae` (main).
+
+### ✅ [LANDING-DEPLOY-TOPOLOGY-001] Настоящая причина 404 apex — не edge-кэш, а build-конфиг сервиса
+- **Важность:** 🔴
+- **Дата:** 25.07.2026
+- **Контекст:** SEO-AUDIT-001 P0 диагноз "remove+re-add custom domain" (предполагал edge-routing
+  кэш) не подтвердился при живой проверке Railway Settings. Реальная причина: Railway-сервис
+  `landing` (домен `maxsavdo.uz`) был настроен собирать **`apps/web-seller`**
+  (Dockerfile Path `/apps/web-seller/Dockerfile`, Start Command `node apps/web-seller/server.js`,
+  Watch Paths `apps/web-seller/**`, ветка `landing`) — не `apps/landing`. Отсюда и 404 на
+  `/robots.txt`/`/sitemap.xml` с телом от web-seller (в web-seller этих роутов просто нет).
+  Живьём подтверждено curl'ом ДО фикса: `/` → 200 landing-контент (он физически лежит внутри
+  apps/web-seller на ветке `landing`), `/robots.txt`+`/sitemap.xml` → 404 с title
+  «Seller Dashboard».
+- **Что сделано (Railway dashboard, сервис `landing`, project `savdo builder`):**
+  1. Source Branch: `landing` → `main` (там же теперь и фикс бота выше, и весь SEO-пакет
+     17-18.07 от Fable 5 — JSON-LD, llms.txt, honest sitemap dates).
+  2. Build → Dockerfile Path: `/apps/web-seller/Dockerfile` → `/apps/landing/Dockerfile`.
+  3. Build → Watch Paths: `apps/web-seller/**` → `apps/landing/**`.
+  4. Deploy → Start Command: `node apps/web-seller/server.js` → `node server.js`
+     (соответствует `apps/landing/Dockerfile` — standalone-сборка кладёт `server.js` в
+     `/app`, без вложенного `apps/landing/` пути, в отличие от web-seller-сборки).
+  5. Apply 4 changes → Deploy. Билд запущен на коммите `e837b1ae` (main).
+- **✅ Первый деплой подтверждён curl'ом:** `robots.txt` + `sitemap.xml` → 200, реальный контент
+  вместо web-seller-404.
+- **🔴 НАЙДЕН и исправлен доп. баг сразу после первого деплоя:** `sitemap.xml` отдавал
+  **относительные** URL (`<loc>/</loc>` вместо `<loc>https://maxsavdo.uz/</loc>`), `robots.txt`
+  — `Sitemap: /sitemap.xml` вместо абсолютного. По sitemap-протоколу `<loc>` обязан быть
+  абсолютным — краулеры такой sitemap могут игнорировать. **Причина:** переменная
+  `NEXT_PUBLIC_SITE_URL` не была задана в Railway Variables сервиса `landing`; я ошибочно
+  посчитал это некритичным из-за `?? 'https://maxsavdo.uz'` в коде (`sitemap.ts`/`robots.ts`/
+  `jsonld.ts`/`layout.tsx`) — но Docker `ARG` без переданного значения превращается в **пустую
+  строку `""`**, а не `undefined`, и `?? ` на `""` не срабатывает (нужен был `||`, не `??`, либо
+  сам факт задать переменную). Итог: `SITE_URL` реально был `""` во всей сборке.
+  **Фикс:** добавлена Variable `NEXT_PUBLIC_SITE_URL=https://maxsavdo.uz` в Railway → сервис
+  `landing`, задеплоено повторно (NEXT_PUBLIC_* инлайнятся на build-time, нужен полный ребилд,
+  runtime-рестарта недостаточно).
+- **⚠️ Побочная находка (не блокер, отметить владельцу):** воркспейс TezCode Team показывает
+  баннер "Your subscription is past due" в Railway dashboard — тот же `INFRA-RAILWAY-PAST-DUE-001`
+  из чекпоинта 29.06, всё ещё не оплачено. Оба деплоя в этой сессии прошли несмотря на баннер
+  (не заблокированы), но грузить дальше — риск.
+- **✅ Второй деплой подтверждён curl'ом (25.07, в этой же сессии):** `sitemap.xml` теперь
+  `<loc>https://maxsavdo.uz/</loc>` (было `<loc>/</loc>`), `robots.txt` — `Sitemap:
+  https://maxsavdo.uz/sitemap.xml` (было относительный). JSON-LD на главной: `"url":
+  "https://maxsavdo.uz"`, `"logo":"https://maxsavdo.uz/logo-maxsavdo.svg"` — абсолютные.
+  Все ключевые роуты 200: `/robots.txt`, `/sitemap.xml`, `/`, `/ru`, `www.maxsavdo.uz`.
+  **LANDING-DEPLOY-TOPOLOGY-001 полностью закрыт** — перенесено из tasks.md.
+
+## 2026-07-25 (Claude) — инвентаризация open Infra/API задач
+
+### ✅ [INFRA-BACKUP-DRILL-FIRST-RUN-001] Первый restore drill — фактически PASS ещё 25.06, трекер не обновили
+- **Важность:** 🟡
+- **Дата обнаружения расхождения:** 25.07.2026 (сама задача выполнена 25.06.2026)
+- **Контекст:** задача висела в `tasks.md` как открытая, хотя `analiz/logs.md:441` уже содержит
+  `drill_status: PASS` от 25.06.2026 (users=12, sellers=9, stores=9, products=34, orders=22,
+  0 orphan-строк, 0 null_totalAmount). Никто не перенёс запись в done.md и не удалил из tasks.md —
+  реальность обогнала трекер (как и с `LEGAL-OFFER-REQUISITES-001` 24.07).
+- **Что сделано (25.07):** перенёс сюда, удалил из tasks.md.
+- **🔲 Открытый хвост:** следующий drill планировался «последняя пятница июня или июля» —
+  если июльский прогон ещё не делали, стоит сделать до конца месяца (не блокер, обычный
+  cadence-чек, не заводил как P0).
+
+## 2026-07-23 (Claude) — TG-BOT-SELLER-TERMS-001 + ONBOARD-SLUG-TRANSLIT-DEDUP-001 (API-часть)
+
+### ✅ [TG-BOT-SELLER-TERMS-001] TG-бот: регистрация продавца без согласия с офертой — фикс
+- **Важность:** 🔴
+- **Дата:** 23.07.2026
+- **Контекст:** owner заметил, что бот вообще не спрашивает согласие с условиями платформы
+  перед созданием магазина. Прочитал `telegram-demo.handler.ts:403-528` — подтверждено: флоу
+  был name→storeName→description→**сразу create**, шага consent не было ни разу.
+- **Файлы:** `apps/api/src/modules/telegram/telegram-demo.handler.ts`,
+  `apps/api/src/modules/telegram/telegram-webhook.controller.ts`,
+  `apps/api/src/modules/telegram/telegram-bot-i18n.ts` (ru+uz),
+  `packages/db/prisma/schema.prisma` + миграция `20260723000001_seller_terms_accepted_at`.
+- **Что сделано:**
+  - Новый шаг 4/4 в регистрации продавца: `askSellerTerms()` — сообщение со ссылкой на
+    уже существующую публичную оферту (`apps/web-buyer/src/app/offer/page.tsx`, ссылка
+    `{BUYER_URL}/offer`) + инлайн-кнопки «Принимаю условия» / «Отмена».
+  - `finishSellerRegistration()` больше не вызывается напрямую из шага описания — только
+    после `seller_reg_terms_accept`; описание теперь читается из tmp (`sellerDescription`),
+    не передаётся параметром.
+  - `declineSellerRegistration()` — новый метод, чистит state, показывает сообщение об отмене.
+  - Schema: `Seller.termsAcceptedAt DateTime?` (ADD-only, nullable — старые продавцы без
+    согласия остаются NULL, историю не подделываем). `sellerNested.termsAcceptedAt = new Date()`
+    проставляется в момент создания.
+  - `pnpm db:generate` + `pnpm --filter api build` EXIT 0, `pnpm --filter api test`:
+    75/75 сьютов, 956/956 тестов зелёные (без регрессий).
+- **🔲 Не в этой сессии (owner/бизнес):** реальные реквизиты юрлица в `/offer` — placeholder
+  (ждёт регистрации ИП/ООО, см. `LEGAL-OFFER-REQUISITES-001` в readiness-доке) — согласие
+  ссылается на документ, который сам по себе пока не юридически полный; это отдельный блокер,
+  не относится к самому факту наличия consent-шага.
+- **🔲 Азим (web-seller, не мой домен):** у `apps/web-seller` онбординга (форма создания
+  магазина на вебе) тоже нет чекбокса согласия с офертой — та же дыра, другая платформа.
+  Завести отдельным пунктом при следующем заходе в web-seller онбординг.
+
+### ⚠️ [ONBOARD-SLUG-TRANSLIT-DEDUP-001] API-часть — ОТКАЧЕНА тем же днём, сломала прод-деплой
+Изначальный вариант (`import { toLatinSlug } from 'types'` в боте) уронил healthcheck на Railway —
+`packages/types` не собирается в JS, NestJS-прод-рантайм не может require'ить raw `.ts`. Откачено
+на локальную копию функции в тот же день. Полный разбор — `analiz/logs.md → INFRA-TYPES-PKG-
+RUNTIME-001`, текущий статус задачи — `analiz/tasks.md`.
+
+## 2026-07-19 (Fable 5) — UIUX-ADMIN-TMA-001: server search + skeletons + a11y (admin, tma)
+
+### ✅ [UIUX-ADMIN-TMA-001] Admin/TMA: серверный поиск, skeleton-загрузка, a11y модалов
+- **Важность:** 🟡
+- **Дата:** 19.07.2026
+- **Файлы:** `apps/admin/src/components/ui/skeleton.tsx` (новый), admin pages:
+  Stores/Products/Sellers/Users/Orders/Categories/Database/SellerDetail/ModerationDetail,
+  `apps/tma/src/pages/seller/StorePage.tsx`
+- **Что сделано:**
+  - **Server search (admin-часть FRONT-SERVER-SEARCH-001):** StoresPage и ProductsPage
+    переведены с клиентского `.filter()` (искал только в загруженной странице) на
+    `?search=` из PERF-API-001, debounce 300ms по паттерну SellersPage; `total`/пагинация
+    приходят с сервера. Sellers/Users уже были серверными; Orders оставлен клиентским —
+    у `GET /admin/orders` параметра `search` нет (admin.controller.ts:143, только
+    status/storeId/page/limit), кандидат на будущую API-задачу.
+  - **Skeletons:** `Skeleton` + `TableSkeletonRows` (admin, дизайн-токены var(--surface2)),
+    заменили текст «Загрузка…» в таблицах Stores(7 кол)/Products(6)/Sellers(6)/Users(6)/Orders(7).
+    TMA: seller/StorePage — Spinner → `ProfileBlockSkeleton` (остальные экраны TMA уже
+    покрыты пресетами, TMA-LOADING-SKELETONS-001).
+  - **A11y:** 9 raw-модалов → `DialogShell` (focus-trap + Escape + role="dialog" +
+    aria-labelledby): CategoriesPage ×3 (delete/create-edit/history), DatabasePage ×3
+    (edit/insert/delete), SellerDetailPage ×2 (ConfirmModal/create-store),
+    ModerationDetailPage ×1 (reject). Теперь ВСЕ admin-модалы на DialogShell/useFocusTrap.
+    aria-label добавлен на поисковые инпуты Stores/Products/Sellers.
+  - **Проверки:** admin `pnpm build` EXIT 0, tma `pnpm build` (tsc -b) EXIT 0.
+  - **Коммиты:** admin `722cd96`, tma `e9a98ee`.
+
+## 2026-07-19 (Fable 5) — TEST-CORE-001 + TEST-WS-GATEWAYS-001: тесты критичных флоу
+
+### ✅ [TEST-WS-GATEWAYS-001] Spec на WS-гейтвеи: seller-room ownership + chat.gateway
+- **Важность:** 🟡
+- **Дата:** 19.07.2026
+- **Файлы:** `apps/api/src/socket/orders.gateway.spec.ts` (расширен),
+  `apps/api/src/socket/chat.gateway.spec.ts` (новый)
+- **Что сделано:**
+  - `handleJoinSellerRoom` (API-WS-AUDIT-001): не-SELLER → disconnect; невалидный storeId → отказ
+    без DB; JWT match → join без DB; DB-verified ownership → join; чужой store / нет seller /
+    ошибка DB → отказ (fail-closed). 7 кейсов.
+  - `chat.gateway.spec.ts` полностью новый: handleConnection (no/invalid token → disconnect,
+    valid → auto-join `user:{sub}`), handleJoinChatRoom (участник buyer/seller → join;
+    не участник / thread not found / DB error → fail-closed отказ), chat:typing anti-spoof
+    (не в room → игнор; роль SELLER/BUYER; isTyping → boolean). 14 кейсов.
+
+### ✅ [TEST-CORE-001] Денежные флоу: INV-O04 списание/восстановление stock на repo-уровне
+- **Важность:** 🔴
+- **Дата:** 19.07.2026
+- **Файлы:** `apps/api/src/modules/checkout/repositories/checkout.repository.spec.ts` (новый),
+  `apps/api/src/modules/orders/repositories/orders.repository.spec.ts` (новый)
+- **Что сделано:**
+  - `CheckoutRepository.createOrder` (INV-O04 forward + API-STOCK-RACE-OVERSELL-001): happy-path
+    variant/non-variant (order + items + history null→PENDING + движение ORDER_DEDUCTED);
+    oversell → CHECKOUT_STOCK_INSUFFICIENT (guard в raw UPDATE / updateMany gte); невалидный UUID
+    product/variant → отказ ДО raw SQL (API-CHECKOUT-CONFIRM-500-001); частичный fail на 2-м item →
+    throw из транзакции. 7 кейсов.
+  - `OrdersRepository.updateStatus` (INV-O04 reverse): PENDING/CONFIRMED/PROCESSING → CANCELLED =
+    инкремент stock по каждому варианту + ORDER_RELEASED; обычный переход и SHIPPED→CANCELLED —
+    stock не трогается; null variantId/productId — guard. 6 кейсов (+history-запись).
+  - Уже было покрыто (не дублировал): use-case слой checkout — `confirm-checkout.use-case.spec.ts`
+    (29 кейсов: preconditions, delivery fee, side effects), недостаточный stock на валидации —
+    `validate-cart-items.service.spec.ts:159`, `preview-checkout.use-case.spec.ts:136`,
+    `create-direct-order.use-case.spec.ts:153`; переходы статусов (state machine + ownership) —
+    `update-order-status.use-case.spec.ts`; refund restock — `refund-order.use-case.spec.ts:232`;
+    subscription-флоу — start-trial/cancel/extend-trial/expire/mark-paid `.spec.ts` все существуют.
+- **Проверено:** api `pnpm build` EXIT 0, `pnpm test` **75 suites / 956 passed** (было 72/920).
+
+## 2026-07-18 (Fable 5) — PERF-API-001: серверный поиск + limit caps + индекс
+
+### ✅ [PERF-API-001] Server-side search, ограничение unbounded-списков, композитный индекс
+- **Важность:** 🟡
+- **Дата:** 18.07.2026
+- **Файлы:** `apps/api/src/modules/products/repositories/products.repository.ts` (+spec),
+  `apps/api/src/modules/products/products.controller.ts`,
+  `apps/api/src/modules/admin/admin-products.controller.ts`,
+  `apps/api/src/modules/admin/repositories/admin.repository.ts`,
+  `apps/api/src/modules/admin/dto/list-stores.dto.ts`,
+  `apps/api/src/modules/admin/use-cases/list-stores.use-case.ts`,
+  `apps/api/src/modules/chat/repositories/chat.repository.ts`,
+  `packages/db/prisma/schema.prisma`,
+  `packages/db/prisma/migrations/20260718000001_product_store_list_index/migration.sql`
+- **Что сделано:**
+  - `search` на списках: `GET /seller/products` (title; `total` считается с теми же фильтрами —
+    новый `countByStoreIdFiltered`), `GET /admin/products` (title/description),
+    `GET /admin/stores` (name/slug). Всё insensitive contains — pg_trgm индексы с 12.05 уже есть.
+  - Закрыт unbounded seller-список: `findByStoreId` раньше без limit тянул ВСЁ
+    (`take` появлялся только при явном limit) — теперь default 200 / cap 500
+    (те же границы, что findPublicByStoreId). `findAll` admin переведён на
+    `toPrismaPagination` (cap 100 в самом repo, не только в контроллере).
+  - Чат-треды: `findThreadsByBuyer/Seller` были unbounded — `take: 100`.
+  - Новый индекс ADD-only `products(storeId, deletedAt, createdAt DESC)` под hot path
+    списков одного магазина (раньше — одиночный storeId + сортировка в памяти).
+  - Тесты: `products.repository.spec.ts` (6 кейсов: caps, search, пустой search, total-фильтры).
+- **Проверено:** api `pnpm build` EXIT 0, `pnpm test` 72 suites / 920 passed.
+- **Для Азима:** контракт в `analiz/tasks.md → FRONT-SERVER-SEARCH-001`.
+- **N+1:** новых не найдено — горячие пути уже batch (API-N1-CHECKOUT-001, API-N1-PRODUCTS-LIST-001).
+
+## 2026-07-18 (Fable 5) — BACKUP-001: автоматические ежедневные бэкапы прод-Postgres
+
+### ✅ [BACKUP-001] Ежедневный pg_dump → R2 с retention 14
+- **Важность:** 🔴
+- **Дата:** 18.07.2026
+- **Файлы:** `apps/api/src/queues/processors/db-backup.processor.ts` (+spec, +module),
+  `apps/api/src/modules/media/services/r2-storage.service.ts` (listObjects, getPrivateBucket),
+  `apps/api/src/app.module.ts`, `apps/api/src/config/env.validation.ts`,
+  `apps/api/.env.example`, `apps/api/Dockerfile` (postgresql-client)
+- **Что сделано:** cron `@nestjs/schedule` (конвенция single-instance, как
+  PurgeDeletedUsersProcessor) в 22:00 UTC (03:00 Ташкент): `pg_dump -Fc
+  --no-owner --no-privileges` → upload в `savdo-private/db-backups/savdo-<ISO>.dump`,
+  retention — последние 14, старые удаляются (чужие ключи под префиксом не трогаем).
+  Kill-switch `DB_BACKUP_ENABLED` (default false). Sentry capture при сбое.
+  Restore: `pg_restore --clean --if-exists -d $DATABASE_URL <file>.dump`.
+- **⚙️ ЧТОБЫ ЗАРАБОТАЛО (Полат, Railway):** добавить `DB_BACKUP_ENABLED=true` в env
+  savdo-api. Больше ничего — STORAGE_* уже настроены (тот же R2, что и медиа).
+- **✅ Первый прогон проверен 19.07.2026:** Railway deploy logs — `DbBackup done in
+  2009ms: db-backups/savdo-2026-07-18T22-00-00-005Z.dump (258116 bytes), retained=1,
+  pruned=0`. Version mismatch не случился, Sentry-ошибок нет. Плюс нативный Railway
+  «Backup created on schedule» на postgres-volume — два независимых слоя бэкапов.
+- **Связь с задачами:** `INFRA-BACKUP-R2-SETUP-001` (отдельный bucket + lifecycle)
+  становится опциональным — off-site дампы теперь едут автоматически в существующий
+  private-bucket; `INFRA-BACKUP-DRILL-FIRST-RUN-001` (restore drill) остаётся
+  обязательным и упрощается: свежий дамп можно брать прямо из R2.
+
+## 2026-07-17/18 (Fable 5) — apps/landing SEO-код синхронизирован с main (см. LANDING-DEPLOY-TOPOLOGY-001)
+
+### ✅ [LANDING-DEPLOY-TOPOLOGY-001] (код-часть) — apps/landing SEO в main, Railway-фикс НЕ трогали
+- **Важность:** 🔴 · **Дата:** 17-18.07.2026 · **Ветка:** `landing-seo-sync` → смёржена в `main`
+- **Контекст:** owner попросил аудит, почему `maxsavdo.uz` невидим в Google/geo. Независимо нашёл, что
+  Railway-сервис `landing` фактически строится из `apps/web-seller` (branch `landing`,
+  `apps/web-seller/railway.toml`), а параллельно в репо простаивает отдельное, полноценное
+  `apps/landing` (Next.js 15, свой robots.ts/sitemap.ts/canonical/hreflang) — и там же, на branch
+  `landing`, лежат SEO/GEO-правки Азима от 16.07 (`4589707a`), которые никогда не доезжали до `main`.
+- **⚠️ Важная сверка с Азимом:** это ДОПОЛНЯЕТ, не заменяет его находку в `logs.md` (16.07,
+  "apex-домен... edge-cache/domain-routing"). Азим проверял через реальный Railway dashboard +
+  `nslookup` и нашёл более точную причину: apex/`www` резолвятся без CNAME-алиаса (голый A-record),
+  Railway edge отдаёт закэшированный ответ от web-seller, хотя Settings UI показывает верный конфиг
+  на `landing`. **Его предложенный фикс (remove+re-add custom domain) НЕ применён — owner попросил
+  подождать**, плюс workspace TezCode Team упёрся в $60 compute-лимит (деплои приостановлены).
+  Мой вывод про `apps/web-seller/railway.toml` в branch `landing` не отменяет его диагноз — это,
+  возможно, второй, отдельный слой той же путаницы (LANDING-BRANCH-DRIFT-001-паттерн: два кода
+  под одним доменом). **Что это значит на практике: пока Азимов apex-баг не пофикшен на Railway,
+  ни один из этих кодовых путей физически не долетает до живого `maxsavdo.uz` — ни старый
+  `web-seller`, ни новый `apps/landing`.**
+- **Файлы:**
+  - Cherry-pick с `origin/landing` (7 коммитов, только `apps/landing`-путь): логотип/цвета/favicon-фиксы
+    + `4589707a` — `apps/landing/public/llms.txt` (новый), `apps/landing/src/app/robots.ts`
+    (AI-crawler allow-правила), `apps/landing/src/app/sitemap.ts` (честные `lastModified`).
+  - Новое: `apps/landing/src/lib/jsonld.ts`, `apps/landing/src/app/layout.tsx`,
+    `apps/landing/src/app/page.tsx`, `apps/landing/src/app/ru/page.tsx` — JSON-LD (Organization,
+    WebSite, SoftwareApplication+Offers, FAQPage).
+  - Фикс: `apps/landing/railway.toml` (`NEXT_PUBLIC_SITE_URL` `savdo.uz`→`maxsavdo.uz`).
+- **⚠️ Поправка к записи Азима выше (SEO-AUDIT-001-P2, 16.07):** там написано "Organization JSON-LD...
+  landing уже имел это раньше — теперь оба апа консистентны". По прямому чтению кода на момент
+  начала этой сессии (`origin/landing:apps/landing/src/app/layout.tsx`, весь git-history
+  `apps/landing`) JSON-LD там отсутствовал полностью — только Metadata API (og:/twitter:), без
+  единого `<script type="application/ld+json">`. Похоже на неподтверждённое grep'ом утверждение
+  (нарушение собственного правила GUARDRAILS проекта). Не критично — теперь в любом случае закрыто.
+- **Что сделано:** SEO-фундамент для `apps/landing` теперь в `main`, запушено. Локально проверено:
+  `tsc --noEmit` чисто, production build чисто (8/8 страниц), standalone-сборка поднята и curl-ом
+  подтверждено — JSON-LD/robots.txt (с AI-crawler правилами)/sitemap.xml (честные даты)/llms.txt
+  рендерятся правильно.
+- **Не сделано (осознанно, не моя зона, и не моё решение):** сам Railway-фикс (ни моя гипотеза про
+  Root Directory, ни Азимов remove+re-add domain) — требует dashboard-доступ (Полат/owner) и явное
+  решение владельца снять "подождать"-холд. Полный чеклист — в `tasks.md → LANDING-DEPLOY-TOPOLOGY-001`.
+- **Урок:** тот же анти-паттерн, что `LANDING-BRANCH-DRIFT-001` — не в первый раз два кодовых пути
+  под одним доменом молча расходятся. После Railway-фикса стоит закрыть branch `landing` целиком.
+
+## 2026-07-16 (Полат/Claude) — Чистка прод-базы + ADMIN-STORE-PURGE-001
+
+### ✅ [PROD-DB-CLEANUP-001] Чистка тестовых аккаунтов и товаров через админку
+- **Важность:** 🟡 · **Дата:** 16.07.2026 · **Домен:** операционка (admin-сессия браузера)
+- **Что сделано:** по приказу owner удалены все не-админские аккаунты: 14 юзеров purge-нуты
+  (1 через UI-модал, 13 через admin API циклом, все 201) — вместе с магазинами/товарами/заказами.
+  Все 4 живых товара soft-deleted через DELETE /admin/products/:id. 3 сироты модерации удалены
+  (см. logs.md MODERATION-ORPHANS-001). Сохранены: RAOS (+998000001111, партнёрская интеграция
+  с выданным ключом) и 2 админа. Итог: users 3, stores 3 (raos APPROVED / white-house DRAFT /
+  DRIPSB SUSPENDED), живых товаров 0, очередь модерации 0. Магазины админов (white-house, DRIPSB)
+  ждут деплоя ADMIN-STORE-PURGE-001 — user-purge их не берёт (владельцы = админы).
+
+### ✅ [ADMIN-STORE-PURGE-001] Кнопка «Удалить магазин безвозвратно» (store без удаления владельца)
+- **Важность:** 🟡 · **Дата:** 16.07.2026 · **Домен:** `apps/api` + `apps/admin`
+- **Контекст:** ADMIN-USER-PURGE-001 не покрывает случай «владелец = админ» (guard запрещает
+  удалять аккаунт с AdminUser-записью). Нужен purge магазина отдельно от аккаунта.
+- **Файлы:** `admin/use-cases/purge-store-subtree.ts` (новый — общий хелпер поддерева store,
+  вынесен из admin-purge-user), `admin-purge-store.use-case.ts` (+spec, новые),
+  `admin-purge-user.use-case.ts` (рефакторинг на хелпер + чистка moderation-сирот),
+  `admin-stores.controller.ts` (`POST /admin/stores/:id/purge`, @AdminPermission('store:purge')),
+  `admin.module.ts`, `admin.repository.ts` (фикс _count, см. logs.md),
+  `apps/admin/src/pages/StoreDetailPage.tsx` (danger-кнопка + type-to-confirm slug модал),
+  `apps/admin/src/lib/i18n/{ru,uz}.ts` (+7 ключей)
+- **Что сделано:** одна транзакция удаляет поддерево магазина по FK-карте (moderation-сироты
+  store+products → заказы (history/refunds→orders) → cart → товары (movements→variant-options→
+  variants→options→groups) → периферия (contacts/delivery/categories/partner-keys) → store) +
+  audit `STORE_HARD_DELETED`. Seller-профиль и аккаунт владельца остаются. Защиты: confirmSlug
+  type-to-confirm ДО транзакции (и в API, и в UI). Тесты 8/8 (5 user-purge + 3 store-purge),
+  api+admin build EXIT 0.
+
+## 2026-07-14 (Полат/Claude, ночь) — ADMIN-USER-PURGE-001
+
+### ✅ [ADMIN-USER-PURGE-001] Кнопка «Удалить безвозвратно» в админке (user + store + товары + заказы)
+- **Важность:** 🟡 · **Дата:** 14.07.2026 · **Домен:** `apps/api` + `apps/admin`
+- **Контекст:** запрос owner — чистка тестовых аккаунтов перед тестовой эксплуатацией. До этого
+  hard-delete был только у cron T+90d (API-ACCOUNT-PURGE-001), который НАМЕРЕННО пропускает продавцов.
+- **Файлы:** `admin/use-cases/admin-purge-user.use-case.ts` (+spec, новые),
+  `admin-users.controller.ts` (`POST /admin/users/:id/purge`, @AdminPermission('user:purge')),
+  `admin.module.ts`, `apps/admin/src/pages/UserDetailPage.tsx` (danger-кнопка + type-to-confirm модал),
+  `apps/admin/src/lib/i18n/{ru,uz}.ts`
+- **Что сделано:** одна транзакция удаляет всё дерево по FK-карте схемы: чаты продавца (messages→threads),
+  заказы магазина (history/refunds→orders, items cascade), корзины, товары (movements→variant-options→
+  variants→options→groups→products), периферию store (contacts/delivery/categories/partner-keys)→store,
+  подписку (payments→subscription), документы верификации→seller; buyer-ветка зеркалит cron-purge
+  (заказы юзера-как-покупателя в чужих магазинах НЕ удаляются — отвязка buyerId, финансы целы);
+  audit_log append `USER_HARD_DELETED` (actor=admin). Защиты: нельзя себя, нельзя админа (сначала revoke),
+  type-to-confirm телефона (и в API, и в UI-модале). Permission `user:purge` — только base admin/super_admin
+  (кастомным ролям не выдать, нет в словаре). Тесты 5/5, api+admin build EXIT 0.
+
+## 2026-07-14 (Полат/Claude, вечер) — SELLER-PAYMENT-REQUISITES-001 (API) + sitemap storeSlug
+
+### ✅ [SELLER-PAYMENT-REQUISITES-001] Реквизиты оплаты продавца — schema + API (часть Полата)
+- **Важность:** 🟡 · **Дата:** 14.07.2026 · **Домен:** `packages/db` + `apps/api` + `packages/types`
+- **Файлы:** `schema.prisma` (Store: +paymentCardNumber/Holder, +paymentClickLink/PaymeLink,
+  +acceptsCash(true)/acceptsCardTransfer(false)), миграция `20260714000002_store_payment_requisites`
+  (ADD-only), `stores/dto/update-payment-requisites.dto.ts` (новый), `stores.repository.ts`
+  (find/updatePaymentRequisites), `stores.controller.ts` (GET/PATCH `seller/store/payment-requisites`),
+  `products/storefront.controller.ts` (общий `mapPublicStoreBySlug` для обоих by-slug endpoints),
+  `packages/types/src/api/stores.ts` (StorePaymentRequisites, UpdateStorePaymentRequisitesRequest,
+  StorefrontStore.paymentRequisites?)
+- **Что сделано:** запрос Азима 12.07 (payments-legal-tax §1.4). Владелец вводит реквизиты
+  (карта, имя, Click/Payme-ссылки, флаги cash/card) через PATCH с валидацией (regex карты,
+  https-only ссылки, 422 при acceptsCardTransfer без карты — проверка эффективного состояния
+  ДО записи). Публично: `findBySlug` отдаёт все колонки → в by-slug ответах сырые поля
+  ВЫРЕЗАНЫ, вместо них `paymentRequisites` с гейтом — карта видна только при
+  acceptsCardTransfer=true. Задача Азима (экраны) — в tasks.md.
+
+### ✅ [SEO-AUDIT-001 п.2, хвост] storeSlug в sitemap-фиде товаров
+- **Важность:** 🔴 · **Дата:** 14.07.2026 · **Домен:** `apps/api` + `packages/types`
+- **Файлы:** `products.repository.ts` (findAllPublicForSitemap → +storeSlug плоско),
+  `packages/types/src/api/storefront.ts` (StorefrontSitemapProduct.storeSlug)
+- **Что сделано:** разблокированы товары в динамическом sitemap web-buyer — Азим просил
+  slug магазина для канонического `/{slug}/products/{id}`.
+
+## 2026-07-14 (Полат/Claude) — PARTNER-API-RAOS-001
+
+### ✅ [PARTNER-API-RAOS-001] Партнёрский API: выгрузка товаров RAOS → MaxSavdo
+- **Важность:** 🔴 · **Дата:** 14.07.2026 · **Домен:** `apps/api` + `packages/db` + `packages/types`
+- **Файлы:** `apps/api/src/modules/partner/*` (module, controller, admin-controller, guard,
+  2 use-case, repository, 2 DTO, spec — все новые), `packages/db/prisma/schema.prisma` (+PartnerApiKey),
+  `packages/db/prisma/migrations/20260714000001_partner_api_keys/` (ADD-only),
+  `apps/api/src/{app.module,modules/products/products.module,modules/media/media.module}.ts` (wiring/exports),
+  `packages/types/src/api/partner.ts` (новый), `docs/contracts/partner-api-raos.md` (контракт для RAOS)
+- **Что сделано:** подтверждён анализ Азима (функциональности не было: товар только через seller-JWT,
+  моделей ApiKey/Integration в схеме 0). Реализовано: auth по `X-Api-Key` (sha256-hash в БД, plaintext
+  один раз при выдаче, ключ скоупится на ОДИН store, revoke без удаления строки);
+  `POST /api/v1/partner/products` (@Public + PartnerApiKeyGuard, throttle 30/мин) — скачивает фото по
+  https-URL (анти-SSRF: только https, режем localhost/IP-литералы; mime jpeg/png/webp, ≤10MB), заливает
+  через существующий UploadDirectUseCase (sharp→R2), создаёт товар через CreateProductUseCase (лимиты
+  тарифа работают) и публикует через ChangeProductStatusUseCase (state machine + автопост в TG-канал).
+  Правило Азима «faqat rasmi bor mahsulot chiqadi»: без валидного фото товар НЕ создаётся (все фото
+  скачиваются ДО insert). Admin CRUD ключей: `POST/GET/DELETE /admin/partner-keys`
+  (@AdminPermission('system:integrations') — только super_admin/admin, custom-ролям reserved) + audit_log
+  (partner_key.issued/revoked). Миграцию применит `apps/api/start.sh` (migrate deploy) при деплое.
+- **Проверено:** `pnpm --filter api build` EXIT 0; jest partner.use-cases 10/10 (фото-фильтр, SSRF,
+  R2-fail→502+DRAFT, guard 401-ветки, publish=false).
+
+## 2026-07-12 (Азим/Claude, ночь) — PAY-004 (страница «Тарифы») + checkout payment-labels bug
+
+### ✅ [PAY-004] Страница «Тарифы» в кабинете продавца
+- **Важность:** 🟡 · **Дата:** 12.07.2026 · **Домен:** `apps/web-seller`
+- **Файлы:** `src/app/(dashboard)/subscription/page.tsx` (новый), `src/hooks/use-subscription.ts` (новый),
+  `src/lib/api/subscription.api.ts` (новый), `src/app/(dashboard)/layout.tsx` (пункт «Тарифы» в NAV)
+- **Что сделано:** реализован «Этап 1» ручной оплаты из `docs/business/payments-legal-tax-2026-06-07.md`
+  §2.4 — продавец впервые видит свою подписку в кабинете (тариф/статус/дата окончания через уже рабочий
+  `GET /seller/subscription`), сравнение Free/Pro/Studio с актуальными цифрами из живого
+  `apps/api/.../plan-config.ts` (не из устаревших доков — см. ниже), кнопка «Отменить подписку»
+  (`POST /seller/subscription/cancel`, уже существовала). Кнопка «Оплатить» на Pro/Studio — деплинк в
+  Telegram-бот с готовым сообщением (тариф+магазин), НЕ фейковый API-запрос: `POST /seller/subscription/upgrade`
+  для создания PENDING-заявки в коде не существует (PAY-002/003 тоже не реализованы) — оплата остаётся
+  честно ручной до готовности Payme/Click-мерчанта.
+- **Побочная находка:** `apps/api/.../plan-config.ts` (BIZ-DECISIONS-§15, 14.06.2026, только в коде, без
+  md-доки) разошёлся с `docs/business/pricing-rationale-v2-2026-06-04.md` — Free-лимит 50 товаров/50
+  заказов (не 20), триал 30 дней (не 14). Подтверждено Азимом: код верный, доки устарели.
+- **Проверка:** `tsc --noEmit` на `apps/web-seller` — EXIT 0.
+
+### ✅ Checkout payment-labels bug (web-buyer)
+- **Важность:** 🟡 · **Дата:** 12.07.2026 · **Файл:** `apps/web-buyer/src/app/(minimal)/checkout/page.tsx`
+- **Root cause:** способы оплаты были захардкожены под нереалистичный для УЗ сценарий — «Наличные курьеру»
+  / «Картой курьеру — UzCard/Humo POS-терминал» (курьеров с POS-терминалом у мелких TG-продавцов нет).
+  Баг был явно помечен ⚠️ в `docs/business/payments-legal-tax-2026-06-07.md` §1.3, но не исправлен.
+- **Что сделано:** тексты заменены на «Наличные — при встрече/самовывозе» и «Перевод на карту — продавец
+  пришлёт реквизиты в чате заказа» (честный placeholder, реального поля карты продавца пока нет — см.
+  задачу ниже). «Комментарий курьеру» → «Комментарий к заказу». `paymentMethod` state и так не уходил в
+  payload `confirm.mutateAsync` — это чисто UI-фикс, бэкенд-контракт не затронут.
+
+### 🆕 Новая задача для Полата — [SELLER-PAYMENT-REQUISITES-001]
+- Поле реквизитов оплаты продавца (карта + опц. Click/Payme-ссылка) на `Seller`/`Store` — нужно для
+  честного отображения на checkout вместо текущего placeholder. См. `analiz/tasks.md`.
+
+## 2026-07-12 (Claude/Полат, вечер) — types-контракты + DevOps-хвосты + as-any cleanup
+
+### ✅ [SEO-AUDIT-001 п.15, types-часть] Честные контракты checkout/orders + sitemap-типы
+- **Коммит:** `9827045` (main). Находки сверки типов с реальным API:
+  `CheckoutPreview.storeName` — фикция (API никогда не отдавал) → @deprecated optional;
+  не хватало valid/cartId/skuSnapshot; `DeliveryAddress` (request, строгий) подменял
+  собой response-side адрес заказа с null-полями → новый `OrderDeliveryAddress`;
+  `Order.store` бывает null. + `StorefrontSitemapFeed` под GET /storefront/sitemap.
+- Проверки: web-seller tsc EXIT 0; web-buyer — 0 новых ошибок (1 предсуществующая).
+- Остаток за Азимом — потребить типы, убрать normalizeOrder(any)/fallback-пирамиды.
+
+### ✅ [DEVOPS-RAILWAY-DEPLOY-RESILIENCE-001, хвост] п.3 дозакрыт + п.4 вердикт
+- **Находка:** фикс maxRetries 3→10 (18.05) попал только в `apps/tma/railway.toml`
+  (мёртвый дубль). Railway для telegram-app читает КОРНЕВОЙ `railway.toml` ветки tma
+  (Root Directory = корень) — там оставалось 3. Исправлено (`3eb8222` → tma),
+  деплой авто-триггернулся, TMA перекатился.
+- **п.4 закрыт с вердиктом «нельзя как написано»:** `apps/tma/Dockerfile` копирует
+  pnpm-lock/workspace из корня → Root Directory=apps/tma сломает build-context.
+  Детали в tasks.md.
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001, хвост] as-any cleanup контроллеров
+- `admin.controller.ts:154,163` — `status as any` → валидация против enum OrderStatus
+  (невалидный ?status= раньше уходил в Prisma и ронял запрос, теперь = без фильтра);
+- `orders.controller.ts:73-74` — `(result as any)` → типизированный PaginatedOrders.
+- nest build EXIT 0. Хвост задачи закрыт — `as any` в контроллерах 0.
+
+## 2026-07-12 (Азим/Claude, вечер) — LANDING-CORP-PAGE-001: buyer catalog + admin входы
+
+### ✅ [LANDING-CORP-PAGE-001] Точки входа на маркетинг-лендинге
+- **Важность:** 🟠 · **Дата:** 12.07.2026 · **Ветки:** `landing` (`ba1bd884`), `web-seller` (`2088a0d7`, cherry-pick)
+- **Файлы:** `apps/web-seller/src/components/landing/LandingHeader.tsx`, `LandingFooter.tsx`,
+  `src/lib/i18n/ru.ts`, `src/lib/i18n/uz.ts`
+- **Что сделано:** реализована design-спека `docs/superpowers/specs/2026-07-11-landing-entry-points-design.md`
+  (approved 11.07). Тикет переформулирован по факту 11.07 — seller-лендинг уже был готов, не хватало
+  входа для покупателя (каталог магазинов) и технической ссылки на админку. Добавлено: ссылка «Каталог
+  магазинов» в хедере (десктоп+мобайл) через `buyerOrigin()`; 4-я колонка «Продукт» в футере с той же
+  ссылкой + приглушённая «Админка» (`NEXT_PUBLIC_ADMIN_URL`, фолбэк `adminsb.up.railway.app`); i18n
+  ключи `nav.buyerCatalog`/`footer.admin` ru+uz. Hero и seller-конверсия не тронуты.
+- **Проверка:** tsc EXIT 0 на обеих ветках, `next build` EXIT 0, Playwright — desktop header, мобильное
+  меню, футер 4 колонки, переключение RU/UZ, 0 console errors.
+- **Follow-up (не в scope, за Полатом):** `main` расходится с прод-ветками лендинга (тот же класс, что
+  `LANDING-BRANCH-DRIFT-001`); `NEXT_PUBLIC_ADMIN_URL` фолбэк не подтверждён явно.
+
+## 2026-07-12 (Азим/Claude) — SEO-AUDIT-001 P0 (п.2-4) + DEPLOY-DOMAIN-MAXSAVDO-001 (web-buyer часть)
+
+### ✅ [SEO-AUDIT-001] П.2 — sitemap.ts стал динамическим
+- **Важность:** 🔴 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/sitemap.ts`, `src/lib/api/storefront-server.ts`
+- **Что сделано:** вместо 6 статичных URL — `serverGetSitemapFeed()` тянет `GET /storefront/sitemap`
+  (Полат, `1d2b4bc4`), добавляет магазины с честным `lastModified`. Товары НЕ эмитятся — фид не несёт
+  `store.slug`, без него не построить `/{slug}/products/{id}`; заведён блокер на Полата в `logs.md`.
+- **Проверка:** tsc EXIT 0, `next build` EXIT 0 (`/sitemap.xml` в списке роутов, revalidate 30s).
+
+### ✅ [SEO-AUDIT-001] П.3 — главная страница отдаёт server-rendered ссылки на магазины
+- **Важность:** 🔴 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/(shop)/page.tsx`, `src/components/home/HomeTopStores.tsx`,
+  `src/hooks/use-storefront.ts` (`useFeaturedStorefront` += `initialData`), `storefront-server.ts`
+  (новый `serverGetFeatured`)
+- **Что сделано:** `HomePage` стал async Server Component, фетчит featured server-side и передаёт
+  как `initialData` в `useFeaturedStorefront` — краулер получает реальные `<a href="/{slug}">`
+  в первом HTML вместо client-only skeleton (раньше `HomeTopStores` фетчил только через
+  `useQuery` без SSR-данных).
+- **Проверка:** tsc EXIT 0, `next build` EXIT 0 (`/` статически пререндерится, revalidate 30s).
+
+### ✅ [SEO-AUDIT-001] П.4 — карточка товара отдаёт контент в первом HTML
+- **Важность:** 🔴 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx` (переписан на async
+  Server Component), новый `.../ProductPageClient.tsx` (вся интерактивная логика, без изменений
+  поведения), `hooks/use-storefront.ts` (`useProduct` += `initialProduct`/`initialDataUpdatedAt: 0`)
+- **Что сделано:** `page.tsx` теперь фетчит товар через `serverGetProduct` и рендерит
+  `ProductPageClient` с `initialProduct`. `useProduct` использует его как `initialData`, но с
+  `initialDataUpdatedAt: 0` — auth-зависимые поля (`inWishlist`) дообновляются фоновым рефетчем
+  на mount, не залипая на 3-минутный `staleTime` (server-фетч идёт без auth-токена).
+- **Проверка:** tsc EXIT 0, `next build` EXIT 0, vitest 22/25 (3 падения в `MaxsavdoLogo.test.tsx` —
+  pre-existing, не связаны с этой правкой).
+
+### ✅ [SEO-AUDIT-001] П.13 — robots.ts дубль `/orders`/`/orders/`
+- **Важность:** 🟢 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/robots.ts`
+- **Что сделано:** убран дублирующий disallow-путь (косметика из P2 аудита).
+
+### ✅ [DEPLOY-DOMAIN-MAXSAVDO-001] Азим (код) — fallback URL на apex вместо shop.maxsavdo.uz
+- **Важность:** 🟡 · **Дата:** 12.07.2026 · **Ветка:** `web-buyer` (`b215b59b`)
+- **Файлы:** `apps/web-buyer/src/app/layout.tsx` (metadataBase), `robots.ts`, `sitemap.ts`,
+  `[slug]/products/[id]/layout.tsx` (canonical/OG)
+- **Что сделано:** `extractSlug`-парсера в коде не нашлось (web-buyer не делает subdomain-роутинг,
+  только path `/${slug}`) — реальный баг оказался в `NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz'`
+  fallback (та же категория, что уже чинили в web-seller `b35d05d`). Поправлено на
+  `https://shop.maxsavdo.uz` в 4 местах. В проде не било (env var уже задан 09.07) — задевало
+  только dev/staging без env var.
+- **Проверка:** tsc EXIT 0.
+- **Не запушено:** коммит только локальный (`.worktrees/web-buyer`), push — по решению Азима.
+
+## 2026-07-12 (Claude/Полат) — бот: фикс 404-ссылки + язык в онбординге + смена названия магазина
+
+### ✅ [BOT-STORE-LINK-404-001] 404 на ссылке магазина в боте
+- **Важность:** 🔴 · Root cause и фикс — `analiz/logs.md` 12.07. Коммит `544e192`.
+
+### ✅ [BOT-ONBOARDING-I18N-001] Онбординг бота: выбор языка 🇺🇿/🇷🇺 в самом начале
+- **Важность:** 🔴 (просьба owner-а 09.07: «в начале выберите язык… и поменять имя магазина»)
+- **Файлы:** `apps/api/src/modules/telegram/telegram-bot-i18n.ts` (новый словарь ru/uz),
+  `telegram-demo.handler.ts`, `telegram-webhook.controller.ts`
+- **Что сделано:** первый контакт = выбор языка (1 тап, Redis `tg:lang:*` на год +
+  `users.languageCode` при регистрации — колонка уже была в схеме, миграция не нужна).
+  Локализованы: приветствие, шаринг контакта, выбор роли, 3 шага регистрации продавца,
+  «магазин создан», меню продавца/покупателя, карточка магазина, rename-флоу. Кнопка
+  «🌐 Til / Язык» в обоих меню. Узбекский — Latin, апостроф U+02BB (правило TMA uz.ts).
+  Регистрация НЕ удлинилась (требование Азима) — язык запоминается.
+- **Смена названия магазина:** кнопка «✏️ Изменить название» в «Магазин создан» и в /store →
+  state `awaiting_store_rename` → update `store.name`. Slug/ссылка сознательно не меняются.
+- **Остаток:** ~~BOT-I18N-FULL-001~~ → закрыт тем же днём, см. ниже.
+
+### ✅ [INFRA-ENV-BUYER-URL-API-001] BUYER_URL добавлен на savdo-api (Railway)
+- **Важность:** 🟠 · **Дата:** 12.07.2026 (Claude через Railway dashboard)
+- **Факт:** переменной `BUYER_URL` на savdo-api НЕ БЫЛО вовсе (36 переменных просмотрены) —
+  бот работал на код-fallback, а автопостинг в каналы слал t.me-deeplink вместо веб-ссылки товара.
+- **Что сделано:** `BUYER_URL=https://shop.maxsavdo.uz` добавлен, Deploy применён (37 переменных),
+  health 200. Теперь channel-post-builder строит канонические веб-ссылки
+  `shop.maxsavdo.uz/{slug}/products/{id}` в постах каналов.
+- **Попутно подтверждено:** деплой BOT-I18N-FULL-001 в проде («Deployment successful» в Activity).
+
+### ✅ [BOT-I18N-FULL-001] Полная ru/uz локализация всех текстов бота
+- **Важность:** 🟡 · **Дата:** 12.07.2026 · **Коммит:** `7fdaa2c` (ветка api → `7d847c1`)
+- **Что сделано:** локализованы все остальные флоу: /help, привязка канала, товары-в-TMA,
+  logout, заказы seller/buyer + статусы (orderStatusLabel вместо ORDER_LABEL), статистика,
+  переключение ролей, поиск магазина, deeplink. Автопостинг в канал — на языке владельца
+  магазина (`seller.user.languageCode`). Валюта 'сум'/'soʻm' по языку. nest build EXIT 0.
+- **Бот теперь полностью двуязычный** — ни одного пользовательского текста вне словаря
+  `telegram-bot-i18n.ts` (кроме crash-fallback в webhook-контроллере).
+
+## 2026-07-10 (Claude/Полат) — лендинг: честный копирайт + API: sitemap feed + HYBRID-5
+
+### ✅ [LANDING-HONEST-COPY-001] Лендинг приведён в соответствие с реальным продуктом
+- **Важность:** 🔴 (дедлайн 11.07 11:00 — честный пакет для внешнего партнёра-реселлера)
+- **Контекст:** тимлид собирает пакет «без fake» по всем продуктам; для MAXSAVDO лендинг
+  обещал несуществующее. Source of truth цен/лимитов — `apps/api/.../plan-config.ts`.
+- **Что исправлено (ветка landing, коммит `5783059`, задеплоено и проверено curl-ом):**
+  - Free: «20 товаров» → «50 товаров · до 50 заказов/мес» (в коде productsLimit=50, ordersLimit=50)
+  - Pro: убраны **несуществующие** «свой домен» и «AI-подача» → «брошенные корзины» (реально в проде)
+  - Studio: «мульти-стор · команда» → «до 3 магазинов (скоро)» (только feature-флаг, функционала нет)
+  - Годовая скидка: −25% → −20% (annualUzs = 12 × 0.8)
+  - Showcase: «Настоящие витрины» → «Примеры оформления»; убраны вымышленные рейтинги 4.9/5.0/4.8
+  - ru + uz синхронно; next build EXIT 0
+- **Осталось честно НЕ заявлять партнёру:** фискализация (0 упоминаний в коде), онлайн-оплата
+  Click/Payme (только enum, оплата = ручной mark-paid), AI, кастомные домены магазинов, мульти-стор.
+
+### ✅ [SEO-AUDIT-001 п.1] GET /api/v1/storefront/sitemap — фид для динамического sitemap
+- Коммит `1d2b4bc` (main), ветка api запушена → savdo-api. Детали в tasks.md (п.1 помечен).
+
+### ✅ [HYBRID-5] Реконсиляция контекста владельца при архивации магазина
+- `ArchiveStoreUseCase.postEffect`: owner role SELLER → BUYER. Находка: гейт switch-context
+  фильтрует только `deletedAt: null` (auth.repository.ts:109), статус магазина НЕ проверяет —
+  без реконсиляции владелец архивированного магазина оставался в мёртвом seller-контексте.
+- +3 unit-теста, suite 23/23 PASS. Коммит `1d2b4bc`.
+
+## 2026-07-11 (Азим/Claude) — ONBOARDING-AUDIT-AZIM-001 P0-1/P0-2: слепая зона онбординга
+
+### ✅ [ONBOARDING-AUDIT-AZIM-001] P0-1 — `toSlug()` убивал кириллические названия магазинов
+- **Важность:** 🔴 · **Дата:** 11.07.2026
+- **Файлы:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx`
+- **Что сделано:** добавлена таблица транслитерации кириллицы (`CYRILLIC`), применяется перед
+  regex-очисткой `[^\w\s-]`; добавлена обрезка ведущих/хвостовых дефисов. «Электро Маркет» теперь
+  → `elektro-market` вместо `""` (раньше валидация на фронте проходила с пустым slug и падала 400
+  на API — продавец с кириллическим названием не мог пройти онбординг).
+- **Проверка:** `pnpm --filter web-seller exec tsc --noEmit` — EXIT 0.
+
+### ✅ [ONBOARDING-AUDIT-AZIM-001] P0-2 — OtpGate не объяснял, что нужен @maxsavdo_bot
+- **Важность:** 🔴 · **Дата:** 11.07.2026
+- **Файлы:** `apps/web-buyer/src/components/auth/OtpGate.tsx`
+- **Что сделано:** на шаге ввода кода добавлена подсказка-ссылка на бота под кнопкой «Изменить
+  номер». Username берётся из `NEXT_PUBLIC_TG_BOT_USERNAME` с фолбэком `maxsavdo_bot` — тот же
+  паттерн, что уже используется в `products/[id]/page.tsx`.
+- **Проверка:** `pnpm --filter web-buyer exec tsc --noEmit` — 1 ошибка, но предсуществующая и
+  несвязанная (`orders/[id]/page.tsx:243`, OrderStatus 'PROCESSING' — файл не трогался).
+### ✅ [ONBOARDING-AUDIT-AZIM-001] P1-1 — копирайт «Войти» пугал новых пользователей
+- **Важность:** 🟡 · **Дата:** 11.07.2026
+- **Файлы:** `apps/web-seller/src/app/(auth)/login/page.tsx`
+- **Что сделано:** под подзаголовком добавлена строка «Если вы здесь впервые — аккаунт создастся
+  автоматически» — снимает страх юзеров, у которых ещё нет аккаунта, перед формой «Войти».
+
+### ✅ [ONBOARDING-AUDIT-AZIM-001] P1-2 — дублирующее TG-поле в Step 2 онбординга
+- **Важность:** 🟡 · **Дата:** 11.07.2026
+- **Файлы:** `apps/web-seller/src/app/(onboarding)/onboarding/page.tsx`
+- **Что сделано:** убрано отдельное поле `telegramContactLink` (react-hook-form регистрация +
+  input + валидация), `Step2Data` больше не хранит его. `telegramContactLink` теперь выводится из
+  `telegramUsername` как `https://t.me/${bareUsername}` при сабмите (`handleStep2`). Продавец
+  вводит username один раз вместо двух похожих полей.
+- **Проверка:** `pnpm --filter web-seller exec tsc --noEmit` — EXIT 0 для обоих P1-фиксов.
+
+**[ONBOARDING-AUDIT-AZIM-001] закрыт полностью** (P0-1, P0-2, P1-1, P1-2) — все 4 пункта из
+UX-аудита 80 персон устранены.
+
+---
+
+## 2026-07-09 (Claude/Полат) — DEPLOY-DOMAIN-MAXSAVDO-001: домены живы + env vars переведены на maxsavdo.uz
+
+### ✅ [DEPLOY-DOMAIN-MAXSAVDO-001-ENV] Railway env vars обновлены под кастомные домены
+- **Важность:** 🔴 (прод-инфра) · **Дата:** 09.07.2026
+- **Контекст:** NS переключены ahost→Cloudflare (Азим, 08.07) — все 5 доменов резолвятся и отвечают 200.
+  После этого стало безопасно менять NEXT_PUBLIC_* (вшиваются в бандл при билде).
+- **Что сделано (Claude через Railway dashboard, один changeset «6 changes across 3 services»):**
+  - `savdo-builder-by`: `NEXT_PUBLIC_API_URL` → `https://api.maxsavdo.uz`; **добавлен**
+    `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` (не было вовсе — sitemap/robots/metadataBase
+    web-buyer падали на дефолт).
+  - `savdo-builder-sl`: `NEXT_PUBLIC_API_URL` → `https://api.maxsavdo.uz`;
+    `NEXT_PUBLIC_BUYER_URL` → `https://shop.maxsavdo.uz` (был railway.app URL).
+  - `landing`: `NEXT_PUBLIC_API_URL` → `https://api.maxsavdo.uz` (старое значение содержало
+    лишний ведущий пробел!); **добавлен** `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz` —
+    закрыт хвост LANDING-BRANCH-DRIFT-001 (демо-ссылка больше не зависит от code-fallback).
+- **Деплой:** все 3 сервиса Deployment successful (Railway Activity 09.07). Проверки curl — см. tasks.md.
+- **Не тронуто:** savdo-api (env серверные, домен уже привязан), admin/TMA (остаются на railway.app).
+
+## 2026-07-07 (Fable 5, по запросу owner-а) — SEO-AUDIT-001: аудит SEO/GEO/AEO + кода сайта
+
+### ✅ [SEO-AUDIT-001-AUDIT] Проведён read-only аудит, план фиксов оформлен
+- **Важность:** 🔴 (сайт невидим для поисковиков/AI) · **Дата:** 07.07.2026
+- **Файлы:** только чтение (web-buyer: layout/sitemap/robots/manifest/next.config/страницы/lib;
+  web-seller: layout/socket/client; admin: index.html). Изменений кода НЕТ.
+- **Что сделано:** полный SEO/GEO/AEO-аудит web-buyer + код-аудит сайта. Главное: discovery-дыра
+  (статичный sitemap + client-side главная без ссылок на магазины), client-side страница товара
+  (пустая для AI-краулеров), нет uz/hreflang, web-seller без noindex, дефекты Product JSON-LD,
+  socket без reconnect-лимита (в обоих web-апах), размытый контракт цен (fallback-пирамиды).
+  ⚠️ Найдено расхождение трекера с кодом: i18n ru/uz и /help из done.md 21.05 в коде отсутствуют.
+- **План фиксов:** `analiz/tasks.md → SEO-AUDIT-001` (P0-P2 + код-аудит, роли Полат/Азим).
+  Баг-детали: `analiz/logs.md → SEO-AUDIT-001`.
+
+## 2026-07-08 (Азим/Claude) — LANDING-BRANCH-DRIFT-001: maxsavdo.uz показывал mock-плейсхолдеры + мёртвую ссылку демо
+
+### ✅ [LANDING-BRANCH-DRIFT-001] Синхронизирован `landing`-ветка с `web-seller`, починен fallback buyer-url
+- **Важность:** 🟠 · **Дата:** 08.07.2026
+- **Симптом:** на `maxsavdo.uz` в моке телефона на Hero вместо названий товаров показывались сырые
+  i18n-ключи (`mock.p1`, `mock.p2`...), а кнопка «Посмотреть демо-магазин» вела на
+  `maxsavdo.uz/{slug}` → 404.
+- **Root cause 1 (mock.p1):** `landing` Railway-сервис (домен `maxsavdo.uz`) деплоится с ветки
+  `landing`, а НЕ `web-seller` (см. `[[PROJECTS/savdo-builder/sessions/2026-06-19-13-01-landing-railway-fix-branch-mainlanding]]`
+  в Obsidian). `Hero.tsx` на `landing` уже дёргал `t('mock.p1')` с 19.06, но переводы для этих
+  ключей добавили только на `web-seller` (commit `ae45d601`/`fa224a28`) и никогда не портировали
+  обратно — ветки разошлись, `t()` фолбэчился на сырой ключ.
+- **Root cause 2 (демо-ссылка):** `buyer-url.ts` → `FALLBACK = 'https://maxsavdo.uz'` — устаревший
+  дефолт с домиграционной (AHOST) схемы. После переезда на Cloudflare-домены (`DOMAIN-MAXSAVDO-UZ-DNS-001`,
+  07.07) buyer-стор живёт на `shop.maxsavdo.uz`, а `NEXT_PUBLIC_BUYER_URL` на Railway-сервисе
+  `landing` не выставлен → фолбэк резолвился на сам landing-домен, где нет `/{slug}` роута.
+- **Фикс:**
+  1. На `landing` (commit `6a558666`): подтянуты 7 файлов с `web-seller` (ru.ts/uz.ts — 18
+     недостающих ключей `mock.*`/`showcase.niche*`, `layout.tsx` — I18nProvider, `LandingPage.tsx` —
+     редирект залогиненного SELLER на `/dashboard`, `LandingFooter.tsx`+`demo-store.ts` — ребренд
+     `@maxsavdo_bot`, `SocialProof.tsx` — фикс опечатки ключа `betaBody`→`betaDesc`).
+  2. На `landing` (commit `6c755e99`) и `web-seller` (commit `b35d05db`): `buyer-url.ts` FALLBACK
+     → `https://shop.maxsavdo.uz` + обновлён smoke-тест `buyer-url.test.ts`.
+- **Файлы:** `apps/web-seller/src/lib/i18n/{ru,uz}.ts`, `apps/web-seller/src/app/layout.tsx`,
+  `apps/web-seller/src/components/landing/{LandingPage,LandingFooter,SocialProof}.tsx`,
+  `apps/web-seller/src/lib/landing/demo-store.ts`, `apps/web-seller/src/lib/buyer-url.ts`,
+  `apps/web-seller/src/__tests__/smoke/buyer-url.test.ts` — на ветках `landing` и `web-seller`.
+- **Не сделано (нужен доступ к Railway UI, не CLI):** явно выставить `NEXT_PUBLIC_BUYER_URL=https://shop.maxsavdo.uz`
+  на сервисе `landing` в Railway Variables (сейчас держится только на code-fallback — работает, но
+  правильнее задать явно, как на остальных сервисах). См. `#antipattern` ниже.
+- **Доп. фикс той же серии (08.07, commit `68553d39` на `landing`):** аудит лендинга нашёл
+  `og:image` → `http://localhost:8080/opengraph-image?...` (превью ссылки в Telegram/Instagram
+  битое) — причина та же категория бага: `apps/web-seller/src/app/layout.tsx` не задавал
+  `metadataBase`, Next.js резолвил auto-generated `opengraph-image.tsx` в дефолтный localhost.
+  Добавлен `metadataBase: new URL('https://maxsavdo.uz')`.
+
+## 2026-07-05 (Полат) — SUSPENDED-ENFORCEMENT-001: backend-гейт приостановленной подписки
+
+### ✅ [SUSPENDED-ENFORCEMENT-001] SUSPENDED больше не обходится на API (каталог)
+- **Важность:** 🔴 (security/billing) · **Дата:** 05.07.2026 · API build 0, +8 тестов (8/8)
+- **Триггер:** аудит Азима (web-buyer/web-seller, 03.07). Критичный #2: фронтовый read-only
+  оверлей web-seller обходился скроллом, а **на бэке SUSPENDED гейтился только при создании
+  товара** (`create-product.use-case.ts` → `enforceProductsLimit`). Остальные ~21 seller-мутаций
+  (правка/удаление товара, статус, варианты, сток, опции, фото, атрибуты, **репост в TG-канал**)
+  для приостановленного продавца проходили на 200.
+- **Root cause:** `PlanLimitGuardService.assertSubscriptionActive` был private и вызывался только
+  из `enforceProductsLimit`/`enforceFeature` (последний вообще мёртвый — 0 вызовов).
+- **Фикс (минимальный след, choke-point):** `resolveStoreId()` в `ProductsController` — единый
+  проход всех seller-роутов, уже инкапсулирует ACCESS-001 (isBlocked). Добавлен туда
+  subscription-гейт (enforce по умолчанию); 4 GET-роута (чтения) освобождены флагом
+  `{ requireActiveSubscription: false }` — dashboard остаётся read-only, а не мёртвым (§7).
+  Новый публичный `PlanLimitGuardService.assertActiveSubscription(sellerId)` (fail-open при
+  отсутствии подписки: приостановленный всегда имеет строку, отсутствие = data-gap).
+- **Файлы:** `apps/api/src/shared/plan-limit-guard.service.ts` (+метод),
+  `apps/api/src/modules/products/products.controller.ts` (inject + resolveStoreId + 4 GET),
+  `apps/api/src/shared/plan-limit-guard.service.spec.ts` (новый, 8 тестов).
+- **Вне скоупа (открытый вопрос Азиму):** orders-контроллер (`seller/orders/:id/status`,
+  `mark-paid`, `archive`) — блокировать ли фулфилмент СТАРЫХ заказов приостановленному продавцу
+  (строго §7) или дать довести до конца ради покупателя. Ждём решения владельца бизнес-модели.
+
+## 2026-07-04 (Полат) — FEAT-CUSTOM-ROLES-001: кастомные admin-роли (RBAC)
+
+### ✅ [FEAT-CUSTOM-ROLES-001] Кастомные admin-роли с гибкими permissions
+- **Важность:** 🟡 (T2 security/RBAC) · **Дата:** 04.07.2026 · API build 0, admin build 0, +6 тестов
+- **Owner (04.07):** admin RBAC-роли (не пользовательские BUYER/SELLER).
+- **Дизайн (минимальный след):** `AdminUser.adminRole` — уже свободная строка, поэтому кастомная роль =
+  имя в `adminRole` + новая таблица `admin_custom_roles`. AdminUser НЕ менялся. Guard/entry-gate
+  получают fallback: роль не базовая → permissions тянутся из БД. Базовые роли остаются в коде
+  (PR-review-гейт сохранён).
+- **Security-guardrails:** CRUD ролей только super_admin; permissions строго из словаря
+  `ADMIN_PERMISSION_VOCABULARY`; reserved запрещены (`*`, `admin:*`, `db:*`, `system:*`) — нет
+  эскалации до управления админами/raw DB; имя не может совпасть с базовой ролью; удаление роли
+  блокируется, если назначена админам; каждое изменение → audit_log (AuditService).
+- **Backend (`apps/api`):**
+  - `schema.prisma` + миграция `20260704000002_admin_custom_roles` (CREATE TABLE, additive/prod-safe).
+  - `common/constants/admin-permissions.ts` — `BASE_ADMIN_ROLES`, `isBaseAdminRole`,
+    `ADMIN_PERMISSION_VOCABULARY`, `isAssignableCustomPermission` (reserved-фильтр).
+  - `admin.repository.ts` — CRUD кастомных ролей + `countAdminsWithRole`.
+  - `admin-users-management.use-case.ts` — createCustomRole/updateCustomRole/deleteCustomRole/
+    listCustomRoles + `assertAssignableRole` (async: базовая ИЛИ существующая кастомная) + audit.
+  - `super-admin.controller.ts` — `/admin/custom-roles` CRUD + `/admin/permissions/vocabulary`.
+  - `admin-permission.guard.ts` + `admin-access.guard.ts` — fallback на кастомную роль из БД.
+  - `admin-auth.use-case.ts` — `resolveAdminPermissions` (getMe + impersonate custom-aware).
+  - `+6 security-тестов` в use-case.spec (reserved/wildcard/base-collision/happy+audit/delete-block/non-super).
+- **Frontend (`apps/admin`):** `AdminUsersPage.tsx` — модал управления ролями (список + форма с
+  чекбоксами permissions по ресурсам), кастомные роли в пикерах Add/Edit, безопасные бейджи
+  (`roleBadge`/`roleLabel` для не-базовых). i18n ru/uz `customRoles.*` + `common.edit`.
+- **ADR:** решение о минимальном следе (adminRole-строка vs новый FK) — в Obsidian.
+
+## 2026-07-04 (Полат) — FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий
+
+### ✅ [FEAT-CATEGORY-JOURNAL-001] Журнал категорий (api + admin)
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · API `nest build` 0, admin build 0, api-тесты без регрессий
+- **Решения owner (04.07):** запись через общий AuditModule (не зависимость categories→admin);
+  UI = панель «История» прямо в admin CategoriesPage.
+- **Проблема:** admin-CRUD глобальных категорий был единственным admin-потоком БЕЗ audit_log —
+  порчу каталога (напр. `увлажниьель`) нельзя отследить. Читалка журнала уже существовала.
+- **Backend (`apps/api`):**
+  - `modules/audit/audit.service.ts` + `audit.module.ts` — НОВЫЙ общий сервис записи audit_log,
+    вынесен из AdminRepository (PrismaModule глобальный → импортов не нужно). Доменные модули пишут
+    журнал без зависимости от AdminModule (исправлена инверсия слоёв).
+  - `admin.repository.ts` — `writeAuditLog` делегирует в `AuditService` (сигнатура сохранена, все
+    admin-вызовы работают без правок); `admin.module.ts` импортирует AuditModule.
+  - `categories.controller.ts` — admin create/update/delete/seed пишут audit (`CATEGORY_CREATED/
+    UPDATED/DELETED/SEEDED`, entityType=`GlobalCategory`, update → компактный before→after дифф);
+    `categories.module.ts` импортирует AuditModule.
+- **Frontend (`apps/admin`):** `CategoriesPage.tsx` — кнопка «История» + модал журнала (бейдж
+  действия, дифф/сводка payload, кто+когда), тянет `GET /admin/audit-log?entityType=GlobalCategory`.
+  i18n ru/uz — ключи `categories.history*`/`categories.hist*`.
+- **Проверка hook think-before-wire:** новый AuditService прошёл (токен basename `audit` совпал с
+  существующими `*audit*`-импортами → потребители найдены, ложной блокировки нет).
+
+## 2026-07-04 (Полат) — FEAT-DESIGN-OPTIMIZATION-001: блик только по событию (TMA код-закрыт)
+
+### ✅ [FEAT-DESIGN-OPTIMIZATION-001] Эффекты событийные, не always-on (TMA)
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · TMA build (tsc -b + vite) EXIT 0
+- **Суть:** owner просил, чтобы блик/glow срабатывал ТОЛЬКО по событию (уведомление / что-то новое /
+  водитель назначен / загрузка), а не крутился постоянно и не грел телефон клиента.
+- **Что сделано:** аудит всех always-on `infinite` анимаций в `apps/tma/src`. Вывод — после
+  PERF-TMA-HEAT-001 весь остаток уже событийный:
+  - `DashboardPage` pulse ×2 → рендерится только при `s.urgent` (срочная статистика = «что-то новое»).
+  - `SocketStatusBadge` pulse → только `status==='connecting'` (реконнект/загрузка).
+  - `typing-dot`/`typing-bounce` → только когда собеседник печатает.
+  - `skeleton-shimmer`, `logo-pulse`, `LoadingScreen` → loading-контекст.
+  - `glass-shimmer` → уже переведён на hover/tap в PERF-HEAT (не infinite).
+  Все они = сигнал, оставлены как есть.
+- **Убрано (мёртвый декор):** `apps/tma/src/index.css` — `.orchid-pulse` (glow 2.4s infinite) и
+  `.status-dot`+`@keyframes cyan-ping` (ping 1.8s infinite). 0 потребителей в .tsx (проверено grep) —
+  чистый always-on декор без сигнала; удалён, чтобы будущий dev случайно не навесил.
+- **Не трогал:** web-buyer/web-seller (зона Азима). Delivery-«водитель назначен» подсветка — фичи
+  трекинга курьера в TMA пока нет, добавить событийный glow когда появится доставка.
+
+## 2026-07-04 (Полат) — FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов (seller)
+
+### ✅ [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — seller-часть
+- **Важность:** 🟡 · **Дата:** 04.07.2026 · API `nest build` EXIT 0, TMA build EXIT 0, vitest 18/18
+- **Скоуп:** симметрично buyer — ручная архивация терминальных (DELIVERED/CANCELLED) заказов
+  продавцом, отдельный флаг `sellerArchivedAt` (независим от buyer-архива), данные не удаляются.
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` — `Order.sellerArchivedAt DateTime?` (nullable).
+  - `packages/db/prisma/migrations/20260704000001_order_seller_archived/migration.sql` — `ADD COLUMN`
+    nullable (prod-safe, применится на api-деплое через `start.sh` → `migrate deploy`).
+  - `apps/api/.../orders.repository.ts` — фильтр `sellerArchivedAt` в `findByStoreId` + метод
+    `setSellerArchived`.
+  - `get-seller-orders.use-case.ts` — проброс `archived`.
+  - `orders.controller.ts` — `?archived` в seller-списке + `PATCH /seller/orders/:id/archive`.
+    Владение по `storeId` через `getOrderDetailUseCase` (store-scoped 404), в архив только
+    DELIVERED/CANCELLED (иначе 409). Переиспользован query-параметр `archived` из buyer-DTO.
+  - `apps/tma/.../seller/OrdersPage.tsx` — переключатель «Активные ↔ Архив», кнопка «В архив/Вернуть»
+    на терминальных карточках, оптимистичное удаление из списка, i18n-ключи те же (`orders.archive*`).
+- **Заметка:** предсуществующие падения `telegram-auth.use-case.spec.ts` (8) + `GetMeUseCase` (1) —
+  НЕ связаны с этой правкой (проверено: те же падения на чистом дереве до изменений). Залогировано.
+
+## 2026-07-03 (Полат) — FEAT-ORDERS-ARCHIVE-001: архивация закрытых заказов (buyer)
+
+### ✅ [FEAT-ORDERS-ARCHIVE-001] Архивация закрытых заказов — buyer-часть
+- **Важность:** 🟡 · **Дата:** 03.07.2026 · API `nest build` EXIT 0, TMA build EXIT 0, vitest 18/18
+- **Скоуп (дефолт, решён без остановки):** ручная архивация, **buyer-first**, только терминальные
+  заказы (DELIVERED/CANCELLED), данные не удаляются. Seller/admin — отдельно (в tasks.md).
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` — `Order.buyerArchivedAt DateTime?` (nullable).
+  - `packages/db/prisma/migrations/20260703000001_order_buyer_archived/migration.sql` — `ADD COLUMN`
+    nullable (prod-safe, применится на api-деплое через `start.sh` → `migrate deploy`).
+  - `apps/api/.../orders.repository.ts` — фильтр `buyerArchivedAt` в `findByBuyerId` (основной
+    список = NULL, `?archived=true` = архив) + метод `setBuyerArchived`.
+  - `get-buyer-orders.use-case.ts` — проброс `archived`.
+  - `orders.controller.ts` — `?archived` в списке + `PATCH /buyer/orders/:id/archive`. Владение
+    проверяется через `getOrderDetailUseCase` (buyer-scoped 404), в архив только DELIVERED/CANCELLED
+    (иначе 409). `dto/list-orders.dto.ts` — query-параметр `archived`.
+  - `apps/tma/.../OrdersPage.tsx` — переключатель «Активные ↔ Архив», кнопка «В архив/Вернуть» на
+    закрытых, оптимистичное удаление из текущего списка. + i18n ru/uz (`orders.archive*`).
+- **Архитектурная заметка:** отдельный use-case/dto НЕ заводил — hook `think-before-wire`
+  (справедливо) блокирует изолированные новые файлы; переиспользовал уже внедрённые
+  `OrdersRepository` + `getOrderDetailUseCase` (тот уже проверяет владельца) прямо в контроллере,
+  как существующий inline-guard buyer-cancel. Меньше файлов, та же чистота.
+
+## 2026-07-03 (Полат) — PERF-TMA-HEAT-001: убраны always-on эффекты (грев телефона)
+
+### ✅ [PERF-TMA-HEAT-001] Телефон греется в TMA — устранены постоянные GPU-эффекты
+- **Важность:** 🔴 · **Дата:** 03.07.2026 · `pnpm build` (tsc -b + vite) EXIT 0, `vitest` 18/18
+- **Файлы:** `apps/tma/src/components/layout/AppShell.tsx`, `apps/tma/src/lib/socket.ts`,
+  `apps/tma/src/index.css`
+- **Что сделано (по 3 подтверждённым офендерам расследования):**
+  1. **Ambient blur** (`AppShell.tsx`): 3 слоя `filter: blur(72/56/40px)` на `fixed inset-0` при
+     скролле в мобильном WebView заставляли GPU перерастеризовывать каждый кадр. Отключены **на
+     мобилке** (`{isDesktop && …}`), на десктопе — 2 слоя БЕЗ `filter:blur` (мягкость через
+     radial-gradient стопы + `translateZ(0)` в свой composite-слой). Мобилка = ноль per-frame blur.
+  2. **socket.io reconnect** (`socket.ts`): дефолт = бесконечный reconnect; при stale-token баге
+     хендшейк фейлился вечно → CPU-цикл + вечный pulse. Добавлены `reconnectionAttempts:8` +
+     backoff (`reconnectionDelay:1000`, `Max:8000`). После лимита → 'disconnected' (точка без
+     анимации), цикл встаёт.
+  3. **glass-shimmer** (`index.css`): `animation: shimmer infinite` висел на **КАЖДОЙ** GlassCard
+     (список карточек = N вечных анимаций). Переведён на взаимодействие (`:hover`/`:active` = один
+     проход), как и задумывалось комментом «micro-reflection on hover».
+- **НЕ трогал (осознанно):** `pulse` в DashboardPage (258/336) и `SocketStatusBadge` — это
+  условные СИГНАЛЫ (срочный заказ / проблема связи), ровно тот «блик по событию» из
+  FEAT-DESIGN-OPTIMIZATION-001. `.status-dot`(cyan-ping)/`.orchid-pulse` — dead CSS (не в .tsx),
+  рантайм-стоимости нет.
+- **Остаток:** финальное подтверждение профайлером на реальном устройстве (Chrome DevTools
+  Performance / TG WebView remote debug) — код-часть закрыта.
+- **Связь:** частично закрывает и FEAT-DESIGN-OPTIMIZATION-001 (принцип «анимация = сигнал»).
+
+## 2026-07-02 (Полат) — Фиксы после живого buyer-аудита TMA (4 бага)
+
+### ✅ [TMA-BUILD-AUTHCTX-014] Прод-сборка TMA была сломана с Phase 2 (tsc -b)
+- **Важность:** 🔴 · **Дата:** 02.07.2026 · найдено при live-ретесте (`pnpm build`)
+- **Файлы:** `apps/tma/src/providers/AuthProvider.tsx`
+- **Что сделано:** тип стейта был `Omit<AuthCtx,'logout'|'reauth'>` — после добавления `switchContext`
+  в `AuthCtx` (Phase 2) он стал требоваться в setState → `tsc -b` падал (2 ошибки). Исправил на
+  `Omit<AuthCtx,'logout'|'reauth'|'switchContext'>` (switchContext — функция уровня Provider value).
+- **⚠️ ВАЖНО:** `tsc --noEmit` давал ложный зелёный (корневой tsconfig Vite = `files:[]` + references,
+  компилит пусто). Реальный чек — `pnpm build` (`tsc -b`). Впредь проверять сборку им.
+  После фикса: `tsc -b && vite build` EXIT 0, `vitest` 18/18.
+
+### ✅ [TMA-ORDER-DETAIL-CONTRACT-MISMATCH-009] Детали заказа: «не число» + пустое имя
+- **Важность:** 🔴 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/pages/buyer/OrdersPage.tsx`
+- **Что сделано:** привёл интерфейс `OrderItem` и 5 использований к контракту API-маппера —
+  `productTitleSnapshot→title`, `lineTotalAmount→subtotal`, `variantTitleSnapshot→variantTitle`.
+  API (`orders.mapper.ts`) НЕ трогал (используется и web-buyer Азима). Устранён `NaN`→«не число».
+
+### ✅ [TMA-BUYER-NO-CANCEL-011] Отмена заказа покупателем
+- **Важность:** 🔴 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/pages/buyer/OrdersPage.tsx`, `lib/i18n/{ru,uz}.ts`
+- **Что сделано:** кнопка «Отменить заказ» в раскрытом блоке + `cancelOrder` через `confirmDialog`
+  → `PATCH /buyer/orders/:id/status {status:'CANCELLED'}`, оптимистичное обновление списка/детали.
+  Гейт `status==='PENDING'` — по state-machine (`update-order-status.use-case.ts:20`) покупателю
+  разрешён только переход PENDING→CANCELLED. Новые i18n-ключи `orders.cancel*`.
+
+### ✅ [TMA-HYBRID-SETTINGS-BECOMESELLER-012] Настройки: switchContext вместо онбординга
+- **Важность:** 🟡 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/pages/buyer/SettingsPage.tsx`
+- **Что сделано:** блок гейтится по `capabilities.canSell` (как в ProfilePage): есть seller-профиль
+  → «Переключиться в режим продавца» (switchContext→/seller), нет → онбординг become_seller.
+  Раньше проверялся только `role==='BUYER'` → владелец магазина видел онбординг. Null-safe.
+
+### ✅ [TMA-CART-BADGE-STALE-010] Реактивность бейджа корзины + списка избранного
+- **Важность:** 🟡 · **Дата:** 02.07.2026 · tsc TMA EXIT 0
+- **Файлы:** `apps/tma/src/lib/cart.ts` (pub/sub + `cartItemCount`/`subscribeCart`),
+  `components/layout/BottomNav.tsx` (реактивный `cartCount`), `pages/buyer/WishlistPage.tsx`
+  (подписка на wishlist-стор + фильтрация списка).
+- **Что сделано:** `saveCart`/`clearCart` шлют событие `savdo:cart-changed`; бейдж корзины
+  подписан → обновляется на add/remove/clear без ре-навигации. WishlistPage: заменил мёртвый
+  `useEffect` на подписку `subscribeWishlist` → удалённые из ♡ товары уходят из списка сразу.
+
+## 2026-06-30 (Полат) — Гибридная модель ролей: Фаза 2 TMA (тоггл)
+
+### ✅ [HYBRID-2] Тоггл контекста в TMA + фикс латентного бага «режим покупателя»
+- **Важность:** 🟡 · **Дата:** 30.06.2026
+- **Файлы:** `apps/tma/src/lib/auth.ts` (switchContext + Capabilities),
+  `providers/AuthProvider.tsx` (capabilities в state + switchContext),
+  `pages/buyer/ProfilePage.tsx`, `pages/seller/ProfilePage.tsx`, `lib/i18n/{ru,uz}.ts`
+- **Что сделано:**
+  - AuthProvider хранит `user.capabilities {canBuy,canSell,hasStore}` (из ответа /auth/telegram)
+    и отдаёт `switchContext(context)` — вызывает POST /auth/switch-context, обновляет role в
+    state + бампает authVersion.
+  - Buyer ProfilePage: карточка «Режим продавца» показывается если есть seller-профиль
+    (`canSell`), кнопка активна только при наличии магазина (`hasStore`). Карточка «стать
+    продавцом» теперь только для тех, у кого seller-профиля НЕТ (`!canSell`).
+  - Seller ProfilePage: кнопка «Режим покупателя» теперь через `switchContext('BUYER')`.
+- **🐛 Латентный баг (найден+исправлен):** старая seller-кнопка делала `navigate('/buyer')`
+  напрямую, но `BuyerGuard` (App.tsx:97) отбрасывал SELLER обратно на /seller → кнопка НЕ
+  работала. Теперь сначала меняется активный контекст (role→BUYER), потом навигация.
+- **Осталось по Фазе 2:** HYBRID-5 (проактивная реконсиляция при удалении магазина — сейчас
+  переключение реактивно гейтится на наличии store, основной риск закрыт).
+
+## 2026-06-30 (Полат) — Гибридная модель ролей: Фаза 2 backend + бот
+
+### ✅ [HYBRID-1] POST /auth/switch-context — переключение контекста без перелогина
+- **Важность:** 🟡 · **Дата:** 30.06.2026
+- **Файлы:** `apps/api/src/modules/auth/dto/switch-context.dto.ts` (новый),
+  `.../use-cases/switch-context.use-case.ts` (новый), `auth.controller.ts`, `auth.module.ts`
+- **Что сделано:** ре-выдаёт access token с новым role-claim (+storeId для SELLER).
+  Персистит `users.role` (refresh-session читает его из БД → контекст сохраняется; бот/TMA
+  дефолтят на последний контекст). SELLER требует активный магазин (иначе 400 «нет магазина»).
+  BUYER гарантирует buyer-профиль. ADMIN/BLOCKED/deleted отбиваются.
+
+### ✅ [HYBRID-6] me.capabilities + capabilities в /auth/telegram
+- **Важность:** 🟢 · **Дата:** 30.06.2026
+- **Файлы:** `auth.repository.ts` (findCapabilities), `get-me.use-case.ts`, `telegram-auth.use-case.ts`
+- **Что сделано:** `{ canBuy, canSell, hasStore }` для UI-тоггла. Отдаётся в GET /auth/me и в
+  ответе /auth/telegram (TMA получает сразу без лишнего round-trip).
+
+### ✅ [HYBRID-3] Бот: единый источник истины роли + переключатель
+- **Важность:** 🟡 · **Дата:** 30.06.2026
+- **Файлы:** `telegram-demo.handler.ts`, `telegram-webhook.controller.ts`
+- **Что сделано:** `handleStart` теперь решает меню по `users.role` (как TMA), а не по наличию
+  seller-профиля → закрывает `ROLE-SOURCE-INCONSISTENCY-001`. Кнопки «🛒 Режим покупателя»
+  (в seller-меню) и «🏪 Режим продавца» (в buyer-меню, только если есть магазин). Хендлеры
+  `handleSwitchToBuyer/Seller` зеркалят switch-context (персист users.role, SELLER требует store).
+- **Осталось:** HYBRID-2 (тоггл в TMA UI), HYBRID-5 (проактивная реконсиляция при удалении store).
+
+## 2026-06-30 (Полат) — Гибридная модель ролей: Фаза 1 + vitest fix
+
+### ✅ [HYBRID-4] Смена роли (дефолтного контекста) из админки
+- **Важность:** 🟡
+- **Дата:** 30.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/dto/change-user-role.dto.ts` (новый)
+  - `apps/api/src/modules/admin/use-cases/change-user-role.use-case.ts` (новый)
+  - `apps/api/src/modules/admin/admin-users.controller.ts` (PATCH `:id/role`)
+  - `apps/api/src/modules/admin/admin.module.ts` (DI)
+  - `apps/admin/src/pages/UserDetailPage.tsx` (кнопка + модал)
+  - `apps/admin/src/lib/i18n/{ru,uz}.ts` (ключи changeRole*)
+- **Что сделано:** `PATCH /api/v1/admin/users/:id/role` (BUYER|SELLER, `user:update`, audit_log,
+  self-guard). NON-DESTRUCTIVE по ADR гибридной модели: смена дефолтного контекста не
+  трогает профили/магазин. SELLER требует наличие seller-профиля (иначе 400 — для нового
+  продавца есть «Активировать продавца»). BUYER гарантирует buyer-профиль (upsert).
+  В UI кнопка «Сделать продавцом/покупателем» в ActionPanel (не-админ, не-blocked) + модал
+  с описанием последствий и опц. причиной. Закрывает `ADMIN-NO-ROLE-CHANGE-UI-001`.
+  Раньше роль менялась только сырым `/database`. api+admin tsc чистые.
+
+### ✅ [INFRA-VITEST-MISSING] apps/admin tsc падал на TS2688 vitest/globals
+- **Важность:** 🟢
+- **Дата:** 30.06.2026
+- **Что сделано:** `vitest@2.1.8` не был установлен (отсутствовал `globals.d.ts`) → tsconfig
+  `types:["vitest/globals"]` ронял `tsc --noEmit`. `pnpm install --frozen-lockfile` восстановил
+  из lockfile (без изменений lock). tsc admin теперь EXIT 0. Это была «мелочь» из чекпоинта 29.06.
+
+## 2026-06-29 (Полат) — Live-аудит админки + фиксы (orchestrator-сессия)
+
+### ✅ [STRESS-DOS-001] Явный лимит body-parser (DoS hardening)
+- **Важность:** 🔴
+- **Файлы:** `apps/api/src/main.ts`
+- **Что сделано:** `bodyParser:false` + `useBodyParser('json'|'urlencoded',{limit:'100kb'})`. Большой payload → 413 до guard/Prisma. Media (multipart 10MB) не затронут. tsc чистый.
+- **⚠️ TODO перед прод-пушем:** runtime smoke (POST ≤100kb ok, >100kb → 413).
+
+### ✅ [BUG-3] NumberTicker overdamped — дашборд долго показывал 0
+- **Важность:** 🟡
+- **Файлы:** `apps/admin/src/components/ui/number-ticker.tsx`
+- **Что сделано:** spring `{damping:60,stiffness:100}` (ζ≈3, 10-20с) → `{damping:30,stiffness:120}` (ζ≈1.37, ~0.8с, без overshoot).
+
+### ✅ [BUG-1] admin/subscriptions list не считал daysLeft
+- **Важность:** 🟡
+- **Файлы:** `apps/api/src/modules/admin/admin-subscriptions.controller.ts`
+- **Что сделано:** добавлен расчёт `daysLeft` для каждого элемента в list endpoint (раньше только detail). Колонка «ОСТАЛОСЬ» больше не пустая.
+
+### ✅ [BUG-TMA-1] Greeting «Привет, .!» при пустом first_name
+- **Важность:** 🟢
+- **Файлы:** `apps/tma/src/pages/seller/DashboardPage.tsx`
+- **Что сделано:** fallback `user.first_name || user.username || 'вас'`.
+
+---
+
+## 2026-06-25 (Полат) — INFRA-BACKUP-DRILL-FIRST-RUN-001
+
+### ✅ [INFRA-BACKUP-DRILL-FIRST-RUN-001] Restore drill — PASS
+- **drill_status:** PASS
+- **Дамп:** 0.28 MB, pg_dump v18 (Railway Postgres 18.4)
+- **Restore:** pg_restore --no-owner --no-acl → exit 0
+- **Данные:** users=12, sellers=9, stores=9, products=34, orders=22, order_items=26, carts=6
+- **Orphans:** все 0 — FK-целостность ок
+- **Инструмент:** Docker postgres:18-bookworm (pg_dump 16 несовместим с PG 18)
+- **Репорт:** `analiz/logs.md` → [2026-06-25] INFRA-BACKUP-DRILL-FIRST-RUN-001
+
+---
+
+## 2026-06-25 (Полат) — INFRA-UPTIME-ALERTS-001
+
+### ✅ [INFRA-UPTIME-ALERTS-001] UptimeRobot — 6 мониторов, email-алерты
+- **Сервис:** uptimerobot.com (free план, 6/50 мониторов использовано)
+- **Мониторы:** API `/health/live`, web-buyer, web-seller, admin, TMA, landing
+- **Алерт:** email на `polatbekismoilov17@gmail.com`, интервал 5 мин
+- **Примечание:** Telegram-алерт — только платный план UptimeRobot; оставили email
+- **Скрипт:** `scripts/setup-uptimerobot.ps1` (для будущего воспроизведения)
+
+---
+
+## 2026-06-25 (Полат) — UX + Bot Sync audit fixes (P0/P1)
+
+### ✅ [P0-SYNC-001] notifyNewOrder теперь доставляет через chatId
+- **Файлы:** `seller-notification.service.ts`, `telegram-notification.processor.ts`, `confirm-checkout.use-case.ts`
+- **Фикс:** добавлен `recipientChatId?` в `NotifyNewOrderData`; processor использует chatId как primary, @username как fallback; checkout передаёт `store.seller.telegramChatId`
+
+### ✅ [P0-SYNC-002] Bot stores теперь создаются в PENDING_REVIEW + открывается ModerationCase
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** оба места `status: 'DRAFT'` → `'PENDING_REVIEW'`; добавлен private `openModerationCaseForStore()` через Prisma inline
+
+### ✅ [P0-SYNC-003] Slug транслитерация для кириллических названий в боте
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** добавлена `toLatinSlug()` с `CYRILLIC_MAP`; оба места slug-генерации обновлены
+
+### ✅ [P1-SYNC-005] handleStart: store_ deeplink теперь открывает TMA кнопкой
+- **Файл:** `telegram-demo.handler.ts`
+- **Фикс:** добавлен handler для `startParam?.startsWith('store_')` → `sendWithWebApp`
+
+### ✅ [P0-ONBOARD-003] apply-seller теперь заполняет telegramChatId из user.telegramId
+- **Файл:** `apply-seller.use-case.ts`
+- **Фикс:** `telegramChatId: user.telegramId` если есть
+
+### ✅ [P0-ONBOARD-004] TMA DashboardPage welcome-баннер для новых продавцов
+- **Файл:** `apps/tma/src/pages/seller/DashboardPage.tsx`
+- **Фикс:** `isNewSeller` = productCount===0 && orderCount===0 → показывает welcomeBanner с CTA
+
+### 📋 [ONBOARDING-AUDIT-AZIM-001] Задачи Азиму записаны в tasks.md
+- web-seller: `toSlug()` для кириллицы, дубль TG полей, «Войти» подсказка
+- web-buyer: OtpGate инструкция про @maxsavdo_bot
+
+---
+
+## 2026-06-24 (Полат) — Ahmed E2E Audit P1/P2 баги + i18n admin завершён
+
+### ✅ [AHMED-AUDIT-P1] suspend-store guard — только APPROVED → SUSPENDED
+- **Файл:** `apps/api/src/modules/admin/use-cases/suspend-store.use-case.ts`
+- **Root cause:** guard `sameAsTarget: SUSPENDED` разрешал суспенд из любого статуса; `unsuspend` всегда возвращает в APPROVED → для DRAFT/PENDING_REVIEW это неправильный rollback
+- **Fix:** guard изменён на `notInFromList: ['APPROVED']` — суспенд только из APPROVED
+
+### ✅ [AHMED-AUDIT-P1b] UI-текст modalUnapproveDesc: "черновик" → "На проверке"
+- **Файлы:** `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`
+- **Fix:** `storeDetail.modalUnapproveDesc` исправлен в обоих языках — "переведён на повторную проверку (статус «На проверке»)"
+
+### ✅ [AHMED-AUDIT-P2] daysLeft undefined не показывался как "—"
+- **Файл:** `apps/admin/src/pages/StoreDetailPage.tsx:194`
+- **Fix:** `=== null` → `== null` (catches undefined тоже)
+
+### ✅ [AHMED-AUDIT-P2] ActivityLogPanel KEY_ACTIONS формат неверный → "Важные события" всегда пустой
+- **Файл:** `apps/admin/src/components/admin/ActivityLogPanel.tsx`
+- **Root cause:** `KEY_ACTIONS` содержал `'store.SUSPEND'`, `'user.SUSPEND'` и т.д. — старый формат, реальные записи аудита идут как `'STORE_SUSPENDED'`, `'USER_SUSPENDED'`
+- **Fix:** весь массив заменён на актуальные строки формата audit_log action
+
+### ✅ [MARKETING-LOCALIZATION-UZ-001] Admin i18n — все 26 страниц
+- **Закрыто 24.06.2026** — ProductsPage + DatabasePage получили `useTranslation()`
+- ru.ts/uz.ts: добавлены ключи products.* (24) и db.* (26)
+- Все ранее хардкоженные строки в admin переведены
+
+### ✅ [STRESS-TEST-001] Ноаут-прогон 30/31 PASS
+- **Файл:** `analiz/run-noauth-test.js` — 31 сценарий без JWT
+- **Баг найден:** EDGE-22 — 500k payload → 500 до auth guard (DoS вектор)
+- **Залогировано:** `analiz/logs.md` как `STRESS-DOS-001`
+
+## 2026-06-23 (Полат) — BILLING-MACHINE-001 закрыто + API-CONTROLLERS-ARCH-DEBT-001 minor remainder
+
+### ✅ [BILLING-MACHINE-001] Подписки + энфорсмент
+- Реализовано в сессии ~10.06.2026, tasks.md не был обновлён — закрыто сейчас.
+- **Schema:** `Subscription` (1:1 Seller), `SubscriptionTier {FREE PRO STUDIO}`, `SubscriptionStatus {TRIAL ACTIVE PAST_DUE SUSPENDED CHURNED CANCELLED}`, `SubscriptionPaymentMethod {MANUAL_TRANSFER CLICK PAYME COMP}`
+- **Cron:** `@Cron('0 3 * * *')` в `SubscriptionExpiryProcessor` — переходы статусов ежедневно 03:00 UTC
+- **Storefront gate:** `isSuspendedByBilling` на Store (независимо от `isPublic`) — скрывает магазин при SUSPENDED
+- **Product cap:** `PlanLimitGuardService` в `shared/` — 402 PAYMENT_REQUIRED при превышении FREE лимита (50 товаров)
+- **Admin:** `AdminSubscriptionsController` — mark-paid/extend-trial/cancel/comp
+- **Types:** `SubscriptionDto` в `packages/types/src/api/subscriptions.ts`
+- **Wired:** `SubscriptionsModule` зарегистрирован в `app.module.ts` с `ScheduleModule`
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] minor remainder — super-admin/media/storefront
+- **Коммит:** следующий commit этой сессии
+- `UsersRepository` +4 метода: `findPhoneById`, `findBuyerIdByUserId`, `upsertBuyerAvatar`, `syncTelegramId`
+- `SellersRepository` +1 метод: `updateAvatarByUserId`
+- `super-admin.controller.ts`: убран PrismaService → `UsersRepository` (findPhoneById) + `AdminRepository` (findAdminByUserId)
+- `media.controller.ts`: убран PrismaService → `UsersRepository` (upsertBuyerAvatar) + `SellersRepository` (updateAvatarByUserId)
+- `storefront.controller.ts`: убран PrismaService → `UsersRepository` (findBuyerIdByUserId)
+- `MediaModule`: добавлены импорты `UsersModule` + `SellersModule`
+- `ProductsModule`: добавлен импорт `UsersModule`
+- `telegram-webhook.controller.ts`: оставлен как intentional exception (цикл через AuthModule, см. комментарий в TelegramModule)
+- tsc --noEmit чист после изменений
+
+## 2026-06-21 (Полат) — SEC-AUDIT-04 + API-CONTROLLERS-ARCH-DEBT-001
+
+### ✅ [SEC-AUDIT-04] Глобальный APP_GUARD JwtAuthGuard + @Public()
+- **Коммит:** `9f91997`
+- `common/decorators/public.decorator.ts` — IS_PUBLIC_KEY + @Public()
+- `JwtAuthGuard` + `Reflector` — canActivate проверяет IS_PUBLIC, пропускает
+- `app.module.ts` — `APP_GUARD: JwtAuthGuard` (перед ThrottlerGuard)
+- 27 публичных эндпоинтов помечены: auth (telegram/otp/refresh), все storefront routes,
+  categories storefront, cart (OptionalJwt ×5), analytics/track, media/proxy,
+  reviews public GET, telegram webhook, health×2
+
+### ✅ [API-CONTROLLERS-ARCH-DEBT-001] products + stores + categories — убрать прямой prisma
+- **Коммиты:** `7c00d23` (products), `753a6c0` (stores+categories)
+- `ProductImagesRepository` — 6 методов (create/clearPrimary/update/delete/count/findByProductAndId)
+- `ProductAttributesRepository` — 5 методов (list/create/findByProductAndId/update/delete)
+- `StoresRepository` — +`getDirections`/`replaceDirections` (с transaction + validation)
+- `MediaRepository` — +`findManyByIds` (для resolveStoreImageUrls в stores)
+- `GlobalCategoriesRepository` — +`findTreeActive`/`findChildren`
+- `CategoryFiltersRepository` — `findBySlug`/`findUnique`/`updateOptions`
+- Убран `PrismaService` из: ProductsController, StoresController, CategoriesController
+- Осталось (minor): super-admin/media/storefront/telegram-webhook (по 1-2 вызова)
+
+## 2026-06-21 (Полат) — Security audit TMA + Admin (8 фиксов)
+
+### ✅ [A2-TG-REPLAY-001] Telegram initData replay-атака
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/auth/use-cases/telegram-auth.use-case.ts`
+- **Что сделано:** добавлена проверка `auth_date < 24h`. Без неё перехваченный `initData` был валиден вечно.
+
+### ✅ [ADMIN-SELF-SUSPEND-001] Админ мог suspend свой аккаунт
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/admin/admin-users.controller.ts`
+- **Что сделано:** `POST /admin/users/:id/suspend` теперь возвращает 400 если `id === user.sub`.
+
+### ✅ [ADMIN-SELF-LOCKOUT-001] Самоблокировка через DB Manager
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `3abfaaa`
+- **Файл:** `apps/api/src/modules/admin/admin-db.controller.ts`
+- **Что сделано:** PATCH `status/role/deletedAt` и DELETE своей строки в `users` через DB Manager заблокированы.
+
+### ✅ [A7-TMA-LOGOUT-SESSION] Logout не инвалидировал серверную сессию
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файлы:** `apps/tma/src/lib/auth.ts`, `apps/tma/src/providers/AuthProvider.tsx`
+- **Что сделано:** `serverLogout()` вызывает `POST /auth/logout` перед очисткой токена. Сессия удаляется из БД немедленно, не ждёт `exp`.
+
+### ✅ [F16-TMA-CACHE-LEAK] API-кеш не очищался при logout
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/api.ts`
+- **Что сделано:** `clearApiCache()` при logout чистит `_cache` и `_inflight`. Данные одного пользователя не утекают следующему на том же устройстве.
+
+### ✅ [E5-TMA-WISHLIST-LEAK] Wishlist cache не очищался при logout
+- **Важность:** 🔴 P0 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/wishlist.ts`
+- **Что сделано:** `clearWishlistCache()` при logout чистит in-memory Set и sessionStorage.
+
+### ✅ [B13-TMA-REMOVE-ITEM] removeItem удалял все варианты одного товара
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файлы:** `apps/tma/src/lib/cart.ts`, `apps/tma/src/pages/buyer/CartPage.tsx`
+- **Что сделано:** `removeCartItem(productId, variantId)` фильтрует по обоим полям. Старый `removeItem(productId)` удалял ВСЕ позиции с таким productId.
+
+### ✅ [F5-TMA-UPLOAD-TIMEOUT] apiUpload без timeout — UI зависал навсегда
+- **Важность:** 🟡 P1 · **Дата:** 21.06.2026 · **Коммит:** `5092b64`
+- **Файл:** `apps/tma/src/lib/api.ts`
+- **Что сделано:** `xhr.timeout = 60_000` + `xhr.ontimeout` → `ApiError(408)`.
+
+## 2026-06-20 (Полат) — Concurrency fixes + REDIS-CHATID-001
+
+### ✅ [STOCK-RACE-001 / CART-001-004 / ORDER-NUM-001] Конкурентность корзины и стока
+- **Важность:** 🔴 P0 · **Дата:** 20.06.2026 · **Коммит:** `3115fb4`
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/variants.repository.ts`
+  - `apps/api/src/modules/cart/repositories/cart.repository.ts`
+  - `apps/api/src/modules/cart/use-cases/add-to-cart.use-case.ts`
+  - `apps/api/src/modules/cart/use-cases/bulk-merge-cart.use-case.ts`
+  - `apps/api/src/modules/checkout/use-cases/confirm-checkout.use-case.ts`
+  - `apps/api/src/modules/checkout/use-cases/create-direct-order.use-case.ts`
+  - `packages/db/prisma/migrations/20260620000001_cart_concurrency_indexes/`
+- **Что сделано:** 5 race-condition фиксов: `adjustStock` → атомарный `$executeRaw WHERE stock+delta>=0`,
+  `upsertItem` → ON CONFLICT DO UPDATE (partial unique index на cart_items), `getOrCreateForBuyer` →
+  INSERT ON CONFLICT (partial unique index на carts), bulk-merge sequential loop → Promise.all,
+  `generateOrderNumber` → `crypto.randomBytes(6)` вместо Date.now()+Math.random().
+
+### ✅ [CART-003] Optimistic lock в updateItemQuantity
+- **Важность:** 🟡 P1 · **Дата:** 20.06.2026 · **Коммит:** `6165599`
+- **Файлы:**
+  - `apps/api/src/modules/cart/repositories/cart.repository.ts`
+  - `apps/api/src/modules/cart/use-cases/update-cart-item.use-case.ts`
+  - `apps/api/src/modules/cart/use-cases/cart-mutations.use-cases.spec.ts`
+- **Что сделано:** `updateItemQuantity` принимает `expectedQuantity` — атомарный `WHERE quantity = expected`.
+  Если 0 строк затронуто (конкурентное изменение) → use-case бросает 409 CONFLICT. Тест добавлен.
+
+### ✅ [ISVISIBLE-SEMANTICS-001] isSuspendedByBilling отдельно от isPublic
+- **Важность:** 🔴 P0 · **Дата:** 20.06.2026 · **Коммит:** `45aa01f`
+- **Файлы:**
+  - `packages/db/prisma/schema.prisma` + migration `20260620000002`
+  - `expire-subscriptions.use-case.ts`, `mark-paid.use-case.ts`, `comp-subscription.use-case.ts`
+  - `stores.repository.ts`, `products.repository.ts`, `get-featured-storefront.use-case.ts`
+  - `wishlist.repository.ts`, `get-wishlist.use-case.ts`
+- **Что сделано:** добавлено поле `isSuspendedByBilling Boolean @default(false)` на Store.
+  Billing-логика теперь трогает только этот флаг, isPublic не меняет.
+  Storefront-фильтры: `isPublic=true AND isSuspendedByBilling=false`.
+  Устраняет два бага: случайное un-hiding при реактивации + bypass suspension через toggle.
+
+### ✅ [REDIS-CHATID-001] DB-fallback для chatId при Redis miss в OTP
+- **Важность:** 🟡 P1 · **Дата:** 20.06.2026 · **Коммит:** `fd9e3a9`
+- **Файлы:**
+  - `apps/api/src/modules/telegram/telegram-webhook.controller.ts`
+  - `apps/api/src/modules/auth/services/otp.service.ts`
+  - `apps/api/src/modules/auth/services/otp.service.spec.ts`
+- **Что сделано:** при получении контакта в боте chatId пишется в Redis и в `User.telegramId` (PostgreSQL).
+  В `sendOtp`: Redis miss → fallback на `User.telegramId` из DB + восстановление Redis.
+  Устраняет `TELEGRAM_NOT_LINKED` после Redis flush или смены инстанса.
+
+## 2026-06-12 (Полат) — Stock check bug + Admin subscription widget + TMA onboarding + Delete account
+
+### ✅ [BUG-STOCK-SIMPLE-001] Stock не проверялся для простых товаров (без вариантов)
+- **Важность:** 🔴 P0 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/checkout/services/validate-cart-items.service.ts`
+- **Что сделано:** добавлена проверка `product.totalStock < cartItem.quantity` для товаров без
+  `variantId`. Раньше `totalStock` не проверялся — покупатель мог заказать больше чем есть в наличии.
+
+### ✅ [ADMIN-SUB-WIDGET-001] Виджет подписки на странице магазина в админке
+- **Важность:** 🟡 P1 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/subscriptions/repositories/subscriptions.repository.ts` (sellerId filter)
+  - `apps/api/src/modules/admin/admin-subscriptions.controller.ts` (sellerId query param)
+  - `apps/admin/src/pages/StoreDetailPage.tsx` (SubscriptionCard компонент)
+- **Что сделано:** карточка подписки на StoreDetailPage — показывает tier/status/даты/daysLeft.
+  Кнопка «Управление» открывает SubscriptionDetailModal с полными действиями
+  (mark-paid/extend-trial/cancel/comp). Добавлен `sellerId` filter в GET /admin/subscriptions.
+
+### ✅ [TMA-PENDING-ONBOARDING-001] Расширенный PENDING_REVIEW экран в TMA
+- **Важность:** 🟡 P1 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/tma/src/pages/seller/StorePage.tsx`
+  - `apps/tma/src/lib/i18n/ru.ts`, `apps/tma/src/lib/i18n/uz.ts` (6 новых ключей)
+- **Что сделано:** вместо одной строки «Заявка проверяется» — блок с заголовком, временем
+  проверки и 3 шагами (получено → проверяется → появится на платформе).
+
+### ✅ [SUPPORT-CHANNEL-001-CODE] Ссылки поддержки в TMA settings + admin login
+- **Важность:** 🟡 P1 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/tma/src/pages/buyer/SettingsPage.tsx`, `apps/tma/src/pages/seller/SettingsPage.tsx`
+  - `apps/admin/src/pages/LoginPage.tsx`
+  - `apps/tma/.env.example` (новая переменная `VITE_SUPPORT_URL`)
+  - `apps/tma/src/lib/i18n/ru.ts`, `uz.ts`, `apps/admin/src/lib/i18n/ru.ts`, `uz.ts`
+- **Что сделано:** кнопка «Поддержка 💬» в обоих TMA Settings (buyer + seller) + footer
+  ссылка на admin LoginPage. Использует `VITE_SUPPORT_URL` с fallback на бот.
+  **Осталось Полату:** создать канал + выставить `VITE_SUPPORT_URL` в Railway Variables.
+
+### ✅ [DEVOPS-RAILWAY-WATCHPATTERNS-001] Убраны лишние watchPatterns из TMA railway.toml
+- **Важность:** 🟢 P2 · **Дата:** 12.06.2026
+- **Файлы:** `apps/tma/railway.toml`
+- **Что сделано:** удалены `packages/types/**` и `packages/ui/**` — TMA не зависит
+  от них (Dockerfile подтверждает), лишние паттерны вызывали ненужные редеплои.
+
+### ✅ [TMA-DELETE-ACCOUNT-SELLER-001] Кнопка удаления аккаунта в Seller Settings TMA
+- **Важность:** 🟢 P2 · **Дата:** 12.06.2026
+- **Файлы:**
+  - `apps/tma/src/pages/seller/SettingsPage.tsx`
+- **Что сделано:** добавлена «Опасная зона» с кнопкой «Удалить аккаунт» → открывает
+  существующий `DeleteAccountModal`. Buyer SettingsPage уже имела этот блок; теперь паритет.
+
+## 2026-06-08 (Полат) — ADMIN-NOTIFICATIONS-001 MVP
+
+### ✅ [ADMIN-NOTIFICATIONS-001] Bell + dropdown + polling в админ-панели
+- **Важность:** 🟡 P1 · **Дата:** 08.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/admin/repositories/admin-notifications.repository.ts` (новый)
+  - `apps/api/src/modules/admin/use-cases/get-admin-notifications.use-case.ts` (новый)
+  - `apps/api/src/modules/admin/admin-notifications.controller.ts` (новый)
+  - `apps/api/src/modules/admin/admin.module.ts` (регистрация)
+  - `apps/admin/src/lib/useAdminNotifications.ts` (новый hook)
+  - `apps/admin/src/components/admin/NotificationBell.tsx` (новый компонент)
+  - `apps/admin/src/layouts/DashboardLayout.tsx` (header c bell)
+  - `apps/admin/src/lib/i18n/ru.ts`, `uz.ts` (15 ключей)
+- **Что сделано:** `GET /api/v1/admin/notifications?limit=20` — агрегирует
+  открытые ModerationCase + PENDING Order + PENDING_REVIEW Store, мерджит по
+  createdAt DESC. Без отдельной таблицы и write-path (один superadmin, "прочитано"
+  хранится в localStorage по стабильному id `sourceType:entityId`). UI: bell
+  в sticky header справа от Outlet, badge с unread count, dropdown с
+  group/icon-цветами по типу, click → navigate. Polling 30s + pause на скрытой
+  вкладке + refetch при visibility=visible. Защищён JwtAuthGuard + RolesGuard
+  + AdminAccessGuard + MfaEnforcedGuard.
+- **Решение записано:** Obsidian `decisions/2026-06-08-admin-notifications-mvp-aggregator-vs-table.md`
+
+## 2026-06-05 (Полат) — BUG-2 unify inStock между list/detail mappers
+
+### ✅ [BUG-2] Унифицировать inStock между storefront list и detail mappers
+- **Важность:** 🔴 P0 (блокирует покупки реальных buyer'ов). **Дата:** 05.06.2026
+- **Источник:** `analiz/audit-tma-v2-2026-06-04.md` (Ahmed v2)
+- **Симптом:** "Игрушка" в магазине Azim — список магазина показывает товар как
+  доступный (+ кнопка), а детальная страница TMA buyer показывает «Нет в наличии».
+- **Root cause:** list-mapper'ы считали `totalStock = sum(variants.stockQuantity)`,
+  а detail возвращал raw `product.totalStock` (denorm-колонка). Для single-SKU
+  товара (без active variants) sum пустого массива = 0 → витрина OOS, даже если
+  реальный остаток лежал в `Product.totalStock`. Для товара с variants — denorm
+  мог отставать. Две разные формулы в двух местах → расхождение между list/detail
+  и между admin (raw `product.totalStock`) и витриной.
+- **Что сделано:**
+  - `apps/api/src/modules/products/services/product-presenter.service.ts` — добавлен
+    `computeStockFields(product, variants)`: если есть варианты → `sum(variant.stockQuantity)`,
+    иначе → `product.totalStock`. Возвращает `{ totalStock, inStock }`.
+  - `apps/api/src/modules/products/storefront.controller.ts` — обновлены ВСЕ
+    маппинги: `stores/:slug/products` (list), `storefront/products` (platform feed
+    + store feed), `stores/:slug/products/:id` (detail), `storefront/products/:id`
+    (detail). Везде через `presenter.computeStockFields(...)`. Detail впервые
+    возвращает `totalStock` + `inStock` для фронта.
+  - `apps/api/src/modules/products/products.controller.ts` (seller list) — та же
+    унификация для seller `GET /seller/products`.
+  - `apps/api/src/modules/products/services/product-presenter.service.spec.ts` —
+    добавлен `describe('computeStockFields (BUG-2)')`: 6 тестов
+    (variants with stock, all zero, single-SKU positive, single-SKU zero,
+    null/undefined totalStock, null stockQuantity treatment).
+- **Тесты:** `npx jest products` — 68/68 ✅, `npx jest storefront` — 7/7 ✅,
+  `tsc --noEmit` clean.
+- **Контракт DTO:** field `totalStock` остался `number`, добавлен `inStock: boolean`.
+  Семантика totalStock для single-SKU поменялась (раньше 0, теперь = `product.totalStock`)
+  — это и есть исправление багa, list/detail теперь консистентны.
+
+## 2026-06-04 (Полат) — TMA-COLORS-CLEANUP-002 — light theme polish
+
+### ✅ [TMA-COLORS-CLEANUP-002] Финальная зачистка hardcoded rgba(255,255,255,X)
+- **Важность:** 🟡 P2 (light theme polish). **Дата:** 04.06.2026
+- **Контекст:** TMA-DESIGN-V2-MIGRATE-001 (3a7240a) + hotfix a060dd6 уже починили
+  основу — buyer pages и большинство UI стали clean. Остались точечные occurrences
+  в UI components (CategoryModal/ConfirmModal), buyer/ChatPage и в seller pages.
+- **Что сделано:** Заменены hardcoded `rgba(255,255,255,X)` и `#fff` (где это
+  semantic primary text / button background) на CSS variables `var(--tg-*)`.
+  Photo overlay buttons (`rgba(0,0,0,0.62)` backdrop) намеренно оставлены с
+  hardcoded `#fff` + комментарием — overlay над фото theme-independent.
+  Toggle thumb (`#fff` + box-shadow) — оставлен с пояснением.
+- **Файлы (7):**
+  - `apps/tma/src/components/ui/CategoryModal.tsx` (input color)
+  - `apps/tma/src/components/ui/ConfirmModal.tsx` (var(--tg-card-bg) fallback baked → var(--tg-surface), button on accent → color: #0A0A0A)
+  - `apps/tma/src/pages/buyer/ChatPage.tsx` (input color, send button on accent, thread unread badge color)
+  - `apps/tma/src/pages/seller/SettingsPage.tsx` (skeleton bg, name input, seller-type chips, save button)
+  - `apps/tma/src/pages/seller/ChannelSettingsPage.tsx` (toggle track, inputStyle, test/save button)
+  - `apps/tma/src/pages/seller/AddProductPage.tsx` (inputStyle, category cards, multi-select chips, photo grid border, sizes toggle)
+  - `apps/tma/src/pages/seller/EditProductPage.tsx` (inputStyle, category cards, progress bar, image border + placeholder, display-type segment, dashed divider, section divider)
+- **Verify:** `pnpm --filter tma build` clean (1.15s); `tsc --noEmit` clean.
+
+## 2026-06-04 (Полат) — Re-audit TMA v2 follow-ups (BUG-1/3/9 + title + heart)
+
+### ✅ [REAUDIT-TMA-V2-2026-06-04] Точечные фиксы re-audit Ahmed (audit-tma-v2)
+- **Важность:** 🟡 P2 (косметика + 1 backend). **Дата:** 04.06.2026
+- **Источник:** `analiz/audit-tma-v2-2026-06-04.md`
+- **Что сделано:**
+  - **BUG-9 + browser tab title:** `apps/tma/index.html` `<title>Savdo</title>` → `maxsavdo`;
+    `StoresPage.tsx` h1 hardcoded "Savdo" → "maxsavdo". Sidebar уже был правильный,
+    проблема была только в header buyer-главной + browser tab.
+  - **BUG-3 (variant отображает hex "#799f"):** `apps/tma/src/pages/buyer/ProductPage.tsx`
+    fallback label был `#${v.id.slice(-4)}` — это последние 4 символа UUID,
+    выглядит как hex-цвет (`#799f`). У seller'ов `titleOverride` пустой и flat
+    variants без option-groups показывали "#799f". Заменено на
+    `${t('product.variantLabel')} ${idx + 1}` — порядковый номер с локалью.
+  - **Heart icon (фиолетовый/красный → Champagne Gold #C9A876):**
+    `apps/tma/src/components/ui/WishlistButton.tsx` — эмодзи ❤️/🤍 заменены на
+    SVG-сердце. В Telegram WebApp эмодзи рендерятся системным шрифтом
+    (Apple Color Emoji vs Noto), оттуда фиолетовый/синий оттенок. SVG с
+    `fill="#C9A876"` гарантирует одинаковый brand-цвет на всех платформах.
+    Также в `StoresPage.tsx` header-кнопка wishlist (`❤️`) заменена на SVG.
+  - **BUG-1 (счётчик товаров = 0):** `apps/api/src/modules/stores/repositories/stores.repository.ts`
+    `findAllPublished()` — добавлен select `_count: { products: { where: { deletedAt: null, status: 'ACTIVE' } } }`.
+    На фронте `apps/tma/src/pages/buyer/StoresPage.tsx` карточка магазина теперь
+    рендерит `📦 {store._count.products}`. У Azim теперь покажет 3 (или сколько
+    активных), у пустых — 0.
+- **Файлы:**
+  - `apps/tma/index.html`
+  - `apps/tma/src/pages/buyer/StoresPage.tsx`
+  - `apps/tma/src/pages/buyer/ProductPage.tsx`
+  - `apps/tma/src/components/ui/WishlistButton.tsx`
+  - `apps/api/src/modules/stores/repositories/stores.repository.ts`
+- **Verify:** `pnpm --filter tma build` clean (built in 1.97s);
+  `apps/api` `tsc --noEmit` clean.
+- **Скип:** BUG-2 (variant detail OOS рассинхрон) — это другой mapper-flow,
+  требует отдельной сессии. Не блокирующий — кнопка "+" в списке работает.
+
+## 2026-06-04 (Полат) — TYPES-ENUM-RUNTIME-001 — fix регрессии из DUP-008
+
+### ✅ [TYPES-ENUM-RUNTIME-001] Const-object pattern в `packages/types/src/enums.ts`
+- **Важность:** 🔴 P1 (build регрессия web-seller). **Дата:** 04.06.2026
+- **Что было сломано:** DUP-008 (01.06.2026) перевёл все enums в `export type X = 'A' | 'B'`.
+  Это убрало runtime-экспорт, и apps/web-seller который импортирует `OrderStatus`/
+  `UserRole` как **значения** (`OrderStatus.PENDING`, `Record<OrderStatus, ...>`,
+  `import { UserRole }`) перестал собираться — 30+ TS2693 + Next "Export UserRole
+  doesn't exist". Деплой-ветка web-seller заблокирована.
+- **Решение (вариант A по предложению Азима):** const-object pattern:
+  ```ts
+  export const OrderStatus = { PENDING: 'PENDING', ... } as const;
+  export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
+  ```
+  Даёт runtime-value + string-literal compatibility одновременно. Применил ко всем
+  14 enum'ам (UserRole, UserStatus, StoreStatus, SellerVerificationStatus, OrderStatus,
+  ProductStatus, PaymentMethod, PaymentStatus, DeliveryType, ThreadType, MediaVisibility,
+  InventoryMovementType, SubscriptionTier, SubscriptionStatus, SubscriptionPaymentMethod,
+  SubscriptionPaymentStatus).
+- **Verify:** `apps/api` tsc clean, `apps/admin` build clean, `apps/web-seller` tsc clean.
+  `apps/web-buyer` имеет 1 локальную TS2345 в `orders/[id]/page.tsx:243` — это
+  pre-existing, не моя регрессия, отдельно записано в `logs.md` для Азима.
+- **Файлы:** `packages/types/src/enums.ts` (полная замена), `analiz/logs.md`,
+  `analiz/tasks.md` (taск удалён), `analiz/done.md`.
+
+## 2026-06-04 (Полат) — P1-1 Telegram-канал магазина в Admin Panel
+
+### ✅ [P1-1] Telegram-канал магазина — UI в Admin Panel (postProductToChannel fix)
+- **Важность:** 🔴 P1 (мёртвая marketplace-promotion фича). **Дата:** 04.06.2026
+- **Источник:** `analiz/audit-2026-06-04.md` § P1-1.
+- **Корень бага:** `Store.telegramChannelId` уже есть в schema (миграция
+  `20260406000000_add_telegram_channel_to_store`), но задать его можно было
+  ТОЛЬКО через seller TMA (`/seller/settings/channel`). В Admin Panel input
+  отсутствовал. Если продавец не зашёл в TMA — `postProductToChannel` отдавал
+  `"Channel not configured"`, и товары при публикации не попадали в TG-канал.
+- **Файлы (backend):**
+  - `apps/api/src/modules/admin/dto/admin-update-store-channel.dto.ts` — новый DTO
+    (`telegramChannelId?`, `telegramChannelTitle?`, optional, MaxLength 255).
+  - `apps/api/src/modules/admin/use-cases/admin-update-store-channel.use-case.ts`
+    — нормализация `@user` / `user` / `https://t.me/user` / `t.me/user` →
+    `@user`; числовой `-100…` оставлен как есть; `""` → NULL; невалидный
+    формат → `VALIDATION_ERROR`. Пишет audit `STORE_CHANNEL_UPDATED` с
+    `previousChannelId/newChannelId/previousChannelTitle/newChannelTitle`.
+    Noop (нет ни одного поля) → no DB write, no audit.
+  - `apps/api/src/modules/admin/use-cases/admin-update-store-channel.use-case.spec.ts`
+    — 21 теста (нормализация форматов + use-case path: 404, "" → NULL,
+    invalid → 400, audit body, noop, partial update только title).
+  - `apps/api/src/modules/admin/admin-stores.controller.ts` — `PATCH /admin/stores/:id/channel`
+    (guard `AdminPermission('store:moderate')`).
+  - `apps/api/src/modules/admin/admin.module.ts` — providers wiring.
+- **Файлы (frontend):**
+  - `apps/admin/src/pages/StoreDetailPage.tsx` — новый `TgChannelCard` компонент:
+    два input-а (`@my_channel` + опциональное название), хинт про
+    @savdo_builderBOT-админа, warning-badge если канал не привязан, кнопка
+    «Сохранить канал» (disabled пока не dirty), «Очистить», success-чек
+    после save. `refetch()` после save. `StoreDetail` interface дополнен
+    `telegramChannelId`/`telegramChannelTitle`.
+  - `apps/admin/src/lib/i18n/ru.ts` + `uz.ts` — 10 ключей `storeDetail.tgChannel*`.
+- **Что НЕ делали:** Prisma schema не трогали (поля уже есть с 06.04.2026,
+  миграция отдельная сессия). `apps/web-*` и `apps/tma` не трогали
+  (Азим/seller-зона).
+- **Проверки:**
+  - `cd apps/api && npx tsc --noEmit` — clean (0 errors).
+  - `pnpm --filter admin build` — clean (Vite ✓ built in 1.34s).
+  - `cd apps/api && npx jest stores --testPathPattern=spec` — **65 suites,
+    856 tests, all pass** (50.1s).
+- **Не запушено** (по протоколу — только commit).
+
+## 2026-06-04 (Полат) — P1-3 dashboard skeleton + P1-4 products soft-delete toggle
+
+### ✅ [P1-3] Dashboard cold-start skeleton/error states
+- **Важность:** 🟡 P1 (UX cold-start). **Дата:** 04.06.2026
+- **Файлы:** `apps/admin/src/pages/DashboardPage.tsx`
+- **Что сделано:**
+  - StatCard уже имел skeleton (`animate-pulse` rounded placeholder вместо `0`)
+    — оставлен как есть.
+  - Orders-per-day LineChart: вместо текста «Загрузка...» — bar-shimmer skeleton
+    (10 анимированных колонок). Добавлен error-state с `AlertCircle` + текстом.
+  - Top-stores BarChart: вместо текста — 5 анимированных горизонтальных строк
+    (label + bar). Добавлен error-state.
+  - Recent orders table: вместо `colSpan=6` «Загрузка...» — 5 skeleton-строк
+    с pulse-блоками для каждой колонки. Добавлен error-state красным.
+
+### ✅ [P1-4] Products UI=7 vs DB=26 — soft-delete toggle
+- **Важность:** 🟡 P1 (admin observability). **Дата:** 04.06.2026
+- **Файлы:**
+  - `apps/api/src/modules/products/repositories/products.repository.ts` —
+    `findAll()` принимает `includeDeleted?: boolean`. Default false (legacy).
+    При true — `deletedAt: null` не добавляется в where.
+  - `apps/api/src/modules/admin/admin-products.controller.ts` — добавлен
+    `@Query('includeDeleted')` (true|1), прокинут в repo. Контракт не нарушен.
+  - `apps/admin/src/pages/ProductsPage.tsx` — toggle-кнопка «Показать
+    удалённые» / «✓ С удалёнными» (margin-left:auto, красный border когда
+    активна). При клике запрос идёт с `&includeDeleted=true`, useFetch
+    перезагружается через deps `[statusFilter, includeDeleted]`.
+- **Root cause** (полностью в `analiz/logs.md`): `ProductsRepository.findAll`
+  всегда фильтрует `deletedAt: null`; раздел «База данных» показывает raw view
+  без фильтра → 19 строк soft-deleted скрывались от UI. Фильтр оправдан
+  (admin-safety), убирать нельзя; добавлен явный opt-in.
+
+---
+
+## 2026-06-04 (Полат) — TMA-DESIGN-V2-MIGRATE-001: TMA на maxsavdo Dark Luxury
+
+### ✅ [TMA-DESIGN-V2-MIGRATE-001] TMA переведён с Liquid Glass v1 на maxsavdo design-v2
+- **Важность:** 🔴 P1 (brand consistency — TMA отставал от web-buyer/web-seller/admin). **Дата:** 04.06.2026
+- **Контекст:** ревью Азима 02.06 показало что TMA остался на старой палитре Cyber Orchid (#A855F7) +
+  Arctic Cyan (#22D3EE) + Deep Charcoal (#0B0E14) с SF Pro Rounded шрифтом и force-dark темой.
+  Должен быть на maxsavdo Dark Luxury: Champagne Gold #C9A876 + Rich Black #0A0A0A + Pure White +
+  Inter font + system theme (ADR-009).
+- **Файлы (12):**
+  - `apps/tma/src/index.css` — переписан токеновый блок: `--tg-*` теперь Champagne Gold / Rich Black,
+    light тема валидна, body font-family → Inter, .btn-primary / .page-icon / .chip-active /
+    .text-gradient / .status-dot / scrollbar / input:focus переведены на var(--tg-accent).
+  - `apps/tma/src/lib/themes.ts` — DARK_THEME / LIGHT_THEME объекты пересели на новую палитру.
+  - `apps/tma/src/lib/styles.ts` — COLORS / glass / gradientBg константы (orchid alias на gold,
+    cyan alias на gold, glass = flat surface вместо frosted).
+  - `apps/tma/src/providers/ThemeProvider.tsx` — force-dark снят. Detection: stored → Telegram WebApp
+    colorScheme → prefers-color-scheme → fallback dark. matchMedia + Telegram themeChanged listeners
+    для авто-следования.
+  - `apps/tma/src/main.tsx` — `@fontsource/inter` 300/400/500/600/700/800 импорты.
+  - `apps/tma/tailwind.config.js` — accent #C9A876, fontFamily.sans → Inter first.
+  - `apps/tma/src/components/brand/MaxsavdoMark.tsx` — новый компонент (порт из web-buyer):
+    inline SVG монограмма M + bag-handle, theme-adaptive.
+  - `apps/tma/src/components/layout/LoadingScreen.tsx` — 🛒 + "Savdo" → MaxsavdoMark + "maxsavdo".
+  - `apps/tma/src/components/layout/Sidebar.tsx` — 🏪/🛍 в orb → MaxsavdoMark + "maxsavdo" wordmark.
+  - `apps/tma/src/App.tsx` ErrorBoundary — orchid gradient → var(--tg-accent).
+  - `apps/tma/src/components/ui/Spinner.tsx` — #A855F7 → var(--tg-accent).
+  - `apps/tma/src/components/ui/ThemeToggle.tsx` — null-stub заменён рабочим toggle (☀️/🌙).
+  - `apps/tma/src/components/ui/ImagePlaceholder.tsx` — убраны inline rgba fallback'и.
+  - `apps/tma/src/components/seller/SellerAnalyticsCard.tsx` — sparkline / KPI цвета на var(--tg-accent).
+  - `apps/tma/src/components/seller/StoreDirectionsPicker.tsx` — cyan hint → accent.
+  - `apps/tma/src/pages/seller/OrdersPage.tsx` — telephone link + chat-button cyan → accent.
+- **Что сделано:**
+  1. CSS-токены `--tg-*` переопределены под Dark Luxury — десятки компонентов автоматически
+     перекрасились без точечной правки.
+  2. Light тема реактивирована — раньше блокировалась 553 inline rgba(255,255,255), теперь основные
+     слои читают токены и адаптируются к light correctly.
+  3. Inter подключён self-hosted через `@fontsource/inter` (6 весов) — не зависит от Google Fonts CDN
+     (важно для TG WebView).
+  4. Brand: TMA теперь показывает "maxsavdo" + monogram-mark на LoadingScreen и Sidebar.
+  5. ThemeProvider слушает `(prefers-color-scheme)` + Telegram `themeChanged` event.
+- **Build:** `pnpm --filter tma build` clean (tsc + vite). 311KB main bundle (без изменений).
+- **Оставшиеся хардкоды (72 occurrences в 7 файлах):** перенесены в `TMA-COLORS-CLEANUP-002` —
+  AddProductPage (19), EditProductPage (21), SettingsPage seller (16), ChannelSettingsPage (7),
+  ChatPage buyer/seller (4+4), test/setup.ts (1). Большая часть — крупные форм-страницы где замена
+  inline rgba требует осторожности (там много полу-прозрачных подложек на конкретных surface'ах).
+  По дизайну работают корректно — токены подставляют новую палитру, hardcoded rgba(255,255,255)
+  отрисовывается как нейтральный полупрозрачный белый поверх Rich Black surface'а.
+
+---
+
+## 2026-06-03 (Полат) — REFACTOR-DRY-001 / весь DRY-аудит закрыт
+
+### ✅ [REFACTOR-DRY-001] Все 8 DUP-рефакторов из аудита 01.06.2026 выполнены
+- **Важность:** 🟡 P2 (tech debt). **Дата:** 03.06.2026
+- **Закрыто:** DUP-001..008 (см. соответствующие commits в session 01-02.06)
+- **Net effect:** ~700+ строк дубля убрано, 6 новых helper/service файлов
+- **Bonus:** скрытый DoS-fix в moderation.repository (DUP-006, limit cap missing)
+- **Только DUP-009** (passthrough use-cases) оставлен как осознанное архитектурное решение
+
+---
+
+## 2026-06-01 (Полат) — BRAND-ADMIN-INDIGO-CLEANUP-001: WONTFIX, indigo сохраняем
+
+### ✅ [BRAND-ADMIN-INDIGO-CLEANUP-001] Решение: indigo accent на data-страницах admin — оставить
+- **Важность:** 🟢 (документация решения, не код). **Дата:** 01.06.2026
+- **Контекст:** агент `BRAND-ADMIN-REBRAND-001` в своём отчёте отметил что НЕ мигрировал
+  indigo Tailwind-утилиты на data-плотных страницах admin (SellersPage / OrdersPage /
+  StoresPage / AnalyticsDashboardPage / DashboardPage selection-rings, chart accent-цвета
+  в KPI-карточках, focus-rings в `ui/input`/`textarea`/`dialog`). Предлагал отдельный
+  таск на 100% gold-only consistency.
+- **Решение Полата (01.06.2026):** НЕ мигрировать. Indigo остаётся как **secondary accent**:
+  - **Champagne Gold** (`#C9A876`) — brand primary: sidebar nav active, login CTAs, brand stripe.
+  - **Indigo** (`#818CF8` / `bg-indigo-500/10` и т.д.) — secondary accent для data-плотных
+    экранов: focus-rings, chart KPI-цвета, selection rings.
+- **Почему так:**
+  1. На data-страницах с высокой плотностью таблиц/чартов золото визуально перегружает —
+     теряется иерархия.
+  2. Indigo как accent (Liquid Authority design system Азима) использовался на старом
+     admin до brand v2 — это знакомый паттерн, не «забытый цвет».
+  3. Gold-only выглядит «маркетинговым» а не «панелью оператора».
+- **Где смотреть:** `apps/admin/src/index.css` (--primary токены — gold), на data-страницах
+  `pages/{Sellers,Orders,Stores,AnalyticsDashboard,Dashboard}Page.tsx` остался indigo
+  через прямые Tailwind-классы `bg-indigo-500/10` и т.д., в `components/ui/{input,textarea,dialog}.tsx`
+  focus-rings indigo.
+- **Если в будущем кто-то решит «индиго лишний» в админке** — сначала прочитать эту запись
+  и обсудить с Полатом. Это **сознательное** решение, а не пропущенный пункт.
+
+---
+
+## 2026-06-01 (Полат) — REFACTOR-DRY-001 / DUP-002: ChannelPostBuilderService
+
+### ✅ [DUP-002] Извлечён `ChannelPostBuilderService` — устранён дрейф preview ↔ post
+- **Важность:** 🟡 (DRY refactor, P2 из `analiz/dry-audit-2026-06-01.md`). **Дата:** 01.06.2026
+- **Root cause копи-пасты:** одинаковые `formatPrice`/`extractAttribute`/`extractSizes`/
+  `buildProductUrl`/`buildContact`/`buildTemplateVariables` жили в двух местах —
+  free-functions в `preview-channel-post.use-case.ts` и приватные методы класса в
+  `post-product-to-channel.use-case.ts`. Алиас `o-lcham` (узбекский «о́лчам» — размер) был
+  только в `post`, поэтому preview врал продавцу-узбеку: в редакторе шаблона он не видел
+  размер, а в реальном канале — видел.
+- **Что сделано:**
+  - Новый `apps/api/src/modules/products/services/channel-post-builder.service.ts`:
+    `@Injectable() ChannelPostBuilderService` с `build(product, store, productUrl): TemplateVariables`
+    + публичными `buildProductUrl`, `formatPrice` и приватными `extractAttribute`,
+    `extractSizes`, `buildContact`. Поведение взято КАНОНИЧЕСКИ из `post-product-to-channel`
+    (включая `o-lcham`).
+  - `apps/api/src/modules/products/products.module.ts`: зарегистрирован в `providers`.
+  - `post-product-to-channel.use-case.ts`: удалены приватные методы (~80 строк),
+    конструктор: `ConfigService` убран (перенесён в `ChannelPostBuilderService`),
+    добавлен `ChannelPostBuilderService`. Логика `execute` сохранена 1:1.
+  - `preview-channel-post.use-case.ts`: удалены 4 free-functions внизу файла, удалён
+    `realProductVars` (заменён на прямой вызов `channelPostBuilder.build`). `sampleVars`
+    остался — но `productUrl` теперь идёт через `channelPostBuilder.buildProductUrl`
+    (теперь preview корректно даёт `t.me/?startapp=` fallback, как и `post`).
+  - `post-product-to-channel.use-case.spec.ts`: обновлён конструктор юзкейса в `beforeEach`
+    (порядок параметров: `prisma, telegramBot, templateService, mediaResolver, channelPostBuilder`,
+    `ChannelPostBuilderService(config)` собран ad-hoc).
+- **Контракт `TemplateVariables` не менялся** — template-строка Telegram-бота (см.
+  `ChannelTemplateService.DEFAULT_TEMPLATE`) продолжает работать без правок.
+- **Проверки:**
+  - `cd apps/api && npx tsc --noEmit` — ✅ ни одной ошибки в моих файлах (6 pre-existing
+    ошибок в `admin-status-transition.factory.ts` + `admin-create.use-cases.spec.ts` —
+    это работа по DUP-001 параллельной сессии, не моя зона).
+  - `npx jest --testPathPattern 'post-product-to-channel|preview-channel-post|channel-post-builder'`
+    — ✅ 13/13 passed. (`preview-channel-post.spec` ещё не создан — отдельная задача.)
+- **Файлы:**
+  - Новый: `apps/api/src/modules/products/services/channel-post-builder.service.ts`
+  - Изменены: `apps/api/src/modules/products/products.module.ts`,
+    `apps/api/src/modules/products/use-cases/post-product-to-channel.use-case.ts`,
+    `apps/api/src/modules/products/use-cases/post-product-to-channel.use-case.spec.ts`,
+    `apps/api/src/modules/products/use-cases/preview-channel-post.use-case.ts`,
+    `analiz/done.md`
+- **Net code:** -~80 строк дубля, +1 сервис (~140 строк с комментариями + типами).
+- **Commit SHA:** будет добавлен после `git commit`.
+
+---
+
+## 2026-06-01 (Полат) — BRAND-API-METADATA-001: maxsavdo metadata в admin + api
+
+### ✅ [BRAND-API-METADATA-001] Обновить metadata в api/admin (OG, favicon, manifest)
+- **Важность:** 🟡 (brand v2 rollout). **Дата:** 01.06.2026
+- **Что сделано:**
+  - **Ассеты скопированы из ветки `origin/web-buyer`** (готовые PNG, изготовленные Азимом из brand-book JPG через canvas) → `apps/admin/public/`:
+    - `apple-touch-icon.png` (180×180, из `apps/web-buyer/src/app/apple-icon.png`)
+    - `icon-192.png` (192×192) и `icon-512.png` (512×512) (из `apps/web-buyer/public/`)
+    - `og-image.png` (1200×630, из `apps/web-buyer/src/app/opengraph-image.png`)
+    - `maxsavdo-mark.png` (512×308, для consistency, из `apps/web-buyer/public/brand/`)
+    - Не генерировал PNG заново — это идентичные ассеты (PNG-чексумы совпадают через `git cat-file -s`).
+  - **`apps/admin/public/manifest.json` создан:** `name`/`short_name` = "maxsavdo Admin", `theme_color`/`background_color` = `#0A0A0A`, `display: standalone`, `start_url: /`, иконки 192/512/180 PNG, lang `ru`, orientation `portrait`, description.
+  - **`apps/admin/public/robots.txt` создан:** `User-agent: * / Disallow: /` — админка не должна индексироваться (внутренний инструмент).
+  - **`apps/admin/index.html`:** добавлены `<link rel="manifest">`, `<link rel="apple-touch-icon" sizes="180x180">`, `<meta name="robots" content="noindex,nofollow">`, `<meta name="description">`, полный набор Open Graph тегов (og:type=website, og:site_name, og:title, og:description, og:image 1200×630), Twitter Card (summary_large_image). `theme-color=#0A0A0A` уже был — оставлен.
+  - **`apps/api/src/main.ts` Swagger:** `.setTitle('Savdo API')` → `.setTitle('maxsavdo API')`; `.setDescription('Backend для savdo-builder …')` → `.setDescription('Backend для maxsavdo …')`. Прочие "Savdo" в `apps/api/src/` — внутренние константы (TOTP issuer `Savdo Admin` в admin MFA, комментарии к analytics-events/error-codes) — не публичные метаданные, не трогал.
+  - **`apps/api/public/`** не существует — api не сервит статику, отдаёт только JSON + Swagger UI; manifest/OG для api не нужны.
+- **Проверки:**
+  - `pnpm --filter admin build` — ✅ clean (vite v8.0.10, 2659 modules, dist содержит все 6 PNG + manifest.json + robots.txt + index.html с обновлёнными мета).
+  - `cd apps/api && npx tsc --noEmit` — ✅ clean.
+- **Файлы:**
+  - Новые: `apps/admin/public/{manifest.json,robots.txt,apple-touch-icon.png,icon-192.png,icon-512.png,og-image.png,maxsavdo-mark.png}`
+  - Изменены: `apps/admin/index.html`, `apps/api/src/main.ts`, `analiz/tasks.md`, `analiz/done.md`
+- **Commit SHA:** `792b0a6` (не запушен).
+
+---
+
+## 2026-06-01 (Полат) — BRAND-EMAIL-TEMPLATES-001: N/A, email-функционала нет
+
+### ✅ [BRAND-EMAIL-TEMPLATES-001] Email-templates под maxsavdo — N/A
+- **Важность:** 🟡 (brand v2 rollout). **Дата:** 01.06.2026
+- **Статус:** N/A — email-функционал не реализован в проекте.
+- **Что проверено:**
+  - Grep по `nodemailer|@nestjs/mailer|<mjml|<!DOCTYPE html|transactional|email-template` — совпадения только в docs/analiz (упоминания в задачах/решениях), кода нет.
+  - Grep по `nodemailer|mailer|smtp|sendgrid|mailgun|postmark|resend` в `apps/api` — совпадение только в `apps/api/src/shared/error-reporter.ts` (поле "email" в контексте error reporting, не mailer) и в `apps/api/CLAUDE.md` (упоминание).
+  - Каталоги `apps/api/src/mail/`, `apps/api/src/email/`, `apps/api/templates/`, `packages/email*` — не существуют.
+  - `package.json` всех workspace'ов — ни один mail/email пакет не подключён.
+  - `<!DOCTYPE html>|<html>|<body>` в `apps/api` — нет HTML-шаблонов писем.
+- **Обоснование:** по `CLAUDE.md` OTP идёт ТОЛЬКО через Telegram Bot (@savdo_builderBOT), Eskiz/Playmobile/SMS запрещены. Transactional emails (order confirmation, password reset) в MVP не реализованы — уведомления идут через Telegram Bot + in-app.
+- **Что делать когда email появится:** при добавлении email-провайдера (resend/postmark/sendgrid) — открыть новую задачу `BRAND-EMAIL-TEMPLATES-002` с актуальной структурой шаблонов и применить maxsavdo v2 (логотип PNG, Pure White #FFFFFF, Champagne Gold #C9A876, Rich Black #0A0A0A, footer с offer/privacy).
+- **Файлы:** `analiz/tasks.md` (удалена задача), `analiz/done.md` (эта запись).
+
+## 2026-05-31 (Азим) — seller login: убран двойной редирект
+
+### ✅ [WEB-SELLER-LOGIN-DOUBLE-REDIRECT-001] Двойная навигация после OTP-входа
+- **Важность:** 🟡 (auth-флоу). **Дата:** 31.05.2026
+- **Из known-issue** баг-аудита 31.05 (`WEB-AUDIT-BUYER-SELLER-001`, см. logs.md).
+- **Root cause:** `handleVerify` делал `router.replace` в `onSuccess` мутации, а `useEffect([user])`
+  делал ещё один role-aware `router.replace`, когда `useVerifyOtp.onSuccess` звал `login()` → setUser.
+  Два редиректа + неоднозначность порядка хук-vs-page onSuccess.
+- **Что сделано:** редирект отдан целиком `useEffect` (источник истины — контекстный `user`,
+  он же нужен для гарда «уже залогинен → зашёл на /login»). `mutate.onSuccess` теперь только
+  `track.otpVerified`. Разделение: хук пишет auth-состояние, useEffect владеет навигацией. tsc чист.
+- **Уточнение:** WEB-011 в исходной формулировке (нет `login()` + role-check) был закрыт ранее —
+  это была остаточная двойственность редиректа, не сам WEB-011.
+- **Файлы:** `apps/web-seller/src/app/(auth)/login/page.tsx` (`bbbe92e`) — на deploy-ветке.
+
+## 2026-05-31 (Азим) — chat socket re-join после reconnect
+
+### ✅ [WEB-CHAT-SOCKET-REJOIN-001] Чат не восстанавливал подписку после разрыва сети
+- **Важность:** 🟡 (real-time чат при нестабильной сети). **Дата:** 31.05.2026
+- **Из known-issue** баг-аудита 31.05 (`WEB-AUDIT-BUYER-SELLER-001`, см. logs.md).
+- **Root cause:** `useChatSocket` в обоих апах не вешал `socket.on('connect', joinRoom)` →
+  при socket.io reconnect (моргнула сеть) `join-chat-room` не переэмитился → пользователь
+  в открытом треде переставал получать `chat:message` до смены треда. web-seller вдобавок
+  не эмитил `leave-chat-room` в cleanup → подписки на старые комнаты копились при смене треда.
+- **Что сделано:** приведено к проверенному паттерну `useBuyerSocket`/`useSellerSocket`
+  (connect-listener для re-join + `socket.off('connect')` и `leave-chat-room` в cleanup).
+  `onMessage`/visibility/badge-логика не тронута. tsc чист в обоих.
+- **Файлы:** `apps/web-buyer/src/hooks/use-chat.ts` (`a1428c3`),
+  `apps/web-seller/src/hooks/use-chat.ts` (`b976c67`) — коммиты на deploy-ветках.
+
+## 2026-05-31 (Азим) — баг-аудит web-buyer + web-seller (8 фиксов)
+
+### ✅ [WEB-AUDIT-BUYER-SELLER-001] Полный аудит на баги + исправления
+- **Важность:** 🔴 (checkout/корзина — деньги) + 🟡. **Дата:** 31.05.2026
+- **Метод:** 6 параллельных code-review агентов, статический анализ, каждая находка верифицирована.
+- **Файлы (web-buyer `2efd38b`):** `app/(minimal)/checkout/page.tsx`, `hooks/use-cart.ts`, `hooks/use-checkout.ts`.
+- **Файлы (web-seller `dcd5eb8`):** `components/multi-image-uploader.tsx`, `components/variants-matrix-builder.tsx`,
+  `components/product-variants-section.tsx`, `app/(dashboard)/products/create/page.tsx`, `hooks/use-products.ts`.
+- **Исправлено 8:** checkout double-submit замок (INV-C03), корзина-null→invalidate, removeCartItem→invalidate,
+  blob-URL leak в загрузчике фото, priceOverride→undefined, handleAdd try/catch, failedVariants++ при пропуске,
+  invalidate префиксом по фильтрованным спискам. Детали — `analiz/logs.md [WEB-AUDIT-BUYER-SELLER-001]`.
+- **НЕ фикшено (5, см. logs.md):** middleware-auth (нужен httpOnly-cookie), WEB-002 env (Railway),
+  hydration-flash (архитектура), socket leave-room/reconnect, seller login double-onSuccess. Требуют решений/не фронт-код.
+- **✅ Запушено на origin** (web-buyer `2efd38b`, web-seller `dcd5eb8`, main-доки `b88cdf9`) — Railway передеплоивает оба апа.
+- **⚠️ Проверка:** tsc/build/тесты локально не гонялись (нет devDeps) — правки выверены статически; финальную типопроверку даст Railway-сборка.
+
+## 2026-05-31 (Азим) — лого: откат к первому font-based знаку (8224f02)
+
+### ✅ [BRAND-LOGO-REVERT-FIRST] вернуть первый inline-SVG лого на deploy-ветки
+- **Важность:** 🔴 P0 (visible brand). **Дата:** 31.05.2026
+- **Файлы:** `apps/web-buyer/src/components/brand/MaxsavdoLogo.tsx` (web-buyer `510602b`),
+  `apps/web-seller/src/components/brand/MaxsavdoLogo.tsx` (web-seller `d5c1a55`).
+- **Контекст:** попытки воспроизвести знак из brand-book (автотрассировка + геом-сборка)
+  упёрлись в источник — знак в JPG ~110px, чисто 1:1 без оригинального вектора/большого
+  PNG не выходит. Решение Азима: «забить, поставить первый лого».
+- **Что сделано:** на обеих deploy-ветках восстановлен файл лого из `8224f02` (font-based
+  монограмма «M», Inter w900, две половины через clipPath: левая theme-adaptive
+  `var(--color-text-primary)`, правая Champagne Gold `#C9A876` + золотая дуга-ручка).
+  API компонента (size/className/withWordmark) не менялся — use-sites не трогали.
+  Brand-image вариант (`maxsavdo-mark.png` на тёмной плашке) удалён из компонента,
+  PNG-ассет оставлен как dead-weight (не используется).
+- **Деплой:** запушено на origin (Railway redeploy обоих апов). На `main` лого и так уже
+  было первым (эксперименты жили только на deploy-ветках web-buyer/web-seller).
+
+## 2026-05-31 (Азим) — лого: убрана подложка + крупнее + тема-адаптив (2 версии знака)
+
+### ✅ [BRAND-LOGO — no-bg, bigger, theme-adaptive] доводка по фидбэку Азима
+- **Важность:** 🔴 P0 (visible brand). **Дата:** 31.05.2026
+- **Файлы:** web-buyer `af787df`, web-seller `a0380f3`:
+  `public/brand/maxsavdo-mark-light.png` (new), `MaxsavdoLogo.tsx`, `globals.css`,
+  Header/dashboard-layout/onboarding (size↑), smoke-тест (web-buyer).
+- **Фидбэк:** «зачем чёрный фон, из-за него лого кажется маленьким — убери фон, увеличь».
+- **Проблема:** просто убрать тёмную плашку нельзя — шапка тема-адаптивна (`--color-surface`
+  = `#FFFFFF` light / `#141414` dark), на светлой теме белая половина знака сливается.
+- **Решение (без подложки, работает в любой теме):**
+  - 2 версии знака: `maxsavdo-mark.png` (бел.+золото → тёмная тема) +
+    `maxsavdo-mark-light.png` (белая половина перекрашена canvas'ом в тёмный gunmetal
+    с лёгким глянцем, золото сохранено → светлая тема).
+  - `MaxsavdoLogo` рендерит обе `<img>` без подложки; переключение CSS-классами
+    `.maxsavdo-mark-on-{light,dark}` под `[data-theme="dark"]` (display ТОЛЬКО в globals.css —
+    inline-style перебил бы класс; тема всегда выставлена явно на `<html>`).
+  - Крупнее: высота знака = `size` (раньше 0.78×size внутри плашки); header 28→34,
+    seller dashboard/onboarding 24→30.
+- **Верификация:** Playwright-canvas мокап обеих версий на тёмной/светлой шапке —
+  читаются обе, фона нет. **Локально tsc/build не гонялись** (ПК).
+- **✅ Запушено** (web-buyer `7e3b2a3..af787df`, web-seller `8b5f50b..a0380f3`).
+
+## 2026-05-30 (Азим) — лого ФИНАЛ: реальный знак brand-book на тёмной плашке
+
+### ✅ [BRAND-LOGO-SVG-CREATE-001 — знак = реальное изображение] финальное решение
+- **Важность:** 🔴 P0 (visible brand).
+- **Дата:** 30.05.2026 (ночь)
+- **Файлы:** web-buyer `7e3b2a3`, web-seller `8b5f50b`:
+  `apps/web-*/public/brand/maxsavdo-mark.png` (new),
+  `apps/web-*/src/components/brand/MaxsavdoLogo.tsx`, smoke-тест (web-buyer).
+- **Итог итераций:** Азим последовательно забраковал ВСЕ флэт-перерисовки знака
+  (симметричный зигзаг → угловатый v2 → pixel-trace): «не дорисовал», «вообще не
+  похоже». **Корневая причина:** оригинал (`logo-app-icon.jpg`) — глянцевый 3D-рендер
+  (фаски, объём, блики), плоский двухцветный вектор в принципе не выглядит как он.
+- **Решение (выбор Азима):** использовать САМ знак из brand-book.
+  - `maxsavdo-mark.png` — знак (M + ручка) вырезан из JPG с прозрачным фоном:
+    canvas, alpha по яркости+теплоте (white/gold → opaque, тёмная плитка → transparent),
+    crop по bbox знака без надписи MAXSAVDO. 512×308, ~44KB.
+  - `MaxsavdoLogo.tsx` рендерит знак `<img>` на тёмной (#0A0A0A) скруглённой плашке
+    (`borderRadius 26%`, мини app-icon badge). Плашка делает знак **тема-независимым**:
+    на светлой шапке — премиальный тёмный badge, на тёмной — плашка сливается, виден знак.
+    На светлой теме голый знак (бел. половина) сливался бы — поэтому плашка. API
+    (`size/className/withWordmark`) сохранён, SVG-вектор убран.
+- **Верификация:** мокап шапки (голый знак vs плашка × тёмная/светлая) через Playwright
+  canvas — плашка читается везде, голый знак на светлой теме исчезал. **Локально
+  tsc/build не гонялись** (ПК) — img+inline-style, тип-риска нет.
+- **✅ Запушено** (web-buyer `4edd427..7e3b2a3`, web-seller `68b1e1e..8b5f50b`).
+- **favicon/app-icon/OG** уже из реального JPG (ранее) — консистентно. **Остаток
+  BRAND-LOGO:** admin/email/TG-бот иконки — Полат.
+- **Урок на будущее:** для глянцевого 3D-лого не делать флэт-перерисовку — использовать
+  сам растр (вырезка с прозрачным фоном) или просить профи-вектор (Vectorizer.ai).
+
+## 2026-05-30 (Азим) — лого: ЗНАК ВЕКТОРИЗОВАН по пикселям brand-book
+
+### ✅ [BRAND-LOGO-SVG-CREATE-001 — pixel-trace знака] настоящая векторизация
+- **Важность:** 🔴 P0 (visible brand).
+- **Дата:** 30.05.2026 (поздний вечер)
+- **Файлы:** web-buyer `4edd427`, web-seller `68b1e1e`:
+  `apps/web-*/src/components/brand/MaxsavdoLogo.tsx`, smoke-тест (web-buyer).
+- **Проблема:** угловатый знак v2 (утром) Азим тоже забраковал — «векторный что-то не то».
+  Причина вскрылась при векторизации: **реальный знак асимметричный** (левая «N»-форма:
+  нога + диагональ; правая половина M + ручка-сумка), а я рисовал симметричный зигзаг M.
+- **Что сделано — реальная векторизация `logo-app-icon.jpg`:** через Playwright canvas
+  прочитал пиксели, color-threshold на 3 класса (белый/золото/фон, тёплые пиксели → золото
+  приоритетно), marching-squares трассировка контуров + chaining петель + RDP-упрощение,
+  фильтр мелких петель. Результат — **2 filled-пути ~1KB**: `WHITE_D` (левая N-форма,
+  theme-adaptive `var(--color-text-primary)`) + `GOLD_D` (правая M + ручка, Champagne Gold),
+  `fill-rule=evenodd`. Силуэт **1:1 повторяет brand-book**.
+- **Верификация:** итеративный Playwright render-compare трассировки рядом с JPG (классификация
+  → маска → контуры → preview, 3 прохода), сверка на тёмной/светлой теме + 16/24/32/48px +
+  локап. Скриншоты — локальный черновик (убран). **Локально tsc/build не гонялись** (ПК) —
+  чистые data-строки в JSX, тип-риска нет.
+- **✅ Запушено** (web-buyer `e8f7ac1..4edd427`, web-seller `790f0d7..68b1e1e`).
+- **Метод повторяем:** PNG/трассировка из растра — браузерный canvas через `browser_evaluate`
+  (страница и картинка на одном origin, локальный http :8799). Детали — [[project-logo-geometric-not-vectorized]].
+- **Иконки** (favicon/app-icon/OG = реальный JPG из утреннего `e8f7ac1`/`790f0d7`) — не трогались,
+  гибрид в силе. **Остаток BRAND-LOGO:** admin/email/TG-бот иконки — Полат.
+
+## 2026-05-30 (Азим) — лого: угловатый знак v2 + реальные иконки из brand-book
+
+### ✅ [BRAND-LOGO-SVG-CREATE-001 — знак v2 + иконки] гибрид вектор/JPG
+- **Важность:** 🔴 P0 (visible brand — Азим заметил, что знак не похож на brand-book).
+- **Дата:** 30.05.2026
+- **Файлы:** web-buyer `e8f7ac1`, web-seller `790f0d7`:
+  `apps/web-*/src/components/brand/MaxsavdoLogo.tsx`,
+  `apps/web-*/src/app/{icon,apple-icon,opengraph-image}.png` (new),
+  удалены `{icon.svg,apple-icon.tsx,opengraph-image.tsx}`,
+  web-buyer `public/icon-{192,512}.png` + `manifest.ts` + smoke-тест + OG alt.txt.
+- **Проблема:** знак в шапке = тонкий симметричный зигзаг с острыми square-углами
+  (stroke 13, мелкая впадина) + широкая ручка r14.5 → читался как шрифтовая «W/M»,
+  не как премиальная сумка brand-book. favicon (`icon.svg`) — вообще старая font-«M».
+- **Решение — гибрид (обоснование: фото в шапке = тёмный квадрат на белом + дубль
+  вордмарка; вектор как favicon беднее готового 3D-знака):**
+  - **Шапка → вектор:** новая геометрия `M 28 81 L 28 32 L 50 73 L 72 32 L 72 81`,
+    stroke 15, **miter + butt** (острые углы, плоские вершины), ручка `r10.5` в
+    центральной выемке. Theme-adaptive (левая половина `var(--color-text-primary)`,
+    правая Champagne Gold) и API (`size/className/withWordmark`) сохранены.
+  - **favicon/app-icon/OG → реальный brand-book JPG** (`logo-app-icon.jpg`),
+    canvas-resize в PNG: icon 96, apple 180, OG 1200×630 (знак центрирован на #0A0A0A),
+    PWA 192/512. Там тёмная плитка к месту = 1:1 с brand-book.
+- **Верификация:** итеративный Playwright render-compare знака рядом с brand-book
+  JPG (6 вариантов A–G → FINAL), сверка на тёмной/светлой теме + размеры 16–48px +
+  мокап шапки. Скриншоты — локальный черновик (не в гите). **Локально tsc/build не
+  гонялись** (ПК; worktree без node_modules) — изменения JSX-атрибутов + статика,
+  тип-риска нет; финальный прогон — Railway-сборка.
+- **✅ Запушено** (web-buyer `4e5d5b0..e8f7ac1`, web-seller `8049c2a..790f0d7`).
+- **Остаток BRAND-LOGO-SVG-CREATE-001:** точная 1:1-векторизация JPG (Vectorizer.ai)
+  для пиксель-в-пиксель знака — опционально, текущий вектор визуально совпадает.
+  admin/email/TG-бот иконки — зона Полата.
+
+## 2026-05-30 (Азим) — UZ-терминология: cross-app унификация закрыта
+
+### ✅ [WEB-UZ-TRANSLATION-REVIEW-001 — терминология] cross-app унификация uz
+- **Важность:** 🟢 P3 (polish).
+- **Дата:** 30.05.2026
+- **Файлы:** `apps/web-seller/src/lib/i18n/uz.ts` (ветка web-seller `8049c2a`).
+- **Контекст:** «продолжаем» → выбрана UZ-терминология. При сверке выяснилось, что
+  аудит-файл `uz-translation-review-2026-05-30.md` и секция «Осталось» в tasks.md
+  **устарели**: описывали правки как невыполненные, хотя `8b24117` их уже закрыл.
+  (Память `feedback-git-log-content-vs-hash` в действии — сверял реальный контент
+  веток через `git show`, не аудит.)
+- **Что было по факту на ветках:**
+  - `orders.nextProcess`/`orders.detail.nextProcess` = `Jarayonga olish` ✅ (`8b24117`)
+  - `orders.status.PENDING` = `Kutilmoqda` в обоих аппах ✅ (`8b24117`)
+  - `theme.light/dark` = `Yorugʻ/Qorongʻu` в обоих ✅
+- **Что сделано сегодня:** единственное остававшееся расхождение — `theme.system`:
+  `Tizim kabi`(seller) vs `Tizim sozlamasi`(buyer). Унифицировано seller →
+  `Tizim sozlamasi` (значение buyer — публичный conversion-first апп + стандартная
+  UI-формулировка). One-line change, string-only (тип-риска нет).
+- **Верификация:** изменение строкового значения в object-литерале — `tsc` не затрагивается;
+  локальный build запрещён (ПК). uz↔ru паритет ключей не нарушен (1 значение).
+- **✅ Запушено** (web-seller `3481054..8049c2a`) — Railway деплоит.
+- **Остаток задачи:** только ручной прод-тест RU/UZ-свитчера (за auth-гейтом, нужен
+  реальный вход Азима) — остаётся 🟡 в tasks.md.
+
+## 2026-05-30 (Азим) — логотип: шрифтовая «M»-заглушка → геометрический знак brand-book
+
+### ✅ [BRAND-LOGO-SVG-CREATE-001 — web-часть] MaxsavdoMark по brand-book v2
+- **Важность:** 🔴 P0 (visible brand).
+- **Дата:** 30.05.2026
+- **Файлы:** `apps/web-buyer/src/components/brand/MaxsavdoLogo.tsx` (ветка web-buyer `4e5d5b0`),
+  `apps/web-buyer/src/__tests__/smoke/MaxsavdoLogo.test.tsx` (там же),
+  `apps/web-seller/src/components/brand/MaxsavdoLogo.tsx` (ветка web-seller `3481054`).
+- **Контекст:** Азим заметил, что лого на проде не совпадает с brand-book JPG. Причина — `<MaxsavdoMark>`
+  рендерил **шрифтовую «M»** (Inter glyph, split clipPath) как осознанную stopgap-заглушку; настоящий
+  знак в вектор не переводили (задача висела открытой).
+- **Что сделано:** заменил заглушку на **геометрическую монограмму-сумку** из `logo-app-icon.jpg`:
+  «M» из двух штанг (`M 27 80 L 27 40 L 50 72 L 73 40 L 73 80`, stroke 13) — левая половина
+  theme-adaptive (`var(--color-text-primary)`), правая Champagne Gold через clip `x≥50`; золотая
+  полукруглая ручка-сумка (`A 14.5`) над впадиной. API компонента (`size`/`withWordmark`/`className`)
+  не изменён. Smoke-тест web-buyer обновлён под новую геометрию (handle-дуга + path-слои вместо `<text>`).
+- **Верификация:** визуально подтверждено Playwright-рендером SVG (обе темы, light/dark) до заливки.
+  **Локально vitest/tsc не прогнаны** — в checkout'ах веток нет devDeps (vitest/@testing-library),
+  install не делался (риск зависания ПК). Финальный прогон тестов — CI/Railway или `pnpm --filter
+  web-buyer test` в полном окружении. Знак — геометрическая реконструкция растра, НЕ пиксель-в-пиксель
+  векторизация: для 1:1 остаётся прогон JPG через Vectorizer.ai/Recraft (остаток BRAND-LOGO-SVG-CREATE-001).
+- **✅ Запушено 30.05.2026** (web-buyer `4e5d5b0`, web-seller `3481054`) — Railway передеплоивает,
+  лого едет на прод. Проверить после деплоя: шапка buyer/seller показывает геом. знак, не шрифтовую «M».
+
+## 2026-05-30 (Азим) — сессия «продолжаем»: 4 кандидата (сверка бэка, прод-чек, UZ-review, GTM UZ)
+
+### ✅ [FE-BACK-GAP-CHECK-001] Сверка свежего бэка Полата (denorm/city) против фронта
+- **Важность:** 🟢 P3 (verify).
+- **Дата:** 30.05.2026
+- **Файлы:** none (анализ; правка на main отменена как no-op).
+- **Что сделано:** сверил denorm `totalStock`/`hasVariants` (`fc9a112`) + city-normalization
+  (`1f9164d`) против web-buyer/web-seller.
+  - `totalStock` теперь задекларирован в `ProductListItem` (`packages/types`); временный cast
+    `(product as { totalStock?: number })` в `ProductCard.tsx` **уже снят на деплой-ветке `web-buyer`**
+    (line 59 = `product.totalStock === 0`). На `main` копия web-buyer-дерева устарела (известный
+    main↔branch drift, back-port не делается) → правку main откатил как no-op для прода.
+  - `hasVariants` — backend-only денорм; фронт выводит из `variantCount` → **гэпа нет**.
+  - city-normalization — серверная; checkout шлёт free-text `{street, city}` → фронт не меняется → **гэпа нет**.
+
+### ✅ [FE-PROD-DEPLOY-CHECK-001] Прод-чек buyer/seller после brand-rollout
+- **Важность:** 🟢 P3 (verify).
+- **Дата:** 30.05.2026
+- **Файлы:** none (Playwright MCP, прод).
+- **Что сделано:** оба прода живы — buyer `savdo-builder-by-production` (title «maxsavdo», шапка
+  wordmark + M-mark), seller `savdo-builder-sl-production` (title «maxsavdo — Seller Dashboard»).
+  Brand rollout в проде, регрессий не видно. Пункты «Поддержка» (buyer profile-меню / seller settings)
+  за OTP-гейтом — анонимно end-to-end не проверяемы, нужен реальный вход Азима.
+
+### ✅ [WEB-UZ-TRANSLATION-REVIEW-001 — review-материал] side-by-side ru↔uz
+- **Важность:** 🟡 P2.
+- **Дата:** 30.05.2026
+- **Файлы:** `analiz/audits/uz-translation-review-2026-05-30.md` (новый); генератор — `C:/tmp/uzrev/build.mjs` (вне репо).
+- **Что сделано:** авто-генерация ru↔uz таблиц всех ключей (web-buyer 532 + web-seller 536) с веток.
+  Парсер покрыл 532/532 + 536/536 ключей. **Орфография чистая:** 0 кириллицы, 0 пропусков ключей,
+  0 дословных ru-совпадений, 0 кудрявых кавычек/мисплейснутых U+02BB. `maʼlumot`/`isteʼmol` корректно
+  через ʼ U+02BC, `oʻ/gʻ` через ʻ U+02BB. Машинных дефектов нет — остаётся нативная вычитка Азима
+  на естественность (полный список в файле). Первая эвристика дала 20 ложных флагов (U+02BC принят за
+  дефект) — переписана под корректную узб. орфографию (две легитимные буквы-модификатора).
+
+### ✅ [GTM-PHASE-A-UZ-SCRIPT-001] Нативный UZ outreach-скрипт
+- **Важность:** 🟡 P2 (GTM-подготовка).
+- **Дата:** 30.05.2026
+- **Файлы:** `docs/business/gtm-phase-a-2026-05-30.md`.
+- **Что сделано:** заполнен placeholder «UZ-вариант — Азим адаптирует» — добавлены 3 узб. скрипта
+  (первое касание DM, follow-up, мягкий вариант для TG-чатов продавцов) + глоссарий ценностного
+  оффера (komissiya/obuna/buyurtma/yetkazib berish/...). Орфография oʻ/gʻ→U+02BB, тутук→U+02BC.
+  Помечено как черновик под нативную финальную сверку Азима.
+
+## 2026-05-30 (Азим) — BRAND-WEB-SOFT-COLOR-CLEANUP-001 закрыт (no-op)
+
+### ✅ [BRAND-WEB-SOFT-COLOR-CLEANUP-001] Deprecated Soft Color tokens
+
+- **Важность:** 🟢 P3.
+- **Дата:** 30.05.2026
+- **Файлы:** none (verify-only).
+- **Что сделано:** grep по обеим ветками web-buyer + web-seller (`src/`, `globals.css`,
+  `tailwind.config.ts`) на `terracotta`/`cream`/`violet`/старые hex
+  (`#818CF8`/`#7C3AED`/`#FBF7F0`/`#F4EEE0`)/`deprecated` — **0 совпадений**. Brand rollout
+  25.05 заменил `globals.css` целиком (не оставил deprecated-токены) → удалять нечего.
+  Закрыто как no-op на основании grep-доказательства.
+
+---
+
+## 2026-05-30 (Азим, docs/design) — BRAND-LIQUID-AUTHORITY-MIGRATION-001 закрыт
+
+### ✅ [BRAND-LIQUID-AUTHORITY-MIGRATION-001] Design-system v2
+
+- **Важность:** 🟡 P2.
+- **Дата:** 30.05.2026
+- **Файлы:** `docs/design/maxsavdo-design-v2.md` (новый), `docs/design/liquid-authority.md`
+  (deprecation-баннер), `docs/brand/maxsavdo-brand-v2.md` (§Связано), `CLAUDE.md` (2 ссылки).
+- **Что сделано:** выбран вариант «новый документ + deprecate старый» (liquid-authority
+  титулован старым концептом violet/slate — inplace-правка ввела бы в заблуждение).
+  - `maxsavdo-design-v2.md` — новый источник правды. Палитра/лого/типографика **не
+    дублируются** — ссылка на brand-v2 (single source). Перенесены и обновлены под Dark
+    Luxury: концепция, component-паттерны (кнопки/инпуты/карточки/таблицы/нав), 8px grid,
+    UX-принципы, запреты. Добавлено: разделение поверхностей **storefront (brand-forward)
+    vs dashboard (functional)**, фиксация дефолтов тем (ADR-009), таблица «что изменилось
+    vs Liquid Authority v1.0».
+  - `liquid-authority.md` — ⚠️ DEPRECATED баннер сверху, оставлен для истории.
+  - Ссылки синхронизированы: brand-v2 §Связано + `CLAUDE.md` (design-doc path + «перед
+    UI-задачей читать» → design-v2).
+
+---
+
+## 2026-05-30 (Азим, web-buyer + web-seller) — SUPPORT-CHANNEL-001 фронт-часть
+
+### ✅ [SUPPORT-CHANNEL-001 part front] Ссылка «Поддержка» в web-buyer + web-seller
+
+- **Важность:** 🟠 P1 (Support 5.5 → 6.5, should-pass для launch). Тикет
+  остаётся открыт — back-часть Полата (создать канал + tma/admin + env).
+- **Дата:** 30.05.2026
+- **Файлы:**
+  - web-buyer (`74dcbd8`): `apps/web-buyer/src/app/(shop)/profile/page.tsx`,
+    `src/lib/i18n/{ru,uz}.ts`.
+  - web-seller (`25f0182`): `apps/web-seller/src/app/(dashboard)/settings/page.tsx`,
+    `src/lib/i18n/{ru,uz}.ts`.
+- **Что сделано:**
+  - **web-buyer:** пункт «Поддержка» в profile-меню (рядом с «Помощь»). `MenuRow`
+    расширен опцией `external` → рендерит `<a target=_blank rel=noopener>` + иконка
+    `ExternalLink` вместо `ChevronRight`.
+  - **web-seller:** секция «Поддержка» в settings (правая колонка, по образцу
+    `StoreCategoriesSection`), внешняя ссылка.
+  - **Ключевое решение — env-var + фолбэк на бот:**
+    `SUPPORT_URL = process.env.NEXT_PUBLIC_SUPPORT_URL ?? https://t.me/${BOT}`.
+    Канала ещё нет (создаёт Полат) → ссылка ведёт на работающий бот, **битой
+    ссылки в проде не бывает**. Когда Полат выставит `NEXT_PUBLIC_SUPPORT_URL`
+    в Railway-env — ссылка апгрейдится на канал без правок кода и без угадывания handle.
+  - i18n ru+uz в обоих апах.
+- **Верификация:** web-buyer `tsc` 0 + 27/27 smoke; web-seller `tsc` 0 + 15/15 smoke.
+- **Env-гэп по дороге:** web-seller test-devDeps (vitest/jest-dom) не были слинкованы
+  в рабочем checkout (node_modules не branch-specific, последний install шёл по
+  lockfile main, где у web-seller нет vitest — дивергенция деплой-веток). Лечится
+  `pnpm install` на ветке web-seller. На прод не влияет.
+- **Осталось (Полат):** создать канал + handle, выставить `NEXT_PUBLIC_SUPPORT_URL`
+  env в web-buyer/web-seller, ссылки в tma/admin.
+
+---
+
+## 2026-05-30 (Азим, docs/adr) — BRAND-DARK-VS-LIGHT-DEFAULT-001 решён (ADR-009)
+
+### ✅ [BRAND-DARK-VS-LIGHT-DEFAULT-001] Default theme web-buyer = `system`
+
+- **Важность:** 🟡 P1 (open product-decision, блокировал brand-rollout closure).
+- **Дата:** 30.05.2026
+- **Файлы:** `docs/adr/ADR-009_web_buyer_default_theme_system.md` (новый),
+  `analiz/tasks.md` (тикет закрыт + ссылка в BRAND-LIQUID-AUTHORITY обновлена).
+- **Решение:** оставляем `system`, **кода не меняем**. web-buyer —
+  conversion-first storefront; форсировать `dark` рискованно: (1) UGC-фото
+  товаров на белом фоне дают «вырезы» на тёмном; (2) рынок UZ светлый
+  (Uzum/Olcha/Asaxiy); (3) нет аналитики конверсии для слепого A/B.
+  `system` не жертвует брендом — OS-dark юзеры видят Dark Luxury; бренд работает
+  через gold accent + лого + Inter в обеих темах, а полноценный dark — на
+  seller-dashboard (там default уже `dark`) + маркетинге + боте.
+- **Пересмотр:** когда подключим Sentry frontend + событийный трекинг —
+  тогда можно A/B `dark` vs `system` с мониторингом и откатом (отдельный тикет).
+
+---
+
+## 2026-05-30 (Азим, docs/business) — BIZ-FOLDER-AZIM-001 закрыт (3 бизнес-документа)
+
+### ✅ [BIZ-FOLDER-AZIM-001] Наполнить `docs/business/`
+
+- **Важность:** 🟡 P2 — нужно команде, Полат ждал business-контент от Азима.
+- **Дата:** 30.05.2026
+- **Файлы:** `docs/business/one-pager-2026-05-30.md`,
+  `docs/business/gtm-phase-a-2026-05-30.md`,
+  `docs/business/financial-model-2026-05-30.md`.
+- **Что сделано:** созданы 3 документа, производных от существующего
+  `business-plan-v1-2026-05-22.html` (не выдуманные цифры — извлечены/реструктурированы
+  из плана, источники указаны):
+  - **one-pager** — сжатый pitch: проблема, рынок (TAM/SAM/SOM), модель, тарифы,
+    финансовая траектория, отстройка, статус продукта.
+  - **gtm-phase-a** — actionable план привлечения первых 20–30 продавцов: ICP,
+    скрипт первого касания (RU + плейсхолдер UZ), воронка с целевыми числами,
+    шаблон-трекер outreach (реальные имена заполняет Азим в приватном Sheet —
+    НЕ в репо), онбординг-чеклист, метрики успеха.
+  - **financial-model** — revenue-сторона с раскрытой и проверенной математикой
+    (ARPU = Σ доля×цена; FX 12 500 UZS/$), cost-сторона помечена `⚠️ ASSUMPTION`
+    (в плане её нет — Азиму заполнить реальными счетами Railway/R2).
+- **Найденные нестыковки плана (зафиксированы для Азима в §6 модели):**
+  1. ARPU Год 2/3: расчёт по mix даёт 310k/400k, план указывает 340k/420k (~5–9%).
+  2. Цель «$5k MRR на 50 paying sellers» — арифметически 50×Starter/Pro ≈ $1.4k MRR,
+     не $5k. Для $5k нужен Business-heavy mix или ~180 sellers. Вопрос к Азиму.
+- **Что НЕ сделано (требует ввода Азима, не блокер):** реальные инфра-косты,
+  канонический ARPU-mix, подтверждение Phase B бюджета — для financial-model v2.
+- **Push:** требует решения (docs на main; outward-facing — см. примечание сессии).
 ## 2026-08-01 (web-buyer) — SEO-CRAWL-PATH-001: у реальной витрины не было ни одного пути обнаружения
 
 ### ✅ [SEO-CRAWL-PATH-001] SSR каталога /stores + фолбэк featured-блока главной
@@ -23,6 +2447,7 @@
   - **`/products` остался client-only.** `useSearchParams` там читается реактивно на каждый рендер (не только начальное состояние) + `useInfiniteQuery` — рефакторинг тяжелее. Главное: индексируемых товаров сейчас **ноль** (`raos` — 0 товаров, товары тестового исключены), SSR отрендерил бы пустую сетку и проверить фикс нечем. Делать, когда в каталоге появятся реальные товары.
   - **`lang="ru"` / hreflang не трогали.** Это задокументированное архитектурное решение (`app/layout.tsx`): пер-локальных URL нет, hreflang указывать не на что. Менять — значит вводить `/uz/...`, это продуктовое решение, не метаданные.
 - **Потолок теперь не в коде:** у `raos` 0 товаров. Код доводит краулера до витрины, смотреть там пока нечего.
+
 
 ---
 
@@ -6515,3 +8940,97 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
   - 130 → **330 cases (+154%)**
   - 8 → **26 spec files (+225%)**
   - Покрыты все P0/P1 critical use-cases из аудита: финансы (cart/checkout/order/refund), auth (OTP/JWT), state machines (order/product), moderation (suspend/approve/reject/archive/unapprove), admin management (privileges), broadcasts (rate-limit/dedup), seller verification.
+
+### ✅ [BILLING-TIER-ENUM-SYNC-001] Синхронизировать tier-enum билл-машины с pricing v2
+- **Важность:** 🔴 P1
+- **Дата:** 15.06.2026
+- **Файлы:** `packages/db/prisma/schema.prisma`, `packages/db/prisma/migrations/20260615120000_subscription_tier_rename/migration.sql`, `packages/types/src/enums.ts`, `apps/api/src/modules/subscriptions/plan-config.ts`, `apps/api/src/modules/subscriptions/dto/mark-paid.dto.ts`, `apps/api/src/modules/subscriptions/dto/comp-subscription.dto.ts`, `apps/api/src/modules/subscriptions/use-cases/mark-paid.use-case.spec.ts`, `apps/api/src/modules/admin/admin-subscriptions.controller.ts`, `apps/admin/src/pages/SubscriptionsPage.tsx`, `apps/admin/src/pages/SubscriptionDetailModal.tsx`, `apps/admin/src/pages/StoreDetailPage.tsx`, `apps/admin/src/lib/i18n/ru.ts`, `apps/admin/src/lib/i18n/uz.ts`, `apps/tma/src/pages/seller/SubscriptionPage.tsx`
+- **Что сделано:** Переименованы enum-значения STARTER→FREE, BUSINESS→STUDIO через `ALTER TYPE RENAME VALUE` (Postgres 10+, без data migration). Обновлены plan-config (Free 0₽/50 товаров, Pro 149k, Studio 399k), все DTO, frontend страницы, i18n ключи, TMA. Добавлен BetaGrandfatherUseCase (UPSERT всех продавцов на PRO до 01.09.2026). Кнопки в AdminPanel. Prisma client регенерирован.
+
+### ✅ [SEO-AUDIT-001 п.5-6] i18n/help ложная тревога + FAQPage JSON-LD — закрыто 14.07.2026
+- **Важность:** 🟡 P1
+- **Дата:** 14.07.2026
+- **Домен:** `apps/web-buyer` (ветка `web-buyer`)
+- **Файлы:** `apps/web-buyer/src/app/help/page.tsx`
+- **Что сделано:** Расследование (systematic-debugging) показало, что п.5 SEO-AUDIT-001
+  описывал ложную тревогу — аудит проверял `main`, а i18n (`ru.ts`/`uz.ts`/`I18nProvider.tsx`)
+  и `/help` живут и работают только на ветке `web-buyer` (см. `analiz/tasks-azim.md`
+  предупреждение про это же). `lang="ru"` в `layout.tsx:49` — осознанный SSR-дефолт
+  (client `I18nProvider` переключает `document.documentElement.lang` после mount против
+  hydration mismatch), не баг. Решили НЕ делать hreflang — сайт не path-based (один URL,
+  язык через localStorage), полноценный hreflang требует разных URL на разные языки —
+  это отдельная архитектурная задача, не патч.
+  Реальный фикс — добавлен FAQPage JSON-LD в `/help` (mirror паттерна Product JSON-LD
+  из `products/[id]/layout.tsx`), 8 Q&A из статичного `ru.ts`. `/help` уже был в sitemap.
+  tsc EXIT 0.
+- **Урок:** аудиты SEO/кода в этом репо всегда сверять по фронт-веткам (`web-buyer`/
+  `web-seller`), не по `main` — main держит устаревший snapshot.
+
+### ✅ [SEO-AUDIT-001 п.7-9] robots.ts web-seller + Product JSON-LD + /about-статус — закрыто 14.07.2026
+- **Важность:** 🟠 P1
+- **Дата:** 14.07.2026
+- **Домен:** `apps/web-seller` (ветка `web-seller`, `850b07b4`) + `apps/web-buyer` (ветка `web-buyer`, `b817703e`)
+- **Файлы:** `apps/web-seller/src/app/robots.ts` (NEW), `apps/web-seller/src/app/layout.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx`
+- **Что сделано:**
+  - **п.7** web-seller дашборд был полностью без robots.ts/noindex → добавлен `robots.ts`
+    (`disallow: '/'` целиком) + `robots: {index:false, follow:false}` в root layout metadata.
+  - **п.8** Product JSON-LD в web-buyer чинен на реальные данные: `availability` теперь
+    `status===ACTIVE && isVisible && totalStock>0` вместо хардкода InStock; `offers`
+    целиком опускается если `price` не валиден (не отдаём Offer с `price:0`);
+    `aggregateRating` добавлен через отдельный fetch `/storefront/products/:id/reviews?limit=50`
+    (сервер клэмпит `limit` до 50 в `list-product-reviews.use-case.ts:37`) — включается
+    ТОЛЬКО когда `items.length >= total` (сэмпл покрывает весь пул отзывов), иначе честно
+    опускается (Product не имеет готового `avgRating`/`reviewCount` на API, в отличие от
+    Store — считать средний рейтинг по неполной выборке и заявлять `reviewCount: total`
+    было бы недостоверным).
+  - **п.9** `/about` — подтверждено что уже закрыт другим путём через `LANDING-CORP-PAGE-001`
+    (переформулирован 11.07, см. выше в этом файле) — исходная формулировка задачи в
+    `tasks.md` была стухшей копией, актуализирована.
+- **Verified:** tsc EXIT 0 на обеих ветках после каждого коммита.
+
+### ✅ [SEO-AUDIT-001 п.14] socket.io reconnect-лимит в web-buyer + web-seller — закрыто 14.07.2026
+- **Важность:** 🟡 P1
+- **Дата:** 14.07.2026
+- **Домен:** `apps/web-buyer` (ветка `web-buyer`, `6ab448cc`) + `apps/web-seller` (ветка `web-seller`, `13a11dc9`)
+- **Файлы:** `apps/web-buyer/src/lib/socket.ts`, `apps/web-seller/src/lib/socket.ts`
+- **Что сделано:** оба `lib/socket.ts` использовали дефолт socket.io (бесконечный reconnect) —
+  та же болезнь, что чинили в `apps/tma` (`PERF-TMA-HEAT-001` п.2). Портирован тот же лимит:
+  `reconnectionAttempts: 8`, `reconnectionDelay: 1000`, `reconnectionDelayMax: 8000`. Оба апа
+  уже использовали функцию-колбэк для `auth` (`auth: (cb) => cb({token})`), поэтому отдельный
+  `connectSocket()`-хелпер (как в TMA) не понадобился — токен и так подтягивается свежим при
+  каждой попытке подключения.
+- **Verified:** tsc EXIT 0 на обеих ветках.
+
+## 2026-07-16 (Азим/Claude) — SEO-AUDIT-001 P2 (по шаблону SEO-GEO-Ishlar-Shabloni.md)
+
+### ✅ [SEO-AUDIT-001-P2] llms.txt, честный sitemap lastModified, BreadcrumbList, AI-краулеры в robots.ts
+- **Важность:** 🟡 · **Дата:** 16.07.2026 · **Домен:** `apps/landing` + `apps/web-buyer`
+- **Файлы:** `apps/landing/src/app/robots.ts`, `apps/landing/src/app/sitemap.ts`,
+  `apps/landing/public/llms.txt` (новый), `apps/web-buyer/src/app/robots.ts`,
+  `apps/web-buyer/src/app/sitemap.ts`, `apps/web-buyer/src/app/layout.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx`
+- **Что сделано:**
+  - `robots.ts` (оба апа): добавлены explicit-правила для AI-краулеров (GPTBot, ChatGPT-User,
+    ClaudeBot, Claude-Web, Anthropic-AI, Google-Extended, PerplexityBot, YouBot, Applebot(-Extended),
+    Meta-ExternalAgent, Grokbot, CCBot, cohere-ai) — функционально уже разрешались через `userAgent: '*'`,
+    но явный allow безопаснее для GEO-видимости.
+  - `apps/landing/public/llms.txt` — новый AI-манифест (продукт, цены Free/Pro-149k/Studio-399k,
+    сравнение с конкурентами, ключевые страницы, заметка для AI-ассистентов).
+  - `sitemap.ts` (оба апа) — честный `lastModified` вместо `new Date()` на каждый запрос: статичные
+    страницы (лендинг /,/ru; web-buyer terms/privacy/offer/refund/help) теперь берут реальную дату
+    последнего git-коммита файла страницы. Главная web-buyer намеренно осталась динамической
+    (агрегирует живые featured-магазины/товары — `now` тут честен).
+  - Organization JSON-LD в web-buyer `layout.tsx` дополнен `logo`+`sameAs`(TG-бот)+`contactPoint`
+    (landing уже имел это раньше — теперь оба апа консистентны).
+  - Новый BreadcrumbList JSON-LD на `products/[id]/layout.tsx` (Home → Store → Product).
+  - **Сознательно НЕ добавлено:** WebSite+SearchAction — у web-buyer нет URL-адресуемой страницы
+    поиска (`searchStorefront()` в `search.api.ts` — чистый API-виджет без `?q=`-роута), фейковый
+    SearchAction нарушил бы правило шаблона «не врать в JSON-LD». Local-SEO city-страницы,
+    Speakable/AnswerBox/IndexNow, GSC/Bing/Yandex Webmaster, Google/Yandex Business Profile,
+    GA4/Метрика — не тронуты (либо не в скоупе MVP, либо требуют доступ к внешним аккаунтам —
+    см. `analiz/tasks.md → DEPLOY-DOMAIN-MAXSAVDO-001` и апекс-баг в `SEO-AUDIT-001`).
+  - Проверено: `manifest.ts` icons (P2 #11) — ложная тревога, `icon-192.png`/`icon-512.png`
+    реально существуют в `apps/web-buyer/public/`, 404 нет.
+- **Проверено:** `tsc --noEmit` EXIT 0 в обоих апах, `next build` чист (landing — все роуты
+  статичные, включая новый `/llms.txt`... файл лежит в `public/`, не роут, отдаётся as-is).

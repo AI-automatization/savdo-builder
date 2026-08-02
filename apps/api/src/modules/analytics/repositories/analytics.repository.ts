@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { AnalyticsEvent } from '@prisma/client';
+import { toPrismaPagination } from '../../../common/utils/pagination';
 
 export interface TrackEventData {
   actorUserId?: string;
@@ -51,9 +52,7 @@ export class AnalyticsRepository {
   }
 
   async findEvents(filters: FindEventsFilters): Promise<FindEventsResult> {
-    const page = filters.page ?? 1;
-    const limit = filters.limit ?? 100;
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = toPrismaPagination(filters, 1000);
 
     const where = {
       ...(filters.eventName ? { eventName: filters.eventName } : {}),

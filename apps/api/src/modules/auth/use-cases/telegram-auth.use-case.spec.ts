@@ -22,7 +22,7 @@ const BOT_TOKEN = 'TEST_BOT_TOKEN';
 function buildInitData(userObj: any, validHash: boolean = true): string {
   const params = new URLSearchParams();
   params.set('user', JSON.stringify(userObj));
-  params.set('auth_date', '1735689600');
+  params.set('auth_date', String(Math.floor(Date.now() / 1000)));
 
   if (!validHash) {
     params.set('hash', 'invalid-hash-here');
@@ -56,6 +56,7 @@ describe('TelegramAuthUseCase', () => {
     createSession: jest.Mock;
     findStoreIdByUserId: jest.Mock;
     findAdminClaims: jest.Mock;
+    findCapabilities: jest.Mock;
   };
   let tokenService: {
     generateRefreshToken: jest.Mock;
@@ -75,6 +76,10 @@ describe('TelegramAuthUseCase', () => {
       createSession: jest.fn().mockImplementation(async (s) => s),
       findStoreIdByUserId: jest.fn().mockResolvedValue(null),
       findAdminClaims: jest.fn().mockResolvedValue(null),
+      // HYBRID-6: capabilities toggle lookup, called unconditionally at the
+      // end of execute() — added along with the feature but this mock was
+      // never updated to stub it (pre-existing test/mock desync).
+      findCapabilities: jest.fn().mockResolvedValue({ canBuy: true, canSell: false, hasStore: false }),
     };
     tokenService = {
       generateRefreshToken: jest.fn().mockReturnValue('rawtoken'),
@@ -114,7 +119,7 @@ describe('TelegramAuthUseCase', () => {
 
     it('user отсутствует в params → VALIDATION_ERROR', async () => {
       const params = new URLSearchParams();
-      params.set('auth_date', '1735689600');
+      params.set('auth_date', String(Math.floor(Date.now() / 1000)));
       const arr: string[] = [];
       params.forEach((v, k) => arr.push(`${k}=${v}`));
       arr.sort();
@@ -128,6 +133,7 @@ describe('TelegramAuthUseCase', () => {
     it('user JSON невалидный → VALIDATION_ERROR', async () => {
       const params = new URLSearchParams();
       params.set('user', '{not-json}');
+      params.set('auth_date', String(Math.floor(Date.now() / 1000)));
       const arr: string[] = [];
       params.forEach((v, k) => arr.push(`${k}=${v}`));
       arr.sort();
@@ -145,7 +151,10 @@ describe('TelegramAuthUseCase', () => {
       const result = await useCase.execute(buildInitData({ id: 111 }));
       expect(authRepo.createUserWithBuyerByTelegram).not.toHaveBeenCalled();
       expect(authRepo.linkTelegramId).not.toHaveBeenCalled();
-      expect(result.user).toEqual({ id: 'u-1', role: 'BUYER', phone: '+998900000001' });
+      expect(result.user).toEqual({
+        id: 'u-1', role: 'BUYER', phone: '+998900000001',
+        capabilities: { canBuy: true, canSell: false, hasStore: false },
+      });
     });
 
     it('новый telegramId, но в Redis есть phone → linkTelegramId на existing user', async () => {
@@ -217,7 +226,10 @@ describe('TelegramAuthUseCase', () => {
       const result = await useCase.execute(buildInitData({ id: 111 }));
       expect(result.token).toBe('access.token');
       expect(result.refreshToken).toMatch(/^[a-f0-9-]+\.rawtoken$/);
-      expect(result.user).toEqual({ id: 'u-1', role: 'BUYER', phone: '+998900000001' });
+      expect(result.user).toEqual({
+        id: 'u-1', role: 'BUYER', phone: '+998900000001',
+        capabilities: { canBuy: true, canSell: false, hasStore: false },
+      });
     });
   });
 });

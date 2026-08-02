@@ -2,10 +2,12 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Param,
   Body,
   Query,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -19,11 +21,14 @@ import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.de
 
 import { ListUsersDto } from './dto/list-users.dto';
 import { AdminActionDto } from './dto/admin-action.dto';
+import { ChangeUserRoleDto } from './dto/change-user-role.dto';
 import { ListUsersUseCase } from './use-cases/list-users.use-case';
 import { GetUserDetailUseCase } from './use-cases/get-user-detail.use-case';
 import { SuspendUserUseCase } from './use-cases/suspend-user.use-case';
 import { UnsuspendUserUseCase } from './use-cases/unsuspend-user.use-case';
 import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
+import { ChangeUserRoleUseCase } from './use-cases/change-user-role.use-case';
+import { AdminPurgeUserUseCase } from './use-cases/admin-purge-user.use-case';
 import { AdminRepository } from './repositories/admin.repository';
 import { AdminContextService } from './services/admin-context.service';
 
@@ -47,6 +52,8 @@ export class AdminUsersController {
     private readonly suspendUserUseCase: SuspendUserUseCase,
     private readonly unsuspendUserUseCase: UnsuspendUserUseCase,
     private readonly adminCreateSellerUseCase: AdminCreateSellerUseCase,
+    private readonly changeUserRoleUseCase: ChangeUserRoleUseCase,
+    private readonly adminPurgeUserUseCase: AdminPurgeUserUseCase,
   ) {}
 
   @Get()
@@ -69,6 +76,10 @@ export class AdminUsersController {
     @CurrentUser() user: JwtPayload,
   ) {
     await this.adminContext.requireAdmin(user);
+    // ADMIN-SELF-SUSPEND-001: admin cannot suspend their own user account.
+    if (id === user.sub) {
+      throw new BadRequestException('Cannot suspend your own account');
+    }
     return this.suspendUserUseCase.execute(id, user.sub, dto.reason);
   }
 
@@ -106,5 +117,46 @@ export class AdminUsersController {
       payload: { userId: id, fullName: body.fullName },
     });
     return seller;
+  }
+
+  // PATCH /api/v1/admin/users/:id/role  (HYBRID-4: смена дефолтного контекста)
+  @Patch(':id/role')
+  @AdminPermission('user:update')
+  async changeRole(
+    @Param('id') id: string,
+    @Body() dto: ChangeUserRoleDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.adminContext.requireAdmin(user);
+    // ADMIN-SELF-ROLE-001: admin не меняет роль собственного аккаунта.
+    if (id === user.sub) {
+      throw new BadRequestException('Cannot change your own role');
+    }
+    return this.changeUserRoleUseCase.execute({
+      userId: id,
+      role: dto.role,
+      actorUserId: user.sub,
+      reason: dto.reason,
+    });
+  }
+
+  // POST /api/v1/admin/users/:id/purge — ADMIN-USER-PURGE-001.
+  // БЕЗВОЗВРАТНО удаляет аккаунт + seller + магазин + товары + заказы магазина
+  // (чистка тестовых данных). Требует type-to-confirm телефона в body.
+  // `user:purge` есть у базовых admin/super_admin через `user:*`; в словарь
+  // кастомных ролей НЕ добавлен — им не выдать.
+  @Post(':id/purge')
+  @AdminPermission('user:purge')
+  async purge(
+    @Param('id') id: string,
+    @Body() body: { confirmPhone?: string },
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.adminContext.requireAdmin(user);
+    return this.adminPurgeUserUseCase.execute({
+      userId: id,
+      actorUserId: user.sub,
+      confirmPhone: body?.confirmPhone ?? '',
+    });
   }
 }

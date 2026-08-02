@@ -10,7 +10,7 @@ import { showToast } from '@/components/ui/Toast';
 import { confirmDialog } from '@/components/ui/ConfirmModal';
 import { glass } from '@/lib/styles';
 import { clickableA11y } from '@/lib/a11y';
-import { webStoreUrl } from '@/lib/webUrl';
+import { webStoreUrl, storeDeepLink, tgShareUrl } from '@/lib/webUrl';
 import { useTranslation } from '@/lib/i18n';
 
 interface Product {
@@ -19,6 +19,7 @@ interface Product {
   description: string | null;
   basePrice: number;
   status: string;
+  totalStock?: number;
   globalCategoryId?: string | null;
   images?: { url: string }[];
 }
@@ -128,8 +129,14 @@ export default function StorePage() {
       return;
     }
 
+    const stockMax = product.totalStock;
     const existing = cart.find((i) => i.productId === product.id);
     if (existing) {
+      if (stockMax !== undefined && existing.qty >= stockMax) {
+        tg?.HapticFeedback.notificationOccurred('error');
+        showToast(t('cart.stockMaxReached', { count: stockMax }), 'error');
+        return;
+      }
       saveCart(cart.map((i) => i.productId === product.id ? { ...i, qty: i.qty + 1 } : i));
     } else {
       saveCart([...cart, {
@@ -140,6 +147,7 @@ export default function StorePage() {
         storeId: store.id,
         storeSlug: slug!,
         storeName: store.name,
+        stockMax,
       }]);
     }
     tg?.HapticFeedback.notificationOccurred('success');
@@ -148,11 +156,11 @@ export default function StorePage() {
   };
 
   if (loading) return (
-    
-      <div className={`grid ${gridCols} gap-3 pt-2`}>
+
+      <div className={`grid-safe grid ${gridCols} gap-3 pt-2`}>
         {[1,2,3,4,5,6].map((i) => <ProductCardSkeleton key={i} />)}
       </div>
-    
+
   );
 
   if (error || !store) {
@@ -211,6 +219,25 @@ export default function StorePage() {
                   aria-label={t('stores.openSiteAria')}
                 >
                   ↗ {t('stores.openSiteShort')}
+                </button>
+                {/* TMA-SHARE-003: Telegram native share — нативный sheet «куда переслать». */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    tg?.HapticFeedback.impactOccurred('light');
+                    const text = t('stores.shareText', { name: store.name });
+                    tg?.openTelegramLink?.(tgShareUrl(storeDeepLink(store.slug), text));
+                  }}
+                  className="text-xxs inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+                  style={{
+                    color: 'var(--tg-accent)',
+                    background: 'var(--tg-accent-bg)',
+                    border: '1px solid var(--tg-accent-border)',
+                    cursor: 'pointer',
+                  }}
+                  aria-label={t('stores.shareAria')}
+                >
+                  📤 {t('stores.shareShort')}
                 </button>
                 {/* MARKETING-VERIFIED-SELLER-001 */}
                 {store.reviewCount && store.reviewCount > 0 && store.avgRating != null && (
@@ -271,30 +298,30 @@ export default function StorePage() {
           </div>
         )}
 
-        <div className={`grid ${gridCols} gap-3`}>
+        <div className={`grid-safe grid ${gridCols} gap-3`}>
           {filtered.map((p) => (
             <div
               key={p.id}
               {...clickableA11y(() => navigate(`/buyer/store/${slug}/product/${p.id}`))}
               aria-label={`Открыть товар ${p.title}`}
-              className="flex flex-col gap-2 p-3 rounded-2xl cursor-pointer transition-opacity active:opacity-70"
+              className="flex flex-col gap-2 p-3 rounded-2xl cursor-pointer transition-opacity active:opacity-70 min-w-0 overflow-hidden"
               style={glass}
             >
               <div className="w-full aspect-square rounded-xl overflow-hidden"
                 style={{ background: 'var(--tg-surface)' }}>
                 <ProductImage src={p.images?.[0]?.url} alt={p.title} emptyVariant="product-empty" />
               </div>
-              <p className="text-xs font-semibold leading-tight line-clamp-2" style={{ color: 'var(--tg-text-primary)' }}>
+              <p className="text-xs font-semibold leading-tight line-clamp-2 break-words" style={{ color: 'var(--tg-text-primary)' }}>
                 {p.title}
               </p>
-              <div className="flex items-center justify-between mt-auto">
-                <p className="text-xs font-bold" style={{ color: 'var(--tg-accent)' }}>
+              <div className="flex items-center justify-between gap-2 mt-auto min-w-0">
+                <p className="text-xs font-bold truncate min-w-0" style={{ color: 'var(--tg-accent)' }}>
                   {Number(p.basePrice).toLocaleString(locale === 'uz' ? 'uz' : 'ru')} {t('common.currency')}
                 </p>
                 <button
                   onClick={(e) => { e.stopPropagation(); addToCart(p); }}
                   aria-label={t('cart.addToCart')}
-                  className="w-11 h-11 rounded-xl flex items-center justify-center text-xl font-bold"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-xl font-bold shrink-0"
                   style={{ background: 'var(--tg-accent-dim)', border: '1px solid var(--tg-accent-border)', color: 'var(--tg-accent)' }}
                 >
                   +

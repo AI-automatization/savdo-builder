@@ -101,6 +101,13 @@ export function OtpGate({ icon, title, subtitle, purpose = 'login' }: OtpGatePro
               >
                 {requestOtp.isPending ? t('auth.sending') : t('auth.getCode')}
               </button>
+              {/* Тот же bot-hint, что на шаге кода (строка ниже) — раньше показывался
+                  только ПОСЛЕ неудачной отправки OTP, когда TELEGRAM_NOT_LINKED уже
+                  случился. Показываем сразу, чтобы не привязанный к боту номер не
+                  утыкался в ошибку вслепую. */}
+              <p className="text-xs text-center px-2 py-1.5 rounded" style={{ background: colors.surfaceMuted, color: colors.textDim }}>
+                {t('auth.botHint')}
+              </p>
             </>
           ) : (
             <>

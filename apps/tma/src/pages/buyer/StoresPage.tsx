@@ -20,6 +20,8 @@ interface Store {
   isVerified?: boolean;
   avgRating?: number | string | null;
   reviewCount?: number;
+  // BUG-1 re-audit 04.06.2026: счётчик активных товаров в карточке магазина
+  _count?: { products: number };
 }
 
 interface GlobalCategory {
@@ -184,20 +186,24 @@ export default function StoresPage() {
             <Sticker emoji="🛒" size={26} />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold text-gradient">Savdo</h1>
+            <h1 className="text-base font-bold text-gradient">maxsavdo</h1>
             {user && (
               <p className="text-xs font-medium" style={{ color: 'var(--tg-text-secondary)' }}>
-                {t('auth.welcomeName', { name: user.first_name })} 👋
+                {user.first_name?.trim()
+                  ? `${t('auth.welcomeName', { name: user.first_name })} 👋`
+                  : `${t('auth.welcomeAnon')} 👋`}
               </p>
             )}
           </div>
           <button
             onClick={() => navigate('/buyer/wishlist')}
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', fontSize: 15 }}
+            style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: '#E8A552' }}
             aria-label={t('nav.wishlist')}
           >
-            ❤️
+            <svg viewBox="0 0 24 24" width={16} height={16} fill="#E8A552" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
+            </svg>
           </button>
           <button
             onClick={() => navigate('/buyer/settings')}
@@ -315,27 +321,33 @@ export default function StoresPage() {
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            {/* TMA-MOBILE-OVERFLOW-002 (08.06.2026): price-range row на 320–360px viewport
+                выпирал за экран из-за двух flex-1 input + em-dash + trailing 'сум' span.
+                Дефолтная intrinsic width input ≈ 150px не даёт flex-1 ужаться без min-w-0.
+                Решение: min-w-0 на контейнере и на каждом input + 'сум' вынесен в caption под рядом. */}
+            <div className="flex items-center gap-2 min-w-0">
               <input
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={priceMin}
                 onChange={(e) => setPriceMin(e.target.value.replace(/[^\d]/g, ''))}
                 placeholder={t('stores.priceFrom')}
-                className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                className="flex-1 min-w-0 w-full px-3 py-2 rounded-lg text-xs outline-none"
                 style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
               />
-              <span style={{ color: 'var(--tg-text-dim)', fontSize: 12 }}>—</span>
+              <span style={{ color: 'var(--tg-text-dim)', fontSize: 12, flexShrink: 0 }}>—</span>
               <input
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={priceMax}
                 onChange={(e) => setPriceMax(e.target.value.replace(/[^\d]/g, ''))}
                 placeholder={t('stores.priceTo')}
-                className="flex-1 px-3 py-2 rounded-lg text-xs outline-none"
+                className="flex-1 min-w-0 w-full px-3 py-2 rounded-lg text-xs outline-none"
                 style={{ background: 'var(--tg-surface-hover)', border: '1px solid var(--tg-border)', color: 'var(--tg-text-primary)' }}
               />
-              <span style={{ color: 'var(--tg-text-muted)', fontSize: 11 }}>{t('common.currency')}</span>
+            </div>
+            <div style={{ color: 'var(--tg-text-muted)', fontSize: 10, marginTop: 4, paddingLeft: 2 }}>
+              {`В ${t('common.currency')} (UZS)`}
             </div>
           </div>
         )}
@@ -368,7 +380,7 @@ export default function StoresPage() {
               </div>
             )}
 
-            <div className={`grid gap-3 ${
+            <div className={`grid-safe grid gap-3 ${
               viewportWidth >= 1280 ? 'grid-cols-3' :
               viewportWidth >= 768  ? 'grid-cols-2' : 'grid-cols-1'
             }`}>
@@ -417,6 +429,13 @@ export default function StoresPage() {
                         📍 {store.city}
                       </p>
                     )}
+                    {/* BUG-1 re-audit 04.06.2026: счётчик активных товаров.
+                       Раньше всегда 0, потому что бэк не возвращал _count.products. */}
+                    {typeof store._count?.products === 'number' && (
+                      <p className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
+                        📦 {store._count.products}
+                      </p>
+                    )}
                     {/* MARKETING-VERIFIED-SELLER-001: rating + review count */}
                     {store.reviewCount && store.reviewCount > 0 && store.avgRating != null && (
                       <p className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>
@@ -450,7 +469,7 @@ export default function StoresPage() {
         {tab === 'products' && (
           <>
             {productsLoading && (
-              <div className={`grid gap-3 ${
+              <div className={`grid-safe grid gap-3 ${
                 viewportWidth >= 1280 ? 'grid-cols-6' :
                 viewportWidth >= 1024 ? 'grid-cols-5' :
                 viewportWidth >= 768  ? 'grid-cols-4' :
@@ -470,7 +489,7 @@ export default function StoresPage() {
             )}
 
             {!productsLoading && products.length > 0 && (
-              <div className={`grid gap-3 ${
+              <div className={`grid-safe grid gap-3 ${
                 viewportWidth >= 1536 ? 'grid-cols-7' :
                 viewportWidth >= 1280 ? 'grid-cols-6' :
                 viewportWidth >= 1024 ? 'grid-cols-5' :

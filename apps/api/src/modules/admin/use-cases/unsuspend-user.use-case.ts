@@ -1,38 +1,30 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
-import { AdminRepository } from '../repositories/admin.repository';
-import { DomainException } from '../../../common/exceptions/domain.exception';
+/**
+ * BLOCKED → ACTIVE (user-level unsuspend).
+ *
+ * Реализовано через `createStatusTransitionUseCase` (DUP-001 refactor).
+ *   - guard: `status === 'ACTIVE'` → NOT_FOUND* (409, сохраняем legacy-поведение)
+ *     *исторический баг: оригинальный код бросал ErrorCode.NOT_FOUND с CONFLICT.
+ *     Намеренно сохранено для backward-compat с фронтом и API contract'ом.
+ *   - update: `adminRepo.setUserStatus(id, 'ACTIVE')`
+ *   - audit: USER_UNSUSPENDED, payload `{ reason, adminId }`
+ */
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { createStatusTransitionUseCase } from '../services/admin-status-transition.factory';
 
-@Injectable()
-export class UnsuspendUserUseCase {
-  constructor(private readonly adminRepo: AdminRepository) {}
+type UserStatus = 'ACTIVE' | 'BLOCKED';
+type User = { id: string; status: UserStatus };
 
-  // INV-A01: AuditLog is mandatory for every admin action.
-  async execute(targetUserId: string, actorUserId: string, reason: string) {
-    const user = await this.adminRepo.findUserById(targetUserId);
-    if (!user) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'User not found', HttpStatus.NOT_FOUND);
-    }
-
-    if (user.status === 'ACTIVE') {
-      throw new DomainException(
-        ErrorCode.NOT_FOUND,
-        'User is not suspended',
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    const updated = await this.adminRepo.setUserStatus(targetUserId, 'ACTIVE');
-
-    // INV-A01
-    await this.adminRepo.writeAuditLog({
-      actorUserId,
-      action: 'USER_UNSUSPENDED',
-      entityType: 'User',
-      entityId: targetUserId,
-      payload: { reason, adminId: actorUserId },
-    });
-
-    return updated;
-  }
-}
+export class UnsuspendUserUseCase extends createStatusTransitionUseCase<User, UserStatus>({
+  find: (repo, id) => repo.findUserById(id) as Promise<User | null>,
+  update: (repo, id) => repo.setUserStatus(id, 'ACTIVE') as Promise<User>,
+  guard: {
+    kind: 'sameAsTarget',
+    target: 'ACTIVE',
+    conflictErrorCode: ErrorCode.NOT_FOUND, // legacy code reused NOT_FOUND for 409
+    conflictMessage: 'User is not suspended',
+  },
+  notFound: { errorCode: ErrorCode.NOT_FOUND, message: 'User not found' },
+  audit: { action: 'USER_UNSUSPENDED', entityType: 'User' },
+  withReason: true,
+  includePreviousStatus: false,
+}) {}

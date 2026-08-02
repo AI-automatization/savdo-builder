@@ -189,5 +189,55 @@ describe('RefreshSessionUseCase', () => {
       await useCase.execute('sess-1.token');
       expect(authRepo.findAdminClaims).not.toHaveBeenCalled();
     });
+
+    // API-ADMIN-MFA-PERSIST-001: MFA grace period.
+    describe('API-ADMIN-MFA-PERSIST-001 — MFA grace period после challenge', () => {
+      it('ADMIN + session mfa-verified <8h ago → mfaPending=false (чистый JWT)', async () => {
+        // Сессия прошла MFA challenge час назад — должен получить чистый токен.
+        authRepo.findSessionById.mockResolvedValue({
+          ...SESSION,
+          mfaVerifiedAt: new Date(Date.now() - 60 * 60 * 1000), // 1h ago
+        });
+        prisma.user.findUnique.mockResolvedValue({ ...USER_BUYER, role: 'ADMIN' });
+        authRepo.findAdminClaims.mockResolvedValue({ mfaEnabled: true, adminRole: 'super_admin' });
+        await useCase.execute('sess-1.token');
+        const claims = tokenService.generateAccessToken.mock.calls[0][0];
+        expect(claims.mfaPending).toBeUndefined();
+        expect(claims.adminRole).toBe('super_admin');
+      });
+
+      it('ADMIN + session mfa-verified >8h ago → mfaPending=true (требуется заново)', async () => {
+        // Прошло больше grace period — снова MFA challenge.
+        authRepo.findSessionById.mockResolvedValue({
+          ...SESSION,
+          mfaVerifiedAt: new Date(Date.now() - 9 * 60 * 60 * 1000), // 9h ago
+        });
+        prisma.user.findUnique.mockResolvedValue({ ...USER_BUYER, role: 'ADMIN' });
+        authRepo.findAdminClaims.mockResolvedValue({ mfaEnabled: true, adminRole: 'super_admin' });
+        await useCase.execute('sess-1.token');
+        const claims = tokenService.generateAccessToken.mock.calls[0][0];
+        expect(claims.mfaPending).toBe(true);
+      });
+
+      it('ADMIN + session БЕЗ mfaVerifiedAt (новая сессия) → mfaPending=true', async () => {
+        // Первый refresh после login без MFA challenge — обязательно требует.
+        authRepo.findSessionById.mockResolvedValue({ ...SESSION, mfaVerifiedAt: null });
+        prisma.user.findUnique.mockResolvedValue({ ...USER_BUYER, role: 'ADMIN' });
+        authRepo.findAdminClaims.mockResolvedValue({ mfaEnabled: true, adminRole: 'super_admin' });
+        await useCase.execute('sess-1.token');
+        const claims = tokenService.generateAccessToken.mock.calls[0][0];
+        expect(claims.mfaPending).toBe(true);
+      });
+
+      it('BUYER + mfaVerifiedAt set → mfaPending не выставляется (не admin)', async () => {
+        authRepo.findSessionById.mockResolvedValue({
+          ...SESSION,
+          mfaVerifiedAt: new Date(),
+        });
+        await useCase.execute('sess-1.token');
+        const claims = tokenService.generateAccessToken.mock.calls[0][0];
+        expect(claims.mfaPending).toBeUndefined();
+      });
+    });
   });
 });

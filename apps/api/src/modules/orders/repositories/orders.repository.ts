@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Order, OrderItem, OrderStatus, OrderStatusHistory, Buyer, User, Store, Seller, InventoryMovementType } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
+import { toPrismaPagination } from '../../../common/utils/pagination';
 
 export type OrderWithDetails = Order & {
   items: OrderItem[];
@@ -22,6 +23,8 @@ export interface OrderListFilters {
   dateTo?: string;
   page?: number;
   limit?: number;
+  // FEAT-ORDERS-ARCHIVE-001: true = только архив покупателя, иначе только основной список.
+  archived?: boolean;
 }
 
 export interface PaginatedOrders {
@@ -34,13 +37,13 @@ export class OrdersRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findByBuyerId(buyerId: string, filters: OrderListFilters = {}): Promise<PaginatedOrders> {
-    const page = filters.page ?? 1;
-    const limit = Math.min(filters.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = toPrismaPagination(filters);
 
     const where = {
       buyerId,
       ...(filters.status ? { status: filters.status } : {}),
+      // FEAT-ORDERS-ARCHIVE-001: основной список скрывает архивные, ?archived=true — только их.
+      buyerArchivedAt: filters.archived ? { not: null } : null,
     };
 
     const [orders, total] = await this.prisma.$transaction([
@@ -61,13 +64,13 @@ export class OrdersRepository {
   }
 
   async findByStoreId(storeId: string, filters: OrderListFilters = {}): Promise<PaginatedOrders> {
-    const page = filters.page ?? 1;
-    const limit = Math.min(filters.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = toPrismaPagination(filters);
 
     const where: any = {
       storeId,
       ...(filters.status ? { status: filters.status } : {}),
+      // FEAT-ORDERS-ARCHIVE-001: основной список скрывает архивные, ?archived=true — только их.
+      sellerArchivedAt: filters.archived ? { not: null } : null,
     };
 
     if (filters.search) {
@@ -143,6 +146,47 @@ export class OrdersRepository {
           },
         },
       },
+    });
+  }
+
+  // FEAT-ORDERS-ARCHIVE-001: пометить/снять архив закрытого заказа покупателя.
+  // Ownership + терминальный статус проверяются в use-case; здесь только запись.
+  async setBuyerArchived(id: string, archivedAt: Date | null): Promise<Order> {
+    return this.prisma.order.update({
+      where: { id },
+      data: { buyerArchivedAt: archivedAt },
+    });
+  }
+
+  // FEAT-ORDERS-ARCHIVE-001: пометить/снять архив закрытого заказа продавца.
+  // Ownership (storeId) + терминальный статус проверяются в контроллере; здесь только запись.
+  async setSellerArchived(id: string, archivedAt: Date | null): Promise<Order> {
+    return this.prisma.order.update({
+      where: { id },
+      data: { sellerArchivedAt: archivedAt },
+    });
+  }
+
+  async markPaid(id: string, actorUserId: string): Promise<Order> {
+    return this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.update({
+        where: { id },
+        data: { paymentStatus: 'PAID' },
+      });
+
+      // OrderStatusHistory используется как универсальный аудит-лог по заказу.
+      // Сохраняем переход same-status, но с пометкой о payment в comment.
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: id,
+          oldStatus: order.status,
+          newStatus: order.status,
+          changedByUserId: actorUserId,
+          comment: 'Payment confirmed by seller (UNPAID → PAID)',
+        },
+      });
+
+      return order;
     });
   }
 

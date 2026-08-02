@@ -10,6 +10,7 @@ import { ErrorCode } from '../../../shared/constants/error-codes';
 import {
   ADMIN_PERMISSIONS,
   hasAdminPermission,
+  isBaseAdminRole,
 } from '../../../common/constants/admin-permissions';
 
 // RFC 6238 TOTP: 6 цифр, 30 сек шаг — стандарт для Google Authenticator/Authy.
@@ -48,9 +49,19 @@ export class AdminAuthUseCase {
       isSuperadmin: admin.isSuperadmin,
       mfaEnabled: admin.mfaEnabled,
       lastLoginAt: admin.lastLoginAt,
-      permissions: ADMIN_PERMISSIONS[admin.adminRole] ?? [],
+      permissions: await this.resolveAdminPermissions(admin.adminRole),
       user: admin.user,
     };
+  }
+
+  // FEAT-CUSTOM-ROLES-001: permissions роли — базовая из кода, кастомная из БД.
+  private async resolveAdminPermissions(adminRole: string): Promise<string[]> {
+    if (isBaseAdminRole(adminRole)) return ADMIN_PERMISSIONS[adminRole] ?? [];
+    const custom = await this.prisma.adminCustomRole.findUnique({
+      where: { name: adminRole },
+      select: { permissions: true },
+    });
+    return custom?.permissions ?? [];
   }
 
   // ── POST /admin/auth/mfa/setup ───────────────────────────────────────
@@ -113,6 +124,16 @@ export class AdminAuthUseCase {
       ...(admin.adminRole && { adminRole: admin.adminRole }),
     });
 
+    // API-ADMIN-MFA-PERSIST-001: помечаем сессию как mfa-verified.
+    // refresh-session.use-case использует это: если session.mfaVerifiedAt не
+    // старее MFA_GRACE_HOURS (default 8h) — выдаёт чистый JWT без mfaPending.
+    // Без этого refresh ронял admin в MFA loop при каждом access TTL expire
+    // (15 мин) — UX невозможный для длинной admin сессии.
+    await this.prisma.userSession.updateMany({
+      where: { id: sessionId, userId },
+      data: { mfaVerifiedAt: new Date() },
+    });
+
     // Update lastLoginAt — это эффективно «момент входа» для admin'а.
     await this.prisma.adminUser.update({
       where: { id: admin.id },
@@ -147,7 +168,7 @@ export class AdminAuthUseCase {
     const admin = await this.requireAdmin(adminUserId);
 
     // Только super_admin или admin с user:impersonate
-    const perms = ADMIN_PERMISSIONS[admin.adminRole] ?? [];
+    const perms = await this.resolveAdminPermissions(admin.adminRole);
     if (!hasAdminPermission(perms, 'user:impersonate')) {
       throw new DomainException(ErrorCode.FORBIDDEN, 'Insufficient permissions for impersonation', HttpStatus.FORBIDDEN);
     }

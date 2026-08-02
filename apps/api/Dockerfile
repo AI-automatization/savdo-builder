@@ -1,10 +1,10 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1: builder
 # ─────────────────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
-RUN apk add --no-cache openssl
-RUN npm install -g pnpm@9.0.0
+RUN apk add --no-cache openssl vips-dev fftw-dev
+RUN npm install -g pnpm@11.12.0
 
 WORKDIR /app
 
@@ -28,10 +28,13 @@ RUN pnpm --filter api build
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2: runner (только prod зависимости + собранный код)
 # ─────────────────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
-RUN apk add --no-cache openssl wget
-RUN npm install -g pnpm@9.0.0
+# postgresql-client — pg_dump для BACKUP-001 (ежедневный бэкап в R2).
+# Ставится дефолтная для этого Alpine версия; мажор клиента должен быть
+# >= мажора сервера Railway Postgres, иначе pg_dump откажется (см. done.md).
+RUN apk add --no-cache openssl wget vips fftw postgresql-client
+RUN npm install -g pnpm@11.12.0
 
 WORKDIR /app
 
@@ -42,6 +45,7 @@ COPY apps/api/package.json ./apps/api/
 
 # prisma в dependencies — устанавливается здесь для generate и migrate:deploy
 RUN pnpm install --no-frozen-lockfile --prod
+RUN pnpm rebuild sharp
 
 # Prisma schema + миграции
 COPY --from=builder /app/packages/db/prisma ./packages/db/prisma

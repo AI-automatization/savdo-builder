@@ -83,7 +83,7 @@ describe('GetFeaturedStorefrontUseCase', () => {
         status: 'ACTIVE',
         deletedAt: null,
         isVisible: true,
-        store: { status: 'APPROVED', isPublic: true, deletedAt: null },
+        store: expect.objectContaining({ status: 'APPROVED', isPublic: true, deletedAt: null }),
       }),
       orderBy: [
         { avgRating: { sort: 'desc', nulls: 'last' } },

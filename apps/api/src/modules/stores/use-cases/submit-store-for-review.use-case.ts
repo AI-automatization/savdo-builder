@@ -1,18 +1,26 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
+import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { StoresRepository } from '../repositories/stores.repository';
 import { SellersRepository } from '../../sellers/repositories/sellers.repository';
 import { StorePublicationService } from '../services/store-publication.service';
+import { ModerationTriggerService } from '../../moderation/services/moderation-trigger.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 
-const ALLOWED_TO_SUBMIT = ['DRAFT', 'REJECTED'];
+// API-STORE-DRAFT-REMOVAL-001: DRAFT в новой модели не используется как
+// "ожидание submit" — магазин создаётся сразу в PENDING_REVIEW. Но оставлено
+// в списке валидных source-статусов для legacy данных и для REJECTED →
+// повторная отправка.
+const ALLOWED_TO_SUBMIT = ['DRAFT', 'REJECTED', 'PENDING_REVIEW'];
 
 @Injectable()
 export class SubmitStoreForReviewUseCase {
+  private readonly logger = new Logger(SubmitStoreForReviewUseCase.name);
+
   constructor(
     private readonly storesRepo: StoresRepository,
     private readonly sellersRepo: SellersRepository,
     private readonly publicationService: StorePublicationService,
+    private readonly moderationTrigger: ModerationTriggerService,
   ) {}
 
   async execute(userId: string) {
@@ -44,6 +52,16 @@ export class SubmitStoreForReviewUseCase {
       );
     }
 
-    return this.storesRepo.update(store.id, { status: 'PENDING_REVIEW' });
+    const updated = await this.storesRepo.update(store.id, { status: 'PENDING_REVIEW' });
+
+    // API-STORE-MODERATION-NOT-TRIGGERED-001: раньше submit только менял status,
+    // а ModerationCase не создавался — заявки терялись (админ не видел в очереди).
+    // Идемпотентно: если case уже OPEN — переиспользуется.
+    const moderationCase = await this.moderationTrigger.openCaseForStore(store.id);
+    this.logger.log(
+      `Store ${store.id} submitted for review by user=${userId} (case=${moderationCase.id})`,
+    );
+
+    return updated;
   }
 }

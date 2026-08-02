@@ -4,6 +4,33 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 
 ---
 
+## ⚡ АВТО-АКТИВАЦИЯ СКИЛЛОВ (читать ПЕРВЫМ)
+
+> Base44-style activation rules. ПЕРЕД каждой задачей — найди совпадение и вызови скилл через Skill tool. Не жди когда пользователь попросит.
+
+| Сигнал в задаче | Авто-активировать |
+|---|---|
+| Новый NestJS endpoint / controller / UseCase | `new-api-endpoint` → `api-design-reviewer` |
+| Prisma schema / migration / новая модель | `database-schema-designer` → `migration-architect` |
+| Баг / "не работает" / "сломано" | `focused-fix` |
+| PR review / ревью кода / перед пушем | `pr-review-expert` → `adversarial-reviewer` |
+| TMA / Telegram WebApp / apps/tma | `twa-miniapp` |
+| UI компонент / дизайн / стили | `ui-ux-savdo` → `ui-design-system` |
+| Новая команда бота / Telegram handler | `new-bot-command` |
+| Auth / JWT / RBAC / permissions | `senior-security` |
+| Производительность / N+1 / медленно | `performance-profiler` |
+| Railway / деплой / env vars / secrets | `env-secrets-manager` |
+| Тесты / Jest / coverage | `api-test-suite-builder` |
+| Release / changelog / версия | `release-manager` |
+| Большая фича (>3 файлов) | `spec-driven-workflow` сначала — план до кода |
+| Безопасность / pentest / OWASP | `security-pen-testing` → `cloud-security` |
+| SQL запрос / индекс / оптимизация | `sql-database-assistant` |
+| Монорепо навигация / Turborepo | `monorepo-navigator` |
+
+**Правило:** если задача попадает в таблицу — вызвать скилл молча, без уточнения у пользователя. Если не попадает — работать без скилла.
+
+---
+
 ## 🚨 АГЕНТАМ: ЧИТАТЬ ДО НАЧАЛА ЛЮБОЙ РАБОТЫ
 
 ### Три файла — обязательны всегда
@@ -29,8 +56,8 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 
 ```markdown
 ## 🔴 [ID] Название задачи
-- **Домен:** apps/api | web-buyer | web-seller | admin
-- **Кто взял:** Полат | Азим
+- **Домен:** apps/api | web-buyer | web-seller | admin | landing
+- **Кто взял:** Полат (весь код кроме landing) | Юсуф (landing — контент+код, SEO/GEO/AIO) | Азим (анализ/бизнес)
 - **Детали:** что нужно сделать
 - **Файлы:** список файлов
 ```
@@ -60,16 +87,30 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 ---
 
 ## Команда и зоны ответственности
-| Разработчик | Домен | Нельзя трогать |
-|------------|-------|----------------|
-| Полат | `apps/api`, `apps/admin`, `packages/db`, `packages/types`, `apps/mobile-buyer`, `apps/mobile-seller` | `apps/web-*` |
-| Азим | `apps/web-buyer`, `apps/web-seller` | `apps/api`, `packages/db`, `apps/admin`, `apps/mobile-*` |
+
+> **Реорганизация 27.07.2026 (v2, уточнено в тот же день):** Азим больше не кодит — переходит на надзор/анализ
+> команды + академические/бизнес-вопросы проекта. Домен `landing` (контент **и код**) целиком передан Юсуфу —
+> он теперь тоже кодит, не только анализирует SEO/GEO/AIO. Весь остальной код (api/admin/db/types/tma/
+> web-buyer/web-seller) — у Полата.
+
+| Участник | Домен | Нельзя трогать |
+|---------|-------|----------------|
+| Полат | **Весь код кроме landing**: `apps/api`, `apps/admin`, `packages/db`, `packages/types`, `apps/mobile-buyer`, `apps/mobile-seller`, `apps/web-buyer`, `apps/web-seller` | `apps/landing`, landing-ветка |
+| Юсуф | Маркетинг, контент, GTM, продажи + **весь домен `apps/landing`/landing-ветка** (контент, SEO/GEO/AIO-анализ, и теперь тоже код) | Весь остальной код |
+| Азим | Академические/бизнес-вопросы проекта, надзор и анализ работы Полата и Юсуфа, бизнес-модель/монетизация/ценообразование (не кодит) | Весь код |
 | ~~Яхьо~~ | ~~`apps/admin`~~ | — (admin перешёл к Полату, 01.04.2026) |
 
-**packages/db** — только Полатр. Остальные сообщают о проблемах, не правят.
-**packages/types** — Полатр пишет, остальные только читают.
-**packages/ui** — все могут добавлять компоненты.
-**apps/mobile-*** — заморожены до Phase 3.
+**packages/db** — только Полат.
+**packages/types** — только Полат.
+**packages/ui** — только Полат.
+**apps/mobile-*** — заморожены до Phase 3, но домен Полата.
+**apps/landing** — только Юсуф (с 27.07.2026, v2). Полат и Азим не трогают без явного запроса Юсуфа.
+
+**Бизнес-модель, монетизация, ценообразование — Азим** (с 02.06.2026, без изменений).
+**Маркетинг, GTM, контент, продажи, весь landing (контент+код) — Юсуф** (с 27.07.2026), Азим участвует как второй.
+Полат — вся инженерия кроме landing (api/admin/db/types/tma/web-buyer/web-seller + DevOps/биллинг-cron);
+бизнес-решения он не owns, только consult по техвыполнимости (напр. multi-store/INV-S01). Мастер-план:
+`docs/business/roadmap-to-production-2026-06-02.md`.
 
 ## Документация
 
@@ -81,10 +122,11 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 | Задачи в работе | `docs/tasks/[domain].md` |
 | Завершённые задачи | `docs/done/[domain].md` |
 | API контракты (нужные endpoints) | `docs/contracts/` |
-| **Дизайн-система (UI)** | `docs/design/liquid-authority.md` |
+| **Дизайн-система (UI)** | `docs/design/maxsavdo-design-v2.md` (liquid-authority.md — deprecated) |
+| **Бизнес-модель / монетизация** (Азим) · **GTM / контент** (Юсуф) | `docs/business/` — мастер `business-model-v2`, роадмап `roadmap-to-production`, контент-карта `completeness-map`, пилот `content/` |
 
 **Перед любой задачей** — прочитать релевантный файл из docs/V1.1/.
-**Перед любой UI-задачей** — прочитать `docs/design/liquid-authority.md`.
+**Перед любой UI-задачей** — прочитать `docs/design/maxsavdo-design-v2.md`.
 
 ## Агенты
 
@@ -96,13 +138,13 @@ E-commerce store builder для Telegram-продавцов Узбекистан
 - **Web:** Next.js 16 (App Router) + Tailwind + DaisyUI v5 + TanStack Query
 - **Mobile:** Expo / React Native (Phase 3)
 - **Storage:** Cloudflare R2 (S3-compatible)
-- **OTP:** ТОЛЬКО Telegram Bot (@savdo_builderBOT) — Eskiz.uz и любые SMS ЗАПРЕЩЕНЫ
+- **OTP:** ТОЛЬКО Telegram Bot (@maxsavdo_bot) — Eskiz.uz и любые SMS ЗАПРЕЩЕНЫ
 - **Notifications:** Telegram Bot (seller) + in-app
 - **Deploy:** Railway
 
 ## Ключевые правила (нарушать нельзя)
 
-0. **❌ ESKIZ.UZ ЗАПРЕЩЁН** — никакого SMS, никакого Eskiz, никакого Playmobile. OTP только через Telegram Bot API (@savdo_builderBOT). Нарушение = откат PR.
+0. **❌ ESKIZ.UZ ЗАПРЕЩЁН** — никакого SMS, никакого Eskiz, никакого Playmobile. OTP только через Telegram Bot API (@maxsavdo_bot). Нарушение = откат PR.
 1. **Один seller = один store** в MVP (INV-S01)
 2. **Корзина = один store** (INV-C01)
 3. **Состав заказа immutable** после создания (INV-C03)
@@ -201,3 +243,101 @@ cd apps/web-buyer && pnpm dev   # запустить buyer web
 - `/wiki-init`, `/wiki-ingest`, `/wiki-query` — wiki workflow
 
 **Index в Obsidian:** `D:\Obsidian Vault\PROJECTS\savdo-builder\skills-index.md`.
+
+---
+
+## PRE-FLIGHT PROTOCOL (обязателен — проект-специфичные правила)
+
+### Перед claim о коде
+- `grep` → существует ли функция/тип в codebase?
+- `read` → прочитать файл, не описывать по памяти
+- Цитировать: `apps/api/src/users/users.service.ts:47 — там метод X`
+- Схема БД: только после `read packages/db/prisma/schema.prisma`
+
+### Перед edit
+- `git status` → чужие файлы? стоп
+- `read` целевого файла (параллельные сессии меняют файлы)
+- Зона: весь код кроме `apps/landing` — Полат. `apps/landing`/landing-ветка — только Юсуф. Азим не кодит (см. «Реорганизация 27.07.2026 (v2)» выше).
+
+### Обязательные правила self-audit
+1. Никогда не утверждать о коде без read/grep
+2. Никогда "я помню из прошлой сессии" — только MEMORY.md + read файла
+3. Контекст >50 msg → начать новую сессию с `git status` + ключевые файлы
+4. Перед миграцией → read `packages/db/prisma/schema.prisma` полностью
+5. Не добавлять абстракцию когда нужно 3 строки
+6. Не использовать `any` в TypeScript без явного комментария почему
+7. Не делать `git add -A` — только конкретные файлы
+8. Не делать DROP/RENAME в миграциях без предупреждения Полата
+
+---
+
+## GUARDRAILS (запрет на confidence без источника)
+
+### Запрещено
+- "Я помню что там есть функция X" (без grep)
+- "Схема выглядит так..." (без read schema.prisma)
+- "Версия Prisma/Railway/Next.js поддерживает Y" (без WebSearch)
+- "Там уже реализовано" (без git log)
+- "Обычно NestJS делает это так..." (проверь в конкретном коде)
+
+### Обязательно
+- `grep`: "функция X найдена в `apps/api/src/orders/orders.service.ts:89`"
+- `read`: "прочитал `schema.prisma:145` — там поле `status` enum OrderStatus"
+- WebSearch для версий: "Railway docs 2025: флаг `--detach` убран в v3.2"
+- Если источника нет → "Я не знаю, нужно проверить"
+
+---
+
+## WORKFLOW (полный процесс сессии)
+
+```
+1. СТАРТ СЕССИИ
+   git status → нет ли конфликтов
+   Прочитать: analiz/tasks.md, analiz/logs.md
+   Проверить MEMORY.md vs код (stale? → обновить)
+
+2. GROUNDING (перед любым claim/edit)
+   grep паттерна → существует?
+   read целевого файла → не по памяти
+   WebSearch → если вопрос про версию либы (cutoff: август 2025)
+
+3. РАБОТА
+   code / analysis / edit
+   Только конкретные файлы git add
+
+4. SELF-CHECK (перед output)
+   □ Не нарушил зоны (весь код = Полат)?
+   □ Не утверждал без grep/read?
+   □ Нет overengineering (3 строки vs абстракция)?
+   □ Нужен Obsidian ADR? → obsidian-note.ps1
+
+5. ЗАВЕРШЕНИЕ
+   analiz/done.md — что сделано
+   analiz/tasks.md — удалить закрытые задачи
+   MEMORY.md — обновить если изменился контекст
+```
+
+---
+
+## Модель: Fable 5 vs Sonnet 4.6
+
+### Sonnet 4.6 (для savdo-builder daily)
+- NestJS endpoints, Prisma migrations, Next.js pages
+- Bug fix, рефакторинг, grep → edit цикл
+- Много tool calls (read/grep/edit) — Sonnet быстрее и дешевле
+
+### Fable 5 (переключать через /model)
+- Архитектурный ADR: выбор между 3+ вариантами (например: WebSocket vs polling)
+- Security audit с нестандартными векторами
+- PRD / API contract / технические спецификации
+- Reasoning chain >10 шагов
+
+### API конфиг (при прямом вызове Anthropic API)
+```typescript
+// Код (без thinking)
+{ temperature: 0.3, top_p: 0.85 }
+
+// Архитектура (с extended thinking)
+// ВАЖНО: temperature и top_p несовместимы с thinking → убрать
+{ thinking: { type: "enabled", budget_tokens: 16000 } }
+```

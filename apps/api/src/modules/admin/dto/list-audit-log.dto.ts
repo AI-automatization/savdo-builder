@@ -1,7 +1,7 @@
-import { IsOptional, IsString, IsInt, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsOptional, IsString } from 'class-validator';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
-export class ListAuditLogDto {
+export class ListAuditLogDto extends PaginationDto {
   @IsOptional()
   @IsString()
   actorUserId?: string;
@@ -13,17 +13,4 @@ export class ListAuditLogDto {
   @IsOptional()
   @IsString()
   entityId?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 20;
 }

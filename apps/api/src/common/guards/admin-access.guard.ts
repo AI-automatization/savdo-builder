@@ -9,7 +9,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { DomainException } from '../exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 import { JwtPayload } from '../decorators/current-user.decorator';
-import { canEnterAdminPanel } from '../constants/admin-permissions';
+import { canEnterAdminPanel, isBaseAdminRole } from '../constants/admin-permissions';
 
 /**
  * SEC-ADMIN-ACCESS-MODEL стадия B — единый entry-gate в savdo-admin.
@@ -62,7 +62,18 @@ export class AdminAccessGuard implements CanActivate {
         HttpStatus.FORBIDDEN,
       );
     }
-    if (!canEnterAdminPanel(admin.adminRole)) {
+    // FEAT-CUSTOM-ROLES-001: базовые панель-роли (super_admin/admin) — сразу;
+    // кастомная роль (не базовая, но существует в admin_custom_roles) — тоже
+    // пускается (создаётся специально для доступа с ограниченным набором прав).
+    let allowed = canEnterAdminPanel(admin.adminRole);
+    if (!allowed && admin.adminRole && !isBaseAdminRole(admin.adminRole)) {
+      const custom = await this.prisma.adminCustomRole.findUnique({
+        where: { name: admin.adminRole },
+        select: { id: true },
+      });
+      allowed = !!custom;
+    }
+    if (!allowed) {
       throw new DomainException(
         ErrorCode.FORBIDDEN,
         `Роль '${admin.adminRole}' не имеет доступа в админ-панель`,

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 import { ImagePlaceholder, type PlaceholderVariant } from './ImagePlaceholder';
 
 interface Props {
@@ -28,6 +28,11 @@ export function ProductImage({
   imgStyle,
 }: Props) {
   const [errored, setErrored] = useState(false);
+
+  // TMA-PRODUCTIMAGE-STALE-ERROR-005: сбрасываем ошибку при смене src — иначе в
+  // галерее (ProductPage свайп) после одного битого фото все следующие валидные
+  // тоже показывали заглушку (errored оставался true на том же инстансе).
+  useEffect(() => { setErrored(false); }, [src]);
 
   if (!src || errored) {
     return (

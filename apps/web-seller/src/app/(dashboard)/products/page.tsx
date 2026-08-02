@@ -44,7 +44,7 @@ function Skeleton({ className }: { className?: string }) {
   );
 }
 
-const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'savdo_builderBOT';
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'maxsavdo_bot';
 
 export default function ProductsPage() {
   const { data: productsData, isLoading } = useSellerProducts();

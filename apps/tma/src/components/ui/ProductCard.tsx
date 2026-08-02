@@ -6,6 +6,7 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { WishlistButton } from '@/components/ui/WishlistButton';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { clickableA11y } from '@/lib/a11y';
+import { useTranslation } from '@/lib/i18n';
 
 export interface FeedProduct {
   id: string;
@@ -20,8 +21,17 @@ export interface FeedProduct {
 export function ProductCard({ product }: { product: FeedProduct }) {
   const navigate = useNavigate();
   const { tg } = useTelegram();
-  const imageUrl = product.images[0]?.url ?? null;
-  const price = `${Number(product.basePrice).toLocaleString('ru')} ${product.currencyCode === 'UZS' ? 'сум' : product.currencyCode}`;
+  const { t } = useTranslation();
+  const imageUrl = product.images?.[0]?.url ?? null;
+  // TMA-PRODUCT-EMPTY-001 (08.06.2026): hardening против stripped product DTO.
+  // Если бэкенд вернул товар без title/basePrice/images — карточка раньше выглядела пустой
+  // (только badge + heart). Теперь fallback: '—' для названия, скелетон для цены.
+  const safeTitle = product.title?.trim() || '—';
+  const basePriceNum = Number(product.basePrice);
+  const hasPrice = Number.isFinite(basePriceNum);
+  const price = hasPrice
+    ? `${basePriceNum.toLocaleString('ru')} ${product.currencyCode === 'UZS' ? 'сум' : (product.currencyCode || '')}`.trim()
+    : '— сум';
 
   const addToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -31,8 +41,10 @@ export function ProductCard({ product }: { product: FeedProduct }) {
     const { id: storeId, slug: storeSlug, name: storeName } = product.store;
     const hasOtherStore = cart.length > 0 && cart[0].storeId !== storeId;
 
+    const stockMax = product.totalStock;
+
     if (hasOtherStore) {
-      saveCart([{ productId: product.id, title: product.title, price: Number(product.basePrice), qty: 1, storeId, storeSlug, storeName }]);
+      saveCart([{ productId: product.id, title: product.title, price: Number(product.basePrice), qty: 1, storeId, storeSlug, storeName, stockMax }]);
       tg?.HapticFeedback.notificationOccurred('warning');
       showToast('🛒 Корзина очищена');
       return;
@@ -40,9 +52,14 @@ export function ProductCard({ product }: { product: FeedProduct }) {
 
     const existing = cart.find((i) => i.productId === product.id);
     if (existing) {
+      if (stockMax !== undefined && existing.qty >= stockMax) {
+        tg?.HapticFeedback.notificationOccurred('error');
+        showToast(t('cart.stockMaxReached', { count: stockMax }), 'error');
+        return;
+      }
       saveCart(cart.map((i) => i.productId === product.id ? { ...i, qty: i.qty + 1 } : i));
     } else {
-      saveCart([...cart, { productId: product.id, title: product.title, price: Number(product.basePrice), qty: 1, storeId, storeSlug, storeName }]);
+      saveCart([...cart, { productId: product.id, title: product.title, price: Number(product.basePrice), qty: 1, storeId, storeSlug, storeName, stockMax }]);
     }
     tg?.HapticFeedback.notificationOccurred('success');
     showToast('✅ Добавлено в корзину');
@@ -52,7 +69,7 @@ export function ProductCard({ product }: { product: FeedProduct }) {
   return (
     <div
       {...clickableA11y(openProduct)}
-      aria-label={`Открыть товар ${product.title}`}
+      aria-label={`Открыть товар ${safeTitle}`}
       onPointerEnter={() => prefetch(`/stores/${product.store.slug}/products/${product.id}`)}
       onTouchStart={() => prefetch(`/stores/${product.store.slug}/products/${product.id}`)}
       style={{
@@ -63,10 +80,23 @@ export function ProductCard({ product }: { product: FeedProduct }) {
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
+        // TMA-MOBILE-OVERFLOW-001 (08.06.2026): min-width:0 нужен, чтобы grid-cell
+        // могла сжаться меньше intrinsic content width на узких экранах (320px).
+        // Без этого длинные слова в title или price могли раздвинуть карточку и
+        // увести соседнюю карточку за viewport.
+        minWidth: 0,
+        maxWidth: '100%',
       }}
     >
-      <div style={{ aspectRatio: '1/1', overflow: 'hidden', background: 'var(--tg-surface-hover)', position: 'relative' }}>
-        <ProductImage src={imageUrl} alt={product.title} emptyVariant="product-empty" />
+      <div style={{
+        aspectRatio: '1/1',
+        overflow: 'hidden',
+        // TMA-PRODUCT-EMPTY-001: явный neutral-фон для empty-state, чтобы карточка
+        // без изображения не сливалась с фоном страницы.
+        background: imageUrl ? 'var(--tg-surface-hover)' : 'var(--tg-surface-elevated, var(--tg-surface-hover))',
+        position: 'relative',
+      }}>
+        <ProductImage src={imageUrl} alt={safeTitle} emptyVariant="product-empty" />
         <div style={{ position: 'absolute', top: 6, right: 6 }}>
           <WishlistButton productId={product.id} variant="card" />
         </div>
@@ -92,7 +122,7 @@ export function ProductCard({ product }: { product: FeedProduct }) {
         )}
       </div>
 
-      <div style={{ padding: '8px 8px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+      <div style={{ padding: '8px 8px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0 }}>
         <p style={{
           fontSize: 12,
           fontWeight: 600,
@@ -102,20 +132,29 @@ export function ProductCard({ product }: { product: FeedProduct }) {
           WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
+          wordBreak: 'break-word',
         }}>
-          {product.title}
+          {safeTitle}
         </p>
 
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--tg-accent)' }}>{price}</p>
+        <p style={{
+          fontSize: 13,
+          fontWeight: 700,
+          color: hasPrice ? 'var(--tg-accent)' : 'var(--tg-text-muted)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>{price}</p>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2, gap: 6, minWidth: 0 }}>
           <p style={{
             fontSize: 12,
             color: 'var(--tg-text-secondary)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            maxWidth: 'calc(100% - 52px)',
+            minWidth: 0,
+            flex: 1,
           }}>
             <span aria-hidden="true">🏪</span> {product.store.name}
           </p>

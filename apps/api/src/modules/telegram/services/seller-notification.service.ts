@@ -17,6 +17,8 @@ import {
 // должен resolve user.languageCode и пробросить.
 
 export interface NotifyNewOrderData {
+  /** chatId-based delivery (preferred). Falls back to sellerTelegramUsername. */
+  recipientChatId?: string;
   sellerTelegramUsername: string;
   orderNumber: string;
   storeName: string;
@@ -103,7 +105,9 @@ export class SellerNotificationService {
   }
 
   notifyNewOrder(data: NotifyNewOrderData): void {
-    if (!this.shouldEnqueueByUsername(data.sellerTelegramUsername)) return;
+    const hasChatId = this.shouldEnqueueByChatId(data.recipientChatId);
+    const hasUsername = this.shouldEnqueueByUsername(data.sellerTelegramUsername);
+    if (!hasChatId && !hasUsername) return;
     this.telegramQueue.add(TELEGRAM_JOB_NEW_ORDER, data).catch((err: unknown) => {
       this.logger.error(`Failed to enqueue notifyNewOrder: ${err instanceof Error ? err.message : String(err)}`);
     });

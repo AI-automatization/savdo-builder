@@ -5,8 +5,10 @@ import { StoresModule } from '../stores/stores.module';
 import { ProductsModule } from '../products/products.module';
 import { OrdersModule } from '../orders/orders.module';
 import { AuthModule } from '../auth/auth.module';
+import { AuditModule } from '../audit/audit.module';
 
 import { AdminRepository } from './repositories/admin.repository';
+import { AdminNotificationsRepository } from './repositories/admin-notifications.repository';
 import { AdminController } from './admin.controller';
 import { AdminDbController } from './admin-db.controller';
 import { AdminBroadcastController } from './admin-broadcast.controller';
@@ -16,6 +18,7 @@ import { AdminProductsController } from './admin-products.controller';
 import { AdminStoresController } from './admin-stores.controller';
 import { AdminUsersController } from './admin-users.controller';
 import { AdminSellersController } from './admin-sellers.controller';
+import { AdminNotificationsController } from './admin-notifications.controller';
 import { AdminContextService } from './services/admin-context.service';
 import { SuperAdminController } from './super-admin.controller';
 
@@ -34,12 +37,16 @@ import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
 import { ApproveStoreUseCase } from './use-cases/approve-store.use-case';
 import { UnapproveStoreUseCase } from './use-cases/unapprove-store.use-case';
 import { SetStoreVerificationUseCase } from './use-cases/set-store-verification.use-case';
+import { AdminUpdateStoreChannelUseCase } from './use-cases/admin-update-store-channel.use-case';
 import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
 import { GetAnalyticsUseCase } from './use-cases/get-analytics.use-case';
 import { BroadcastUseCase } from './use-cases/broadcast.use-case';
 import { DbManagerUseCase } from './use-cases/db-manager.use-case';
 import { AdminCreateSellerUseCase } from './use-cases/admin-create-seller.use-case';
+import { ChangeUserRoleUseCase } from './use-cases/change-user-role.use-case';
+import { AdminPurgeUserUseCase } from './use-cases/admin-purge-user.use-case';
+import { AdminPurgeStoreUseCase } from './use-cases/admin-purge-store.use-case';
 import { AdminCreateStoreUseCase } from './use-cases/admin-create-store.use-case';
 import { GetSystemHealthUseCase } from './use-cases/get-system-health.use-case';
 import { AdminAuthUseCase } from './use-cases/admin-auth.use-case';
@@ -49,6 +56,7 @@ import { VerifySellerExtendedUseCase } from './use-cases/verify-seller-extended.
 import { MigrateTgMediaToR2UseCase } from './use-cases/migrate-tg-media-to-r2.use-case';
 import { AuditBrokenMediaUrlsUseCase } from './use-cases/audit-broken-media-urls.use-case';
 import { ActivateSellerOnMarketUseCase } from './use-cases/activate-seller-on-market.use-case';
+import { GetAdminNotificationsUseCase } from './use-cases/get-admin-notifications.use-case';
 import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -57,6 +65,7 @@ import { MediaModule } from '../media/media.module';
 @Module({
   imports: [
     UsersModule, SellersModule, StoresModule, ProductsModule, OrdersModule, AuthModule,
+    AuditModule,
     TelegramModule,
     MediaModule,
     BullModule.registerQueue({ name: QUEUE_TELEGRAM_NOTIFICATIONS }),
@@ -71,10 +80,12 @@ import { MediaModule } from '../media/media.module';
     AdminStoresController,
     AdminUsersController,
     AdminSellersController,
+    AdminNotificationsController,
     SuperAdminController,
   ],
   providers: [
     AdminRepository,
+    AdminNotificationsRepository,
     AdminContextService,
     ListUsersUseCase,
     GetUserDetailUseCase,
@@ -91,12 +102,16 @@ import { MediaModule } from '../media/media.module';
     ApproveStoreUseCase,
     UnapproveStoreUseCase,
     SetStoreVerificationUseCase,
+    AdminUpdateStoreChannelUseCase,
     AdminCancelOrderUseCase,
     GetAuditLogUseCase,
     GetAnalyticsUseCase,
     BroadcastUseCase,
     DbManagerUseCase,
     AdminCreateSellerUseCase,
+    ChangeUserRoleUseCase,
+    AdminPurgeUserUseCase,
+    AdminPurgeStoreUseCase,
     AdminCreateStoreUseCase,
     GetSystemHealthUseCase,
     AdminAuthUseCase,
@@ -106,6 +121,8 @@ import { MediaModule } from '../media/media.module';
     MigrateTgMediaToR2UseCase,
     AuditBrokenMediaUrlsUseCase,
     ActivateSellerOnMarketUseCase,
+    GetAdminNotificationsUseCase,
   ],
+  exports: [AdminRepository],
 })
 export class AdminModule {}

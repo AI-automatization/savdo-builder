@@ -48,6 +48,12 @@ export function setToken(token: string | null) {
     else sessionStorage.removeItem(TOKEN_KEY);
   } catch { /* SSR or private browsing */ }
 }
+
+// F16: clear API cache on logout so next user on same device gets fresh data.
+export function clearApiCache(): void {
+  _cache.clear();
+  _inflight.clear();
+}
 export function getToken() { return _token; }
 
 interface ApiOptions {
@@ -219,6 +225,8 @@ export function prefetch(path: string): void {
   api(path).catch(() => {/* prefetch — тихо */});
 }
 
+const UPLOAD_TIMEOUT_MS = 60_000; // F5: XHR upload had no timeout — UI would hang indefinitely.
+
 export async function apiUpload<T = unknown>(
   path: string,
   form: FormData,
@@ -226,6 +234,8 @@ export async function apiUpload<T = unknown>(
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    xhr.timeout = UPLOAD_TIMEOUT_MS;
+    xhr.ontimeout = () => reject(new ApiError(408, `Upload timed out after ${UPLOAD_TIMEOUT_MS / 1000}s — попробуйте ещё раз`));
     xhr.upload.onprogress = (e) => {
       if (onProgress && e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
     };

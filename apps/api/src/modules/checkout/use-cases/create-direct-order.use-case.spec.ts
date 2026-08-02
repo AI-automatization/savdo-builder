@@ -215,10 +215,10 @@ describe('CreateDirectOrderUseCase', () => {
       }));
     });
 
-    it('orderNumber имеет формат ORD-<ts>-<rand>', async () => {
+    it('orderNumber имеет формат ORD-<12hex> (ORDER-NUM-001)', async () => {
       await useCase.execute({ buyerId: 'b-1', userId: 'u-1', dto: VALID_DTO });
       const orderArg = checkoutRepo.createOrder.mock.calls[0][0];
-      expect(orderArg.orderNumber).toMatch(/^ORD-[A-Z0-9]+-[A-Z0-9]{4}$/);
+      expect(orderArg.orderNumber).toMatch(/^ORD-[A-F0-9]{12}$/);
     });
   });
 });

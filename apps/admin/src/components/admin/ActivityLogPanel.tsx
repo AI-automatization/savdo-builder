@@ -13,12 +13,12 @@ export interface AuditEntry {
 }
 
 const KEY_ACTIONS = [
-  'user.SUSPEND', 'user.UNSUSPEND',
-  'seller.verified', 'seller.unverified', 'seller.rejected',
-  'store.APPROVE', 'store.REJECT', 'store.SUSPEND', 'store.UNSUSPEND', 'store.archive', 'store.restore',
-  'admin.created', 'admin.updated', 'admin.removed',
-  'product.HIDDEN_BY_ADMIN', 'product.RESTORED_BY_ADMIN',
-  'order.refund', 'order.cancelled',
+  'USER_SUSPENDED', 'USER_UNSUSPENDED',
+  'SELLER_VERIFIED', 'SELLER_UNVERIFIED', 'SELLER_REJECTED',
+  'STORE_APPROVED', 'STORE_REJECTED', 'STORE_SUSPENDED', 'STORE_UNSUSPENDED',
+  'STORE_ARCHIVED', 'STORE_UNAPPROVED', 'STORE_VERIFIED', 'STORE_UNVERIFIED',
+  'PRODUCT_HIDDEN', 'PRODUCT_RESTORED', 'PRODUCT_FORCE_DELETED', 'PRODUCT_ARCHIVED',
+  'ORDER_CANCELLED',
 ]
 
 function isKeyAction(a: string): boolean {

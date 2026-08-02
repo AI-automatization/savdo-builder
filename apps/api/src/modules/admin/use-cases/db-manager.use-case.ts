@@ -29,7 +29,7 @@ const TABLE_CONFIG: Record<string, {
   writableFields: string[];
   readonly?: boolean;
 }> = {
-  users:            { prismaModel: 'user',           searchFields: ['phone'],                               writableFields: ['role', 'status', 'languageCode'] },
+  users:            { prismaModel: 'user',           searchFields: ['phone'],                               writableFields: ['role', 'status', 'languageCode', 'deletedAt'] },
   sellers:          { prismaModel: 'seller',          searchFields: ['fullName', 'telegramUsername'],        writableFields: ['verificationStatus', 'bio', 'isBlocked'] },
   stores:           { prismaModel: 'store',           searchFields: ['name', 'slug'],                       writableFields: ['status', 'description'] },
   products:         { prismaModel: 'product',         searchFields: ['title'],                              writableFields: ['status', 'title'] },
@@ -266,6 +266,54 @@ export class DbManagerUseCase {
     const existing = await model.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Row with id="${id}" not found`);
 
+    // API-USER-ROLE-SWITCH-001: admin меняет role в users через db UI —
+    // автоматически создаём отсутствующий Seller/Buyer record + разблокируем
+    // ранее soft-deleted user-а. Это нужно для тестового workflow Полата:
+    // тот же tg-account гоняется BUYER ↔ SELLER в admin → проверяет flow в TMA.
+    // Без этого role менялся, но TMA не запускала seller-flow (нет sellers record).
+    if (tableName === 'users') {
+      const newRole = safeData.role as string | undefined;
+      const becomingActive =
+        safeData.status === 'ACTIVE' || (newRole && existing.status !== 'ACTIVE');
+
+      // Unblock + restore soft-deleted (для повторного тестинга)
+      if (becomingActive && existing.deletedAt) {
+        safeData.deletedAt = null;
+        if (!safeData.status) safeData.status = 'ACTIVE';
+      }
+
+      const updated = await model.update({ where: { id }, data: safeData });
+
+      // Auto-provision Seller/Buyer records при смене role
+      if (newRole === 'SELLER') {
+        const existingSeller = await this.prisma.seller.findUnique({ where: { userId: id } });
+        if (!existingSeller) {
+          await this.prisma.seller.create({
+            data: {
+              userId: id,
+              // Placeholder данные — Полат заполнит реальные через TMA seller flow.
+              fullName: `Test Seller ${existing.phone ?? id.slice(0, 6)}`,
+              sellerType: 'individual',
+              telegramUsername: '',
+            },
+          });
+        }
+      } else if (newRole === 'BUYER') {
+        const existingBuyer = await this.prisma.buyer.findUnique({ where: { userId: id } });
+        if (!existingBuyer) {
+          await this.prisma.buyer.create({
+            data: {
+              userId: id,
+              firstName: 'Test',
+              lastName: 'Buyer',
+            },
+          });
+        }
+      }
+
+      return this.serialize(updated);
+    }
+
     const updated = await model.update({ where: { id }, data: safeData });
     return this.serialize(updated);
   }
@@ -278,6 +326,27 @@ export class DbManagerUseCase {
     const model = (this.prisma as any)[cfg.prismaModel];
     const existing = await model.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException(`Row with id="${id}" not found`);
+
+    // API-USER-DELETE-FK-CASCADE-001: для users НЕ делаем raw delete — это
+    // ломалось на FK RESTRICT (orders/audit_logs/sessions/buyer/seller/admin).
+    // Soft-delete через deletedAt + явный logout (delete sessions) даёт ту же
+    // семантику для admin'а: юзер не может логиниться, в storefront скрыт,
+    // но история (orders, audit_log) сохранена для INV-A01 и финансов.
+    if (tableName === 'users') {
+      if (existing.deletedAt) {
+        // Уже soft-deleted — выполняем idempotent ответ.
+        return { deleted: true, id, softDeleted: true };
+      }
+      await this.prisma.$transaction([
+        this.prisma.user.update({
+          where: { id },
+          data: { deletedAt: new Date(), status: 'BLOCKED' },
+        }),
+        // Invalidate все сессии — юзер не сможет refresh access token.
+        this.prisma.userSession.deleteMany({ where: { userId: id } }),
+      ]);
+      return { deleted: true, id, softDeleted: true };
+    }
 
     await model.delete({ where: { id } });
     return { deleted: true, id };

@@ -48,11 +48,19 @@ export class ChannelMediaResolverService {
     if (!media.objectKey) return null;
 
     if (media.bucket === 'telegram') {
+      // Telegram's sendPhoto API cannot use bot file-download URLs
+      // (https://api.telegram.org/file/bot<TOKEN>/...) as photo source —
+      // their servers reject it with 400. Use our public proxy instead:
+      // Telegram fetches the proxy, proxy streams the file from TG storage.
+      const appUrl = (this.config.get<string>('APP_URL') ?? process.env.APP_URL ?? '').replace(/\/$/, '');
+      if (appUrl) return `${appUrl}/api/v1/media/proxy/${media.id}`;
+      // Fallback when APP_URL is missing (shouldn't happen in prod)
       try {
-        return await this.tgStorage.getFileUrl(media.objectKey);
+        const fileId = media.objectKey.startsWith('tg:') ? media.objectKey.slice(3) : media.objectKey;
+        return await this.tgStorage.getFileUrl(fileId);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`getFileUrl failed for media=${media.id}: ${msg}`);
+        this.logger.warn(`getFileUrl fallback failed for media=${media.id}: ${msg}`);
         return null;
       }
     }

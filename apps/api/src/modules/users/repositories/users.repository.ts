@@ -32,4 +32,27 @@ export class UsersRepository {
       data: { status: 'BLOCKED' },
     });
   }
+
+  async findPhoneById(userId: string): Promise<string | null> {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { phone: true } });
+    return u?.phone ?? null;
+  }
+
+  async findBuyerIdByUserId(userId: string): Promise<string | null> {
+    const b = await this.prisma.buyer.findUnique({ where: { userId }, select: { id: true } });
+    return b?.id ?? null;
+  }
+
+  async upsertBuyerAvatar(userId: string, url: string): Promise<{ id: string; avatarUrl: string | null }> {
+    return this.prisma.buyer.upsert({
+      where: { userId },
+      create: { userId, avatarUrl: url },
+      update: { avatarUrl: url },
+      select: { id: true, avatarUrl: true },
+    });
+  }
+
+  async syncTelegramId(phone: string, telegramId: bigint): Promise<void> {
+    await this.prisma.user.updateMany({ where: { phone }, data: { telegramId } });
+  }
 }

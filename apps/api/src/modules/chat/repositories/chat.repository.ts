@@ -110,6 +110,9 @@ export class ChatRepository {
     return this.prisma.chatThread.findMany({
       where: { buyerId, buyerDeletedAt: null },
       orderBy: { lastMessageAt: 'desc' },
+      // PERF-API-001: раньше unbounded. 100 свежих тредов достаточно для UI
+      // списка чатов; пагинации в UI нет, старые треды доступны через поиск товара.
+      take: 100,
       include: {
         seller: { include: { store: { select: { id: true, name: true, slug: true } } } },
         product: {
@@ -142,6 +145,8 @@ export class ChatRepository {
     return this.prisma.chatThread.findMany({
       where: { sellerId, sellerDeletedAt: null },
       orderBy: { lastMessageAt: 'desc' },
+      // PERF-API-001: раньше unbounded — см. комментарий в findThreadsByBuyer.
+      take: 100,
       include: {
         buyer: { include: { user: { select: { phone: true } } } },
         product: {

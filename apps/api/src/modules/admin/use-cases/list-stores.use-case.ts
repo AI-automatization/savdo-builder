@@ -11,6 +11,7 @@ export class ListStoresUseCase {
       status: dto.status,
       page: dto.page,
       limit: dto.limit,
+      search: dto.search,
     });
   }
 }

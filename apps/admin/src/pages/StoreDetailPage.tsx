@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle, ShieldOff, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { ArrowLeft, AlertTriangle, Phone, Ban, Unlock, ExternalLink, Package, User, XCircle, Archive, CheckCircle, ShieldOff, Eye, EyeOff, Trash2, Send, CreditCard } from 'lucide-react'
+import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { ActivityLogPanel } from '../components/admin/ActivityLogPanel'
 import { DialogShell } from '../components/admin/DialogShell'
+import SubscriptionDetailModal from './SubscriptionDetailModal'
+import type { AdminSubscriptionListItem, AdminSubscriptionListResponse } from 'types'
 
 interface AuditEntry {
   id: string
@@ -45,6 +48,9 @@ interface StoreDetail {
   description: string | null
   createdAt: string
   updatedAt: string
+  // P1-1: TG-канал магазина (см. apps/admin/src/pages/StoreDetailPage TgChannelCard).
+  telegramChannelId: string | null
+  telegramChannelTitle: string | null
   seller: {
     id: string
     fullName: string
@@ -107,6 +113,238 @@ function ConfirmModal({
   )
 }
 
+const SUB_STATUS_CFG: Record<string, { bg: string; text: string; label: string }> = {
+  ACTIVE:    { bg: 'rgba(16,185,129,0.12)',  text: '#10B981', label: 'Активна' },
+  TRIAL:     { bg: 'rgba(59,130,246,0.12)',  text: '#60A5FA', label: 'Пробный' },
+  PAST_DUE:  { bg: 'rgba(245,158,11,0.14)',  text: '#F59E0B', label: 'Просрочена' },
+  SUSPENDED: { bg: 'rgba(239,68,68,0.12)',   text: '#EF4444', label: 'Заблокирована' },
+  CHURNED:   { bg: 'rgba(148,163,184,0.14)', text: '#94A3B8', label: 'Отвалилась' },
+  CANCELLED: { bg: 'rgba(148,163,184,0.14)', text: '#94A3B8', label: 'Отменена' },
+}
+
+const SUB_TIER_CFG: Record<string, { bg: string; text: string; label: string }> = {
+  FREE:   { bg: 'rgba(148,163,184,0.14)', text: '#94A3B8', label: 'Free' },
+  PRO:    { bg: 'rgba(201,168,118,0.14)', text: '#C9A876', label: 'Pro' },
+  STUDIO: { bg: 'rgba(201,168,118,0.22)', text: '#E0C896', label: 'Studio' },
+}
+
+function SubscriptionCard({ sellerId }: { sellerId: string }) {
+  const { data, loading, refetch } = useFetch<AdminSubscriptionListResponse>(
+    `/api/v1/admin/subscriptions?sellerId=${sellerId}&limit=1`,
+    [sellerId],
+  )
+  const [modalId, setModalId] = useState<string | null>(null)
+
+  const sub: AdminSubscriptionListItem | null = data?.items?.[0] ?? null
+
+  const fmtDate = (iso: string | null | undefined) => {
+    if (!iso) return '—'
+    return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  }
+
+  const statusCfg = sub ? (SUB_STATUS_CFG[sub.status] ?? SUB_STATUS_CFG.CHURNED) : null
+  const tierCfg   = sub ? (SUB_TIER_CFG[sub.tier]     ?? SUB_TIER_CFG.FREE)   : null
+
+  return (
+    <>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginTop: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CreditCard size={14} color="#C9A876" />
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Подписка
+            </div>
+          </div>
+          {sub && (
+            <button
+              onClick={() => setModalId(sub.id)}
+              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+            >
+              Управление
+            </button>
+          )}
+        </div>
+
+        {loading && (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Загрузка...</div>
+        )}
+
+        {!loading && !sub && (
+          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Подписка не найдена</div>
+        )}
+
+        {!loading && sub && statusCfg && tierCfg && (
+          <div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+              <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: tierCfg.bg, color: tierCfg.text }}>
+                {tierCfg.label}
+              </span>
+              <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: statusCfg.bg, color: statusCfg.text }}>
+                {statusCfg.label}
+              </span>
+              {sub.cancelAtPeriodEnd && (
+                <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'rgba(245,158,11,0.14)', color: '#F59E0B' }}>
+                  Отмена в конце периода
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              {[
+                { label: 'Начало периода', value: fmtDate(sub.currentPeriodStart) },
+                { label: 'Конец периода', value: fmtDate(sub.currentPeriodEnd) },
+                { label: 'Осталось дней', value: sub.daysLeft == null ? '—' : String(sub.daysLeft) },
+                { label: 'Пробный до', value: fmtDate(sub.trialEndsAt) },
+                { label: 'Грейс до', value: fmtDate(sub.graceEndsAt) },
+                { label: 'Обновлено', value: fmtDate(sub.updatedAt) },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {modalId && (
+        <SubscriptionDetailModal
+          subscriptionId={modalId}
+          onClose={() => setModalId(null)}
+          onChanged={() => { setModalId(null); refetch() }}
+        />
+      )}
+    </>
+  )
+}
+
+/**
+ * P1-1 (audit-2026-06-04): admin привязывает TG-канал магазину.
+ * Раньше задать `telegramChannelId` можно было только через seller TMA,
+ * из-за этого `postProductToChannel` отдавал «Channel not configured» в проде.
+ */
+function TgChannelCard({
+  storeId,
+  initialChannelId,
+  initialChannelTitle,
+  onSaved,
+}: {
+  storeId: string
+  initialChannelId: string | null
+  initialChannelTitle: string | null
+  onSaved: () => void
+}) {
+  const { t } = useTranslation()
+  const [channelId, setChannelId] = useState(initialChannelId ?? '')
+  const [channelTitle, setChannelTitle] = useState(initialChannelTitle ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+
+  const dirty =
+    channelId.trim() !== (initialChannelId ?? '') ||
+    channelTitle.trim() !== (initialChannelTitle ?? '')
+
+  async function save() {
+    setSaving(true)
+    setError(null)
+    try {
+      await api.patch(`/api/v1/admin/stores/${storeId}/channel`, {
+        telegramChannelId: channelId.trim(),
+        telegramChannelTitle: channelTitle.trim(),
+      })
+      setSavedAt(Date.now())
+      onSaved()
+    } catch (e: any) {
+      setError(e?.message ?? t('common.error'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function clearField() {
+    setChannelId('')
+    setChannelTitle('')
+  }
+
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginTop: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <Send size={14} color="#A855F7" />
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          {t('storeDetail.tgChannelSection')}
+        </div>
+      </div>
+
+      {!initialChannelId && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, marginBottom: 14, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: '#F59E0B', fontSize: 12 }}>
+          <AlertTriangle size={13} /> {t('storeDetail.tgChannelEmpty')}
+        </div>
+      )}
+
+      <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+        {t('storeDetail.tgChannelLabel')}
+      </label>
+      <input
+        type="text"
+        value={channelId}
+        onChange={(e) => setChannelId(e.target.value)}
+        placeholder={t('storeDetail.tgChannelPlaceholder')}
+        disabled={saving}
+        aria-label={t('storeDetail.tgChannelLabel')}
+        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 10, fontFamily: 'monospace' }}
+      />
+
+      <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+        {t('storeDetail.tgChannelTitleLabel')}
+      </label>
+      <input
+        type="text"
+        value={channelTitle}
+        onChange={(e) => setChannelTitle(e.target.value)}
+        placeholder={t('storeDetail.tgChannelTitlePlaceholder')}
+        disabled={saving}
+        aria-label={t('storeDetail.tgChannelTitleLabel')}
+        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: 10, background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 14, outline: 'none', marginBottom: 10 }}
+      />
+
+      <p style={{ margin: '0 0 14px', color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.5 }}>
+        {t('storeDetail.tgChannelHint')}
+      </p>
+
+      {error && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, marginBottom: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444', fontSize: 13 }}>
+          <AlertTriangle size={13} /> {error}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button
+          onClick={save}
+          disabled={saving || !dirty}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: 'none', background: dirty ? '#A855F7' : 'var(--surface2)', color: dirty ? 'white' : 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: saving ? 'wait' : (dirty ? 'pointer' : 'not-allowed'), opacity: saving ? 0.7 : 1 }}
+        >
+          <Send size={13} /> {saving ? t('common.loading') : t('storeDetail.tgChannelSave')}
+        </button>
+        {(channelId || channelTitle) && (
+          <button
+            onClick={clearField}
+            disabled={saving}
+            style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}
+          >
+            {t('storeDetail.tgChannelClear')}
+          </button>
+        )}
+        {savedAt && !dirty && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#10B981', fontSize: 12 }}>
+            <CheckCircle size={13} /> {t('storeDetail.tgChannelSaved')}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function StoreDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -127,6 +365,10 @@ export default function StoreDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [productActionLoading, setProductActionLoading] = useState<string | null>(null)
   const [confirmDeleteProduct, setConfirmDeleteProduct] = useState<string | null>(null)
+  // ADMIN-STORE-PURGE-001: безвозвратное удаление магазина (danger zone)
+  const [purgeModal, setPurgeModal] = useState(false)
+  const [purgeSlug, setPurgeSlug] = useState('')
+  const [purging, setPurging] = useState(false)
 
   async function toggleProductHide(product: StoreProduct) {
     const isHidden = product.status === 'HIDDEN_BY_ADMIN'
@@ -150,6 +392,23 @@ export default function StoreDetailPage() {
       refetchProducts()
     } finally {
       setProductActionLoading(null)
+    }
+  }
+
+  async function purgeStore() {
+    if (!store) return
+    setPurging(true)
+    setActionError(null)
+    try {
+      const res = await api.post<{ purged: boolean; orders: number; products: number }>(
+        `/api/v1/admin/stores/${store.id}/purge`,
+        { confirmSlug: purgeSlug.trim() },
+      )
+      toast.success(`${t('storeDetail.purgeDone')} (orders: ${res.orders}, products: ${res.products})`)
+      navigate('/stores')
+    } catch (e: any) {
+      setActionError(e.message ?? t('common.error'))
+      setPurging(false)
     }
   }
 
@@ -272,6 +531,10 @@ export default function StoreDetailPage() {
               <Archive size={14} /> {t('storeDetail.toArchive')}
             </button>
           )}
+          {/* ADMIN-STORE-PURGE-001: безвозвратное удаление (danger zone) */}
+          <button onClick={() => { setPurgeSlug(''); setActionError(null); setPurgeModal(true) }} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.5)', background: 'rgba(239,68,68,0.15)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <Trash2 size={14} /> {t('storeDetail.purge')}
+          </button>
         </div>
       </div>
 
@@ -347,6 +610,16 @@ export default function StoreDetailPage() {
           <p style={{ margin: 0, color: 'var(--text)', fontSize: 14, lineHeight: 1.6 }}>{store.description}</p>
         </div>
       )}
+
+      {/* P1-1 (audit-2026-06-04): Telegram channel input — фиксит мёртвый postProductToChannel */}
+      <TgChannelCard
+        storeId={store.id}
+        initialChannelId={store.telegramChannelId}
+        initialChannelTitle={store.telegramChannelTitle}
+        onSaved={refetch}
+      />
+
+      <SubscriptionCard sellerId={store.seller.id} />
 
       {/* Contacts */}
       {store.contacts?.length > 0 && (
@@ -519,6 +792,60 @@ export default function StoreDetailPage() {
           onCancel={() => setModal(null)}
           loading={actionLoading}
         />
+      )}
+
+      {/* ADMIN-STORE-PURGE-001: Purge Modal (type-to-confirm slug) */}
+      {purgeModal && (
+        <DialogShell onClose={() => !purging && setPurgeModal(false)} width={440} ariaLabelledBy="store-purge-modal-title">
+            <h3 id="store-purge-modal-title" className="m-0 mb-2 text-[18px] font-bold" style={{ color: '#EF4444' }}>
+              {t('storeDetail.purgeTitle')}
+            </h3>
+            <p className="m-0 mb-2 text-[14px]" style={{ color: 'var(--text-muted)' }}>
+              {t('storeDetail.purgeWarning')}
+            </p>
+            <p className="m-0 mb-4 text-[13px]" style={{ color: 'var(--text-muted)' }}>
+              {t('storeDetail.purgeConfirmHint')} <code className="font-mono" style={{ color: 'var(--text)' }}>{store.slug}</code>
+            </p>
+            <input
+              value={purgeSlug}
+              onChange={e => setPurgeSlug(e.target.value)}
+              placeholder={store.slug}
+              aria-label={t('storeDetail.purgeConfirmHint')}
+              className="w-full px-3.5 py-3 rounded-xl text-[14px] outline-none font-mono"
+              style={{
+                background: 'var(--surface2)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                color: 'var(--text)',
+                boxSizing: 'border-box',
+              }}
+            />
+            {actionError && (
+              <div role="alert" className="mt-2 text-[12px]" style={{ color: '#EF4444' }}>{actionError}</div>
+            )}
+            <div className="flex gap-2.5 justify-end mt-4">
+              <button
+                onClick={() => setPurgeModal(false)}
+                disabled={purging}
+                className="px-5 py-2.5 rounded-xl text-[14px]"
+                style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={purgeStore}
+                disabled={purgeSlug.trim() !== store.slug || purging}
+                className="px-6 py-2.5 rounded-xl text-[14px] font-semibold"
+                style={{
+                  border: 'none',
+                  cursor: purgeSlug.trim() === store.slug && !purging ? 'pointer' : 'not-allowed',
+                  background: purgeSlug.trim() === store.slug ? '#EF4444' : 'var(--surface2)',
+                  color: purgeSlug.trim() === store.slug ? 'white' : 'var(--text-muted)',
+                }}
+              >
+                {purging ? t('common.loading') : t('storeDetail.purgeButton')}
+              </button>
+            </div>
+        </DialogShell>
       )}
     </div>
   )

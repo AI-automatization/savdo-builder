@@ -16,6 +16,7 @@ import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { AdminPermission } from '../../common/decorators/admin-permission.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { TrackEventDto } from './dto/track-event.dto';
 import { QueryEventsDto } from './dto/query-events.dto';
@@ -50,6 +51,7 @@ export class AnalyticsController {
   // Accepts both authenticated (buyer/seller/admin) and guest requests.
 
   @Post('analytics/track')
+  @Public()
   @UseGuards(OptionalJwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async track(

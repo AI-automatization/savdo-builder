@@ -56,9 +56,9 @@ export class StoresRepository {
       ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100)
       : 50;
 
-    // API-STORES-FILTER-SUSPENDED-001: фильтр по status: APPROVED — защита
-    // от случаев когда admin меняет статус, но isPublic остался true.
-    const where = { isPublic: true, deletedAt: null, status: 'APPROVED' as const };
+    // ISVISIBLE-SEMANTICS-001: isSuspendedByBilling=false гарантирует что
+    // billing-suspended магазины не видны даже если isPublic=true.
+    const where = { isPublic: true, isSuspendedByBilling: false, deletedAt: null, status: 'APPROVED' as const };
     const [stores, total] = await this.prisma.$transaction([
       this.prisma.store.findMany({
         where,
@@ -76,6 +76,15 @@ export class StoresRepository {
           isVerified: true,
           avgRating: true,
           reviewCount: true,
+          // BUG-1 re-audit 04.06.2026: счётчик активных товаров для карточки
+          // магазина в /buyer. Без него TMA показывала "0" везде.
+          _count: {
+            select: {
+              products: {
+                where: { deletedAt: null, status: 'ACTIVE' },
+              },
+            },
+          },
         },
         // Verified магазины сверху, потом по дате публикации
         orderBy: [{ isVerified: 'desc' }, { publishedAt: 'desc' }],
@@ -88,6 +97,18 @@ export class StoresRepository {
     return { stores, total, page, limit };
   }
 
+  /**
+   * SEO-AUDIT-001: лёгкий фид для sitemap — только slug+updatedAt публичных
+   * магазинов (та же видимость, что findAllPublished, без include/пагинации).
+   */
+  async findAllPublishedForSitemap() {
+    return this.prisma.store.findMany({
+      where: { isPublic: true, isSuspendedByBilling: false, deletedAt: null, status: 'APPROVED' },
+      select: { slug: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
   // FEAT-001: case-insensitive поиск по публичным магазинам.
   // Используется в GET /storefront/search.
   // API-STORES-FILTER-SUSPENDED-001: status: APPROVED — SUSPENDED stores не
@@ -98,6 +119,7 @@ export class StoresRepository {
     return this.prisma.store.findMany({
       where: {
         isPublic: true,
+        isSuspendedByBilling: false,
         deletedAt: null,
         status: 'APPROVED',
         OR: [
@@ -174,6 +196,7 @@ export class StoresRepository {
     coverMediaId: string;
     primaryGlobalCategoryId: string;
     isPublic: boolean;
+    isSuspendedByBilling: boolean;
     publishedAt: Date;
     status: string;
     slug: string;
@@ -211,6 +234,41 @@ export class StoresRepository {
     });
   }
 
+  async getDirections(storeId: string) {
+    const rows = await this.prisma.storeDirection.findMany({
+      where: { storeId },
+      include: {
+        globalCategory: {
+          select: { id: true, slug: true, nameRu: true, nameUz: true, iconEmoji: true, level: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    return rows.map((r) => r.globalCategory);
+  }
+
+  async replaceDirections(storeId: string, categoryIds: string[]): Promise<void> {
+    if (categoryIds.length > 0) {
+      const existing = await this.prisma.globalCategory.findMany({
+        where: { id: { in: categoryIds }, isActive: true },
+        select: { id: true },
+      });
+      const existingIds = new Set(existing.map((c) => c.id));
+      const validIds = categoryIds.filter((id) => existingIds.has(id));
+      await this.prisma.$transaction([
+        this.prisma.storeDirection.deleteMany({ where: { storeId } }),
+        ...(validIds.length > 0
+          ? [this.prisma.storeDirection.createMany({
+              data: validIds.map((globalCategoryId) => ({ storeId, globalCategoryId })),
+              skipDuplicates: true,
+            })]
+          : []),
+      ]);
+    } else {
+      await this.prisma.storeDirection.deleteMany({ where: { storeId } });
+    }
+  }
+
   async findChannelTemplate(storeId: string) {
     return this.prisma.store.findUnique({
       where: { id: storeId },
@@ -225,6 +283,42 @@ export class StoresRepository {
         telegramContactLink: true,
         autoPostProductsToChannel: true,
       },
+    });
+  }
+
+  // ─── SELLER-PAYMENT-REQUISITES-001 ─────────────────────────────────────────
+
+  private static readonly PAYMENT_REQUISITES_SELECT = {
+    paymentCardNumber: true,
+    paymentCardHolder: true,
+    paymentClickLink: true,
+    paymentPaymeLink: true,
+    acceptsCash: true,
+    acceptsCardTransfer: true,
+  } as const;
+
+  async findPaymentRequisites(storeId: string) {
+    return this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: StoresRepository.PAYMENT_REQUISITES_SELECT,
+    });
+  }
+
+  async updatePaymentRequisites(
+    storeId: string,
+    data: {
+      paymentCardNumber?: string | null;
+      paymentCardHolder?: string | null;
+      paymentClickLink?: string | null;
+      paymentPaymeLink?: string | null;
+      acceptsCash?: boolean;
+      acceptsCardTransfer?: boolean;
+    },
+  ) {
+    return this.prisma.store.update({
+      where: { id: storeId },
+      data,
+      select: StoresRepository.PAYMENT_REQUISITES_SELECT,
     });
   }
 }

@@ -11,10 +11,12 @@ import {
   HttpStatus,
   ConflictException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { IsString, IsNotEmpty, MaxLength, IsOptional, IsBoolean, IsInt, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { MfaEnforcedGuard } from '../../common/guards/mfa-enforced.guard';
 import { AdminPermissionGuard } from '../../common/guards/admin-permission.guard';
@@ -29,12 +31,13 @@ import { CreateStoreCategoryUseCase } from './use-cases/create-store-category.us
 import { UpdateStoreCategoryUseCase } from './use-cases/update-store-category.use-case';
 import { DeleteStoreCategoryUseCase } from './use-cases/delete-store-category.use-case';
 import { GlobalCategoriesRepository } from './repositories/global-categories.repository';
+import { CategoryFiltersRepository } from './repositories/category-filters.repository';
 import { GlobalCategoriesSeedService } from './global-categories-seed.service';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
+import { AuditService } from '../audit/audit.service';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
-import { PrismaService } from '../../database/prisma.service';
 
 class CreateGlobalCategoryDto {
   @IsString() @IsNotEmpty() @MaxLength(120)
@@ -54,6 +57,17 @@ class CreateGlobalCategoryDto {
 
   @IsOptional() @IsBoolean()
   isActive?: boolean;
+}
+
+class AddFilterOptionDto {
+  @IsString() @IsNotEmpty() @MaxLength(80)
+  categorySlug!: string;
+
+  @IsString() @IsNotEmpty() @MaxLength(80)
+  key!: string;
+
+  @IsString() @IsNotEmpty() @MaxLength(120)
+  value!: string;
 }
 
 class UpdateGlobalCategoryDto {
@@ -85,15 +99,20 @@ export class CategoriesController {
     private readonly updateStoreCategory: UpdateStoreCategoryUseCase,
     private readonly deleteStoreCategory: DeleteStoreCategoryUseCase,
     private readonly globalCategoriesRepo: GlobalCategoriesRepository,
+    private readonly filtersRepo: CategoryFiltersRepository,
     private readonly seedService: GlobalCategoriesSeedService,
-    private readonly prisma: PrismaService,
     private readonly sellersRepo: SellersRepository,
     private readonly storesRepo: StoresRepository,
+    private readonly audit: AuditService,
   ) {}
+
+  // FEAT-CATEGORY-JOURNAL-001: константа entityType журнала глобальных категорий.
+  private static readonly CATEGORY_ENTITY = 'GlobalCategory';
 
   // ─── Public ──────────────────────────────────────────────────────────────────
 
   @Get('storefront/categories')
+  @Public()
   async listGlobalCategories() {
     return this.getGlobalCategories.execute();
   }
@@ -104,23 +123,9 @@ export class CategoriesController {
    * Включает level/isLeaf/iconEmoji для navigation UI.
    */
   @Get('storefront/categories/tree')
+  @Public()
   async getCategoriesTree() {
-    const all = await this.prisma.globalCategory.findMany({
-      where: { isActive: true },
-      orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }, { nameRu: 'asc' }],
-      select: {
-        id: true,
-        slug: true,
-        nameRu: true,
-        nameUz: true,
-        parentId: true,
-        level: true,
-        isLeaf: true,
-        iconEmoji: true,
-        sortOrder: true,
-      },
-    });
-    return all;
+    return this.globalCategoriesRepo.findTreeActive();
   }
 
   /**
@@ -128,21 +133,15 @@ export class CategoriesController {
    * Если parentId не задан — возвращает root (level=0).
    */
   @Get('storefront/categories/:parentId/children')
+  @Public()
   async getCategoryChildren(@Param('parentId') parentId: string) {
-    const items = await this.prisma.globalCategory.findMany({
-      where: parentId === 'root' ? { parentId: null, isActive: true } : { parentId, isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { nameRu: 'asc' }],
-      select: { id: true, slug: true, nameRu: true, nameUz: true, level: true, isLeaf: true, iconEmoji: true },
-    });
-    return items;
+    return this.globalCategoriesRepo.findChildren(parentId);
   }
 
   @Get('storefront/categories/:slug/filters')
+  @Public()
   async getCategoryFilters(@Param('slug') slug: string) {
-    const filters = await this.prisma.categoryFilter.findMany({
-      where: { categorySlug: slug },
-      orderBy: { sortOrder: 'asc' },
-    });
+    const filters = await this.filtersRepo.findBySlug(slug);
     return filters.map((f) => ({
       key: f.key,
       nameRu: f.nameRu,
@@ -151,9 +150,34 @@ export class CategoriesController {
       options: f.options ? (() => { try { return JSON.parse(f.options!) as string[]; } catch { return null; } })() : null,
       unit: f.unit,
       sortOrder: f.sortOrder,
-      isRequired: (f as any).isRequired ?? false,
-      isFilterable: (f as any).isFilterable ?? true,
+      isRequired: (f as Record<string, unknown>)['isRequired'] ?? false,
+      isFilterable: (f as Record<string, unknown>)['isFilterable'] ?? true,
     }));
+  }
+
+  // Продавец предлагает новое значение для SELECT/MULTI_SELECT фильтра.
+  // Значение сразу сохраняется в options[], доступно всем продавцам этой категории.
+  @Post('seller/categories/filters/option')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  async addFilterOption(@Body() dto: AddFilterOptionDto) {
+    const filter = await this.filtersRepo.findUnique(dto.categorySlug, dto.key);
+    if (!filter) throw new NotFoundException('Filter not found');
+    if (!['SELECT', 'MULTI_SELECT'].includes(filter.fieldType)) {
+      throw new BadRequestException('Only SELECT and MULTI_SELECT filters support option creation');
+    }
+
+    const trimmed = dto.value.trim();
+    if (!trimmed) throw new BadRequestException('Value cannot be empty');
+
+    const current: string[] = filter.options ? (JSON.parse(filter.options) as string[]) : [];
+    const alreadyExists = current.some((o) => o.toLowerCase() === trimmed.toLowerCase());
+    if (!alreadyExists) {
+      current.push(trimmed);
+      await this.filtersRepo.updateOptions(dto.categorySlug, dto.key, current);
+    }
+
+    return { options: current };
   }
 
   // ─── Seller ───────────────────────────────────────────────────────────────────
@@ -207,11 +231,18 @@ export class CategoriesController {
   @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
   @AdminPermission('category:moderate')
-  async adminSeedCategories() {
+  async adminSeedCategories(@CurrentUser() user: JwtPayload) {
     const [cats, filters] = await Promise.all([
       this.seedService.seedCategories(),
       this.seedService.seedFilters(),
     ]);
+    await this.audit.write({
+      actorUserId: user.sub,
+      action: 'CATEGORY_SEEDED',
+      entityType: CategoriesController.CATEGORY_ENTITY,
+      entityId: 'ALL',
+      payload: { categoriesUpserted: cats, filtersUpserted: filters },
+    });
     return { success: true, categoriesUpserted: cats, filtersUpserted: filters };
   }
 
@@ -227,7 +258,10 @@ export class CategoriesController {
   @UseGuards(JwtAuthGuard, RolesGuard, MfaEnforcedGuard, AdminPermissionGuard)
   @Roles('ADMIN')
   @AdminPermission('category:moderate')
-  async adminCreateCategory(@Body() dto: CreateGlobalCategoryDto) {
+  async adminCreateCategory(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateGlobalCategoryDto,
+  ) {
     const existing = await this.globalCategoriesRepo.findBySlug(dto.slug);
     if (existing) {
       throw new ConflictException(`Категория со slug «${dto.slug}» уже существует`);
@@ -236,7 +270,15 @@ export class CategoriesController {
       const parent = await this.globalCategoriesRepo.findById(dto.parentId);
       if (!parent) throw new NotFoundException('Родительская категория не найдена');
     }
-    return this.globalCategoriesRepo.create(dto);
+    const created = await this.globalCategoriesRepo.create(dto);
+    await this.audit.write({
+      actorUserId: user.sub,
+      action: 'CATEGORY_CREATED',
+      entityType: CategoriesController.CATEGORY_ENTITY,
+      entityId: created.id,
+      payload: { slug: created.slug, nameRu: created.nameRu, nameUz: created.nameUz, parentId: created.parentId },
+    });
+    return created;
   }
 
   @Patch('admin/categories/:id')
@@ -244,6 +286,7 @@ export class CategoriesController {
   @Roles('ADMIN')
   @AdminPermission('category:moderate')
   async adminUpdateCategory(
+    @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
     @Body() dto: UpdateGlobalCategoryDto,
   ) {
@@ -259,7 +302,27 @@ export class CategoriesController {
       const parent = await this.globalCategoriesRepo.findById(dto.parentId);
       if (!parent) throw new NotFoundException('Родительская категория не найдена');
     }
-    return this.globalCategoriesRepo.update(id, dto);
+    const updated = await this.globalCategoriesRepo.update(id, dto);
+
+    // Пишем только реально изменившиеся поля (before/after) — компактный дифф в журнале.
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    for (const key of Object.keys(dto) as (keyof UpdateGlobalCategoryDto)[]) {
+      if ((cat as Record<string, unknown>)[key] !== (updated as Record<string, unknown>)[key]) {
+        before[key] = (cat as Record<string, unknown>)[key];
+        after[key] = (updated as Record<string, unknown>)[key];
+      }
+    }
+    if (Object.keys(after).length > 0) {
+      await this.audit.write({
+        actorUserId: user.sub,
+        action: 'CATEGORY_UPDATED',
+        entityType: CategoriesController.CATEGORY_ENTITY,
+        entityId: id,
+        payload: { slug: updated.slug, before, after },
+      });
+    }
+    return updated;
   }
 
   @Delete('admin/categories/:id')
@@ -267,10 +330,20 @@ export class CategoriesController {
   @Roles('ADMIN')
   @AdminPermission('category:moderate')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async adminDeleteCategory(@Param('id') id: string) {
+  async adminDeleteCategory(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ) {
     const cat = await this.globalCategoriesRepo.findById(id);
     if (!cat) throw new NotFoundException('Категория не найдена');
     await this.globalCategoriesRepo.delete(id);
+    await this.audit.write({
+      actorUserId: user.sub,
+      action: 'CATEGORY_DELETED',
+      entityType: CategoriesController.CATEGORY_ENTITY,
+      entityId: id,
+      payload: { slug: cat.slug, nameRu: cat.nameRu, nameUz: cat.nameUz },
+    });
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────────

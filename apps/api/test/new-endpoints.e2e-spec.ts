@@ -1,4 +1,4 @@
-import * as request from 'supertest';
+import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
 import { PrismaService } from '../src/database/prisma.service';
 import { createTestApp, cleanDb } from './app.helper';

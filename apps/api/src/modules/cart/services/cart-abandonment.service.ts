@@ -52,7 +52,7 @@ export class CartAbandonmentService {
     }
 
     const idleThreshold = new Date(Date.now() - this.IDLE_HOURS * 60 * 60 * 1000);
-    const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? 'savdo_builderBOT';
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? 'maxsavdo_bot';
 
     // Idle ACTIVE-карты с непустыми items, у которых ещё не исчерпан лимит nudge'ов.
     // Сортируем по самым «свежим» idle (updatedAt DESC) — чтобы первыми обработать

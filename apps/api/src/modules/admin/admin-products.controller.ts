@@ -68,13 +68,18 @@ export class AdminProductsController {
     return product;
   }
 
-  // GET /api/v1/admin/products?storeId=&status=&page=&limit=
+  // GET /api/v1/admin/products?storeId=&status=&page=&limit=&search=&includeDeleted=
+  // P1-4 (audit 2026-06-04): includeDeleted=true чтобы admin видел soft-deleted
+  // записи (синхронизация с разделом «База данных»). Default false (legacy).
   @Get()
   async list(
     @Query('storeId') storeId: string | undefined,
     @Query('status')  status:  string | undefined,
     @Query('page')    page:    string | undefined,
     @Query('limit')   limit:   string | undefined,
+    // PERF-API-001: серверный поиск по title/description (admin ProductsPage).
+    @Query('search')  search:  string | undefined,
+    @Query('includeDeleted') includeDeleted: string | undefined,
     @CurrentUser() user: JwtPayload,
   ) {
     await this.requireAdmin(user);
@@ -87,6 +92,8 @@ export class AdminProductsController {
       status: validStatus,
       page:  page  ? Number(page)  : 1,
       limit: limit ? Math.min(Number(limit), 100) : 20,
+      search,
+      includeDeleted: includeDeleted === 'true' || includeDeleted === '1',
     });
   }
 

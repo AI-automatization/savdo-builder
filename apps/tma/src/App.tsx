@@ -28,7 +28,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center p-6 gap-5"
-        style={{ background: 'linear-gradient(135deg, #0f0c1a 0%, #1a1035 100%)' }}
+        style={{ background: 'var(--tg-bg)' }}
       >
         <div
           className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
@@ -37,15 +37,17 @@ class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
           ⚠️
         </div>
         <div className="text-center">
-          <p className="text-white font-semibold text-base">Что-то пошло не так</p>
-          <p className="text-xs mt-1.5" style={{ color: 'rgba(255,255,255,0.40)' }}>
+          <p className="font-semibold text-base" style={{ color: 'var(--tg-text-primary)' }}>
+            Что-то пошло не так
+          </p>
+          <p className="text-xs mt-1.5" style={{ color: 'var(--tg-text-muted)' }}>
             Попробуйте вернуться на главную
           </p>
         </div>
         <button
           onClick={() => { this.setState({ hasError: false, message: '' }); window.location.replace('/'); }}
-          className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white"
-          style={{ background: 'linear-gradient(135deg, #7C3AED, #A78BFA)' }}
+          className="px-5 py-2.5 rounded-xl text-sm font-semibold"
+          style={{ background: 'var(--tg-accent)', color: '#0F0F0F' }}
         >
           На главную
         </button>
@@ -76,6 +78,7 @@ const SellerEditProduct  = lazy(() => import('@/pages/seller/EditProductPage'));
 const SellerProfile   = lazy(() => import('@/pages/seller/ProfilePage'));
 const SellerSettings  = lazy(() => import('@/pages/seller/SettingsPage'));
 const SellerChannelSettings = lazy(() => import('@/pages/seller/ChannelSettingsPage'));
+const SellerSubscription = lazy(() => import('@/pages/seller/SubscriptionPage'));
 const SellerChat      = lazy(() => import('@/pages/seller/ChatPage'));
 
 // ── Guards ────────────────────────────────────────────────────────────────────
@@ -183,6 +186,7 @@ export default function App() {
           <Route path="profile" element={<SellerProfile />} />
           <Route path="settings" element={<SellerSettings />} />
           <Route path="settings/channel" element={<SellerChannelSettings />} />
+          <Route path="subscription" element={<SellerSubscription />} />
           <Route path="chat" element={<SellerChat />} />
           <Route path="chat/:threadId" element={<SellerChat />} />
         </Route>

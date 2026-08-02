@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, Product, ProductStatus } from '@prisma/client';
 import { PrismaService } from '../../../database/prisma.service';
+import { toPrismaPagination } from '../../../common/utils/pagination';
 
 // Стандартный include-блок для Seller list view — товар + все картинки + варианты + счётчик.
 // Вынесено в const чтобы Prisma.validator вывел точный тип возврата
@@ -80,12 +81,21 @@ const allPublicProductInclude = Prisma.validator<Prisma.ProductInclude>()({
   _count:   { select: { variants: { where: { isActive: true, deletedAt: null } } } },
 });
 
+// Admin list view (ADMIN-PRODUCTS-NO-STORE-FIELD, подтверждён вживую 29.06.2026):
+// раньше findAll включал только images → колонка «МАГАЗИН» в admin была «—».
+// Добавлен store, чтобы admin видел к какому магазину относится товар.
+const adminProductListInclude = Prisma.validator<Prisma.ProductInclude>()({
+  images: { orderBy: { sortOrder: 'asc' as const }, take: 1 },
+  store:  { select: { id: true, name: true, slug: true } },
+});
+
 export type SellerProductListItem   = Prisma.ProductGetPayload<{ include: typeof sellerProductInclude }>;
 export type PublicProductListItem   = Prisma.ProductGetPayload<{ include: typeof publicProductInclude }>;
 export type SellerProductDetail     = Prisma.ProductGetPayload<{ include: typeof sellerProductDetailInclude }>;
 export type PublicProductDetail     = Prisma.ProductGetPayload<{ include: typeof publicProductDetailInclude }>;
 export type SearchProductHit        = Prisma.ProductGetPayload<{ include: typeof searchProductInclude }>;
 export type AllPublicProductItem    = Prisma.ProductGetPayload<{ include: typeof allPublicProductInclude }>;
+export type AdminProductListItem    = Prisma.ProductGetPayload<{ include: typeof adminProductListInclude }>;
 
 export interface CreateProductData {
   storeId: string;
@@ -125,19 +135,31 @@ export class ProductsRepository {
     status?: ProductStatus;
     page?: number;
     limit?: number;
-  }): Promise<{ products: Product[]; total: number }> {
-    const page  = filters?.page  ?? 1;
-    const limit = filters?.limit ?? 20;
-    const skip  = (page - 1) * limit;
+    // PERF-API-001: серверный поиск для admin ProductsPage (раньше фильтровала
+    // клиентом только загруженную страницу). contains → pg_trgm index-backed.
+    search?: string;
+    // P1-4 (audit 2026-06-04): admin может явно запросить soft-deleted записи,
+    // чтобы UI совпадал с «База данных» (raw view). По умолчанию — скрываем.
+    includeDeleted?: boolean;
+  }): Promise<{ products: AdminProductListItem[]; total: number }> {
+    const { limit, skip } = toPrismaPagination(filters);
 
-    const where: Record<string, unknown> = { deletedAt: null };
+    const where: Record<string, unknown> = {};
+    if (!filters?.includeDeleted) where['deletedAt'] = null;
     if (filters?.storeId) where['storeId'] = filters.storeId;
     if (filters?.status)  where['status']  = filters.status;
+    const q = filters?.search?.trim();
+    if (q) {
+      where['OR'] = [
+        { title:       { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+      ];
+    }
 
     const [products, total] = await this.prisma.$transaction([
       this.prisma.product.findMany({
         where,
-        include: { images: { orderBy: { sortOrder: 'asc' }, take: 1 } },
+        include: adminProductListInclude,
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
@@ -155,20 +177,55 @@ export class ProductsRepository {
       globalCategoryId?: string;
       storeCategoryId?: string;
       limit?: number;
+      // PERF-API-001: серверный поиск для TMA (раньше TMA фильтровала клиентом).
+      search?: string;
     },
   ): Promise<SellerProductListItem[]> {
+    // PERF-API-001: раньше без limit запрос был unbounded — магазин с тысячами
+    // товаров тянул всё. Границы повторяют findPublicByStoreId: default 200, cap 500.
+    const take = Math.min(Math.max(filters?.limit ?? 200, 1), 500);
     return this.prisma.product.findMany({
-      where: {
-        storeId,
-        deletedAt: null,
-        ...(filters?.status && { status: filters.status }),
-        ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
-        ...(filters?.storeCategoryId && { storeCategoryId: filters.storeCategoryId }),
-      },
+      where: this.sellerListWhere(storeId, filters),
       include: sellerProductInclude,
       orderBy: { createdAt: 'desc' },
-      ...(filters?.limit !== undefined && { take: filters.limit }),
+      take,
     });
+  }
+
+  private sellerListWhere(
+    storeId: string,
+    filters?: {
+      status?: ProductStatus;
+      globalCategoryId?: string;
+      storeCategoryId?: string;
+      search?: string;
+    },
+  ): Prisma.ProductWhereInput {
+    const q = filters?.search?.trim();
+    return {
+      storeId,
+      deletedAt: null,
+      ...(filters?.status && { status: filters.status }),
+      ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
+      ...(filters?.storeCategoryId && { storeCategoryId: filters.storeCategoryId }),
+      ...(q && { title: { contains: q, mode: 'insensitive' as const } }),
+    };
+  }
+
+  /**
+   * PERF-API-001: total для seller-списка с теми же фильтрами что findByStoreId —
+   * иначе при search total показывал бы все товары магазина.
+   */
+  async countByStoreIdFiltered(
+    storeId: string,
+    filters?: {
+      status?: ProductStatus;
+      globalCategoryId?: string;
+      storeCategoryId?: string;
+      search?: string;
+    },
+  ): Promise<number> {
+    return this.prisma.product.count({ where: this.sellerListWhere(storeId, filters) });
   }
 
   async findById(id: string): Promise<SellerProductDetail | null> {
@@ -291,7 +348,7 @@ export class ProductsRepository {
       where: {
         status: ProductStatus.ACTIVE,
         deletedAt: null,
-        store: { isPublic: true, deletedAt: null },
+        store: { isPublic: true, isSuspendedByBilling: false, deletedAt: null },
         OR: [
           { title: { contains: q, mode: 'insensitive' } },
           { description: { contains: q, mode: 'insensitive' } },
@@ -367,6 +424,19 @@ export class ProductsRepository {
     });
   }
 
+  /**
+   * INTEG-RAOS-002 (issue #5): прямая запись Product.totalStock — только для
+   * single-SKU товаров (hasVariants=false). Товары с вариантами держат сток
+   * per-variant (AdjustStockUseCase) — вызывающий код обязан проверить
+   * hasVariants до вызова этого метода.
+   */
+  async setTotalStock(id: string, stock: number): Promise<Product> {
+    return this.prisma.product.update({
+      where: { id },
+      data: { totalStock: stock },
+    });
+  }
+
   async findAllPublic(filters?: {
     q?: string;
     globalCategoryId?: string;
@@ -394,7 +464,7 @@ export class ProductsRepository {
     const where: Prisma.ProductWhereInput = {
       status: ProductStatus.ACTIVE,
       deletedAt: null,
-      store: { status: 'APPROVED', isPublic: true },
+      store: { status: 'APPROVED', isPublic: true, isSuspendedByBilling: false },
       ...(filters?.globalCategoryId && { globalCategoryId: filters.globalCategoryId }),
       ...(Object.keys(priceFilter).length > 0 && { basePrice: priceFilter }),
       ...(filters?.q?.trim() && {
@@ -422,5 +492,27 @@ export class ProductsRepository {
     ]);
 
     return { products, total };
+  }
+
+  /**
+   * SEO-AUDIT-001: лёгкий фид для sitemap — id+updatedAt видимых товаров
+   * (та же видимость, что findAllPublic, без include/пагинации).
+   * take 5000 — safety cap: sitemap-протокол разрешает 50k URL, наш каталог
+   * сильно меньше; при росте перейти на курсорную выборку.
+   */
+  async findAllPublicForSitemap() {
+    // SEO-AUDIT-001 п.2: + storeSlug (плоско) — без него web-buyer не может
+    // построить канонический URL товара `/{slug}/products/{id}` в sitemap.
+    const rows = await this.prisma.product.findMany({
+      where: {
+        status: ProductStatus.ACTIVE,
+        deletedAt: null,
+        store: { status: 'APPROVED', isPublic: true, isSuspendedByBilling: false },
+      },
+      select: { id: true, updatedAt: true, store: { select: { slug: true } } },
+      orderBy: { updatedAt: 'desc' },
+      take: 5000,
+    });
+    return rows.map((r) => ({ id: r.id, updatedAt: r.updatedAt, storeSlug: r.store.slug }));
   }
 }

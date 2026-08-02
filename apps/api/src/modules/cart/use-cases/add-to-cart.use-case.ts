@@ -44,8 +44,19 @@ export class AddToCartUseCase {
 
     let unitPriceSnapshot = toNum((product as any).basePrice);
     let salePriceSnapshot: number | undefined;
+    // stockLimit is used later to validate the final cart quantity.
+    let stockLimit: number = (product as any).totalStock as number;
 
-    // INV-C03: variant must be active and in stock
+    // INV-C03: for non-variant products check totalStock upfront.
+    if (!input.variantId && stockLimit < input.quantity) {
+      throw new DomainException(
+        ErrorCode.INSUFFICIENT_STOCK,
+        `Only ${stockLimit} items available`,
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    // INV-C03: variant must be active and have sufficient stock
     if (input.variantId) {
       const variant = await this.variantsRepo.findById(input.variantId);
       if (!variant) {
@@ -55,10 +66,18 @@ export class AddToCartUseCase {
           HttpStatus.NOT_FOUND,
         );
       }
-      if (!(variant as any).isActive || (variant as any).stockQuantity <= 0) {
+      if (!(variant as any).isActive) {
         throw new DomainException(
           ErrorCode.PRODUCT_NOT_ACTIVE,
-          'Variant is not available or out of stock',
+          'Variant is not available',
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
+      stockLimit = (variant as any).stockQuantity as number;
+      if (stockLimit < input.quantity) {
+        throw new DomainException(
+          ErrorCode.INSUFFICIENT_STOCK,
+          stockLimit === 0 ? 'Variant is out of stock' : `Only ${stockLimit} items available`,
           HttpStatus.UNPROCESSABLE_ENTITY,
         );
       }
@@ -73,7 +92,7 @@ export class AddToCartUseCase {
     const productStoreId = (product as any).storeId as string;
 
     // Get or create cart
-    let cart = await this.getOrCreateCart(input, productStoreId);
+    const cart = await this.getOrCreateCart(input, productStoreId);
 
     // INV-C01: one store per cart
     if (cart.storeId !== productStoreId) {
@@ -84,26 +103,32 @@ export class AddToCartUseCase {
       );
     }
 
-    // Check for duplicate item — increment if exists
-    const variantId = input.variantId ?? null;
+    // CART-001: upsertItem атомарно суммирует quantity через ON CONFLICT,
+    // устраняя TOCTOU между findItem и addItem при параллельных запросах.
+    // Проверка stockLimit до upsert остаётся как UX-guard (не security guard —
+    // реальная защита от oversell на уровне checkout.repository.$executeRaw).
     const existingItem = await this.cartRepo.findItemByProductAndVariant(
       cart.id,
       input.productId,
-      variantId,
+      input.variantId ?? null,
     );
-
     if (existingItem) {
-      const newQty = Math.min(existingItem.quantity + input.quantity, 100);
-      await this.cartRepo.updateItemQuantity(existingItem.id, newQty);
-    } else {
-      await this.cartRepo.addItem(cart.id, {
-        productId: input.productId,
-        variantId: input.variantId,
-        quantity: input.quantity,
-        unitPriceSnapshot,
-        salePriceSnapshot,
-      });
+      const newQty = existingItem.quantity + input.quantity;
+      if (newQty > stockLimit) {
+        throw new DomainException(
+          ErrorCode.INSUFFICIENT_STOCK,
+          `Cannot add ${input.quantity} more: only ${stockLimit} in stock, ${existingItem.quantity} already in cart`,
+          HttpStatus.UNPROCESSABLE_ENTITY,
+        );
+      }
     }
+    await this.cartRepo.upsertItem(cart.id, {
+      productId: input.productId,
+      variantId: input.variantId,
+      quantity: input.quantity,
+      unitPriceSnapshot,
+      salePriceSnapshot,
+    }, 100);
 
     // Reload and return full mapped cart
     const updated = await this.cartRepo.findById(cart.id) as CartWithItems;
@@ -115,21 +140,12 @@ export class AddToCartUseCase {
     productStoreId: string,
   ): Promise<CartWithItems> {
     if (input.buyerId) {
-      let cart = await this.cartRepo.findByBuyerId(input.buyerId);
-      if (!cart) {
-        const created = await this.cartRepo.createForBuyer(input.buyerId, productStoreId);
-        cart = await this.cartRepo.findById(created.id) as CartWithItems;
-      }
-      return cart!;
+      // CART-002: getOrCreateForBuyer атомарен через INSERT ON CONFLICT
+      return this.cartRepo.getOrCreateForBuyer(input.buyerId, productStoreId);
     }
 
     if (input.sessionKey) {
-      let cart = await this.cartRepo.findBySessionKey(input.sessionKey);
-      if (!cart) {
-        const created = await this.cartRepo.createForGuest(input.sessionKey, productStoreId);
-        cart = await this.cartRepo.findById(created.id) as CartWithItems;
-      }
-      return cart!;
+      return this.cartRepo.getOrCreateForGuest(input.sessionKey, productStoreId);
     }
 
     throw new DomainException(

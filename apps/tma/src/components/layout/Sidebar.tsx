@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram } from '@/providers/TelegramProvider';
 import { subscribeToChatUnread } from '@/lib/chatUnread';
+import { MaxsavdoMark } from '@/components/brand/MaxsavdoMark';
 
 interface NavItem {
   path: string;
@@ -57,27 +58,26 @@ export function Sidebar({ role }: { role: 'BUYER' | 'SELLER' }) {
         display: 'flex',
         flexDirection: 'column',
         padding: '16px 10px 12px',
-        background: 'rgba(9,7,18,0.96)',
+        background: 'var(--tg-bg)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
         borderRight: '1px solid var(--tg-border-soft)',
-        boxShadow: '4px 0 24px rgba(0,0,0,0.35)',
+        boxShadow: 'var(--tg-sidebar-shadow, 4px 0 24px rgba(0,0,0,0.18))',
       }}
     >
       {/* ── Brand ─────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 6px 18px' }}>
         <div style={{
           width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-          background: 'var(--tg-accent)',
-          boxShadow: '0 4px 12px var(--tg-accent-glow)',
+          background: 'var(--tg-surface)',
+          border: '1px solid var(--tg-accent-border)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 18,
         }}>
-          {role === 'SELLER' ? '🏪' : '🛍'}
+          <MaxsavdoMark size={22} />
         </div>
         <div style={{ minWidth: 0 }}>
           <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--tg-accent)', lineHeight: 1.2, letterSpacing: '-0.3px' }}>
-            Savdo
+            maxsavdo
           </p>
           <p style={{ fontSize: 10, color: 'var(--tg-text-dim)', marginTop: 1 }}>
             {role === 'SELLER' ? 'Панель продавца' : 'Каталог'}

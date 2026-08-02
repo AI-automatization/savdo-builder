@@ -242,8 +242,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
         ...(urlButtons ? { reply_markup: { inline_keyboard: urlButtons } } : {}),
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`sendToChannel failed for ${channelId}: ${msg}`);
+      this.logger.error(`sendToChannel failed for ${channelId}: ${this.tgErrMsg(err)}`);
     }
   }
 
@@ -285,8 +284,7 @@ export class TelegramBotService implements OnApplicationBootstrap {
         .map((m) => m.photo?.[m.photo.length - 1]?.file_id ?? '')
         .filter(Boolean);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`sendMediaGroupToChannel failed for ${channelId}: ${msg}`);
+      this.logger.error(`sendMediaGroupToChannel failed for ${channelId}: ${this.tgErrMsg(err)}`);
       return null;
     }
   }
@@ -322,9 +320,18 @@ export class TelegramBotService implements OnApplicationBootstrap {
       const sizes = res.data.result?.photo ?? [];
       return sizes[sizes.length - 1]?.file_id ?? null;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`sendPhotoToChannel failed for ${channelId}: ${msg}`);
+      this.logger.error(`sendPhotoToChannel failed for ${channelId}: ${this.tgErrMsg(err)}`);
       return null;
     }
+  }
+
+  /** Extract human-readable error including Telegram's response body (description field). */
+  private tgErrMsg(err: unknown): string {
+    const base = err instanceof Error ? err.message : String(err);
+    if (err && typeof err === 'object' && 'response' in err) {
+      const body = (err as { response?: { data?: unknown } }).response?.data;
+      if (body) return `${base} — TG: ${JSON.stringify(body)}`;
+    }
+    return base;
   }
 }

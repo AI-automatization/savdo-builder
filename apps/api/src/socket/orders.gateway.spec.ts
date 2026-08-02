@@ -1,11 +1,13 @@
 /**
- * Тесты для `OrdersGateway` — фокус на API-WS-AUDIT-002 (User.id vs Buyer.id).
+ * Тесты для `OrdersGateway` — фокус на API-WS-AUDIT-002 (User.id vs Buyer.id)
+ * и API-WS-AUDIT-001 (store-ownership на join-seller-room).
  *
  * Покрытие:
  *   • handleJoinBuyerRoom: принимает `userId` И legacy `buyerId`
  *   • валидация: requestedId должен === user.sub (User.id из JWT)
  *   • foreign id → silently return, не disconnect
  *   • no user → disconnect
+ *   • handleJoinSellerRoom: JWT match / DB-verified / чужой store → отказ / fail-closed
  *   • emitOrderStatusChangedToBuyer резолвит Buyer.id → User.id
  *   • buyer без userId → warn + skip
  */
@@ -15,7 +17,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service';
 import type { Socket, Server } from 'socket.io';
 
-function makeSocket(user?: { sub: string; role?: string }): Socket {
+function makeSocket(user?: { sub: string; role?: string; storeId?: string }): Socket {
   const calls = { joined: [] as string[], disconnected: false };
   return {
     id: 'sock-1',
@@ -29,12 +31,12 @@ function makeSocket(user?: { sub: string; role?: string }): Socket {
 
 describe('OrdersGateway', () => {
   let gateway: OrdersGateway;
-  let prisma: { buyer: { findUnique: jest.Mock } };
+  let prisma: { buyer: { findUnique: jest.Mock }; seller: { findUnique: jest.Mock } };
   let emit: jest.Mock;
   let server: Server;
 
   beforeEach(() => {
-    prisma = { buyer: { findUnique: jest.fn() } };
+    prisma = { buyer: { findUnique: jest.fn() }, seller: { findUnique: jest.fn() } };
     emit = jest.fn();
     server = { to: jest.fn().mockReturnValue({ emit }) } as unknown as Server;
     gateway = new OrdersGateway(
@@ -95,6 +97,69 @@ describe('OrdersGateway', () => {
       gateway.handleJoinBuyerRoom({ userId: 123 as unknown as string }, sock);
       const calls = (sock as unknown as { _calls: { joined: string[] } })._calls;
       expect(calls.joined).toEqual([]);
+    });
+  });
+
+  describe('handleJoinSellerRoom (API-WS-AUDIT-001 store-ownership)', () => {
+    function calls(sock: Socket) {
+      return (sock as unknown as { _calls: { joined: string[]; disconnected: boolean } })._calls;
+    }
+
+    it('не-SELLER (BUYER) → disconnect', async () => {
+      const sock = makeSocket({ sub: 'user-1', role: 'BUYER' });
+      await gateway.handleJoinSellerRoom({ storeId: 'store-1' }, sock);
+      expect(calls(sock).disconnected).toBe(true);
+      expect(calls(sock).joined).toEqual([]);
+    });
+
+    it('невалидный storeId (пустой/не строка) → отказ без DB-lookup', async () => {
+      const sock = makeSocket({ sub: 'user-1', role: 'SELLER' });
+      await gateway.handleJoinSellerRoom({ storeId: undefined as unknown as string }, sock);
+      await gateway.handleJoinSellerRoom({ storeId: 42 as unknown as string }, sock);
+      expect(calls(sock).joined).toEqual([]);
+      expect(prisma.seller.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('JWT.storeId совпал → join без DB-lookup', async () => {
+      const sock = makeSocket({ sub: 'user-1', role: 'SELLER', storeId: 'store-1' });
+      await gateway.handleJoinSellerRoom({ storeId: 'store-1' }, sock);
+      expect(calls(sock).joined).toEqual(['seller:store-1']);
+      expect(prisma.seller.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('JWT без storeId + DB подтвердил владение → join', async () => {
+      prisma.seller.findUnique.mockResolvedValue({ store: { id: 'store-1' } });
+      const sock = makeSocket({ sub: 'user-1', role: 'SELLER' });
+      await gateway.handleJoinSellerRoom({ storeId: 'store-1' }, sock);
+      expect(prisma.seller.findUnique).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        select: { store: { select: { id: true } } },
+      });
+      expect(calls(sock).joined).toEqual(['seller:store-1']);
+    });
+
+    it('чужой storeId (DB владеет другим) → отказ, не disconnect', async () => {
+      prisma.seller.findUnique.mockResolvedValue({ store: { id: 'store-MINE' } });
+      const sock = makeSocket({ sub: 'user-1', role: 'SELLER', storeId: 'store-MINE' });
+      await gateway.handleJoinSellerRoom({ storeId: 'store-FOREIGN' }, sock);
+      expect(calls(sock).joined).toEqual([]);
+      expect(calls(sock).disconnected).toBe(false);
+    });
+
+    it('SELLER без магазина в DB → отказ', async () => {
+      prisma.seller.findUnique.mockResolvedValue(null);
+      const sock = makeSocket({ sub: 'user-1', role: 'SELLER' });
+      await gateway.handleJoinSellerRoom({ storeId: 'store-1' }, sock);
+      expect(calls(sock).joined).toEqual([]);
+    });
+
+    it('ошибка DB → fail-closed (отказ, без unhandled rejection)', async () => {
+      prisma.seller.findUnique.mockRejectedValue(new Error('db down'));
+      const sock = makeSocket({ sub: 'user-1', role: 'SELLER' });
+      await expect(
+        gateway.handleJoinSellerRoom({ storeId: 'store-1' }, sock),
+      ).resolves.toBeUndefined();
+      expect(calls(sock).joined).toEqual([]);
     });
   });
 

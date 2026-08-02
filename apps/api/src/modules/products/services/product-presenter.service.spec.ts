@@ -69,6 +69,59 @@ describe('ProductPresenterService', () => {
     });
   });
 
+  describe('computeStockFields (BUG-2)', () => {
+    it('variants present, sum > 0 → totalStock=sum, inStock=true', () => {
+      const variants = [{ stockQuantity: 3 }, { stockQuantity: 2 }];
+      expect(svc.computeStockFields({ totalStock: 999 }, variants)).toEqual({
+        totalStock: 5,
+        inStock: true,
+      });
+    });
+
+    it('variants present, all zero → totalStock=0, inStock=false (denorm ignored)', () => {
+      // variant-режим: даже если product.totalStock denorm > 0, доверяем variants.
+      const variants = [{ stockQuantity: 0 }, { stockQuantity: 0 }];
+      expect(svc.computeStockFields({ totalStock: 50 }, variants)).toEqual({
+        totalStock: 0,
+        inStock: false,
+      });
+    });
+
+    it('no variants (single-SKU), product.totalStock > 0 → totalStock=product.totalStock, inStock=true', () => {
+      // Root cause BUG-2: раньше sum пустого массива → 0 → витрина OOS.
+      expect(svc.computeStockFields({ totalStock: 7 }, [])).toEqual({
+        totalStock: 7,
+        inStock: true,
+      });
+    });
+
+    it('no variants, product.totalStock=0 → inStock=false', () => {
+      expect(svc.computeStockFields({ totalStock: 0 }, [])).toEqual({
+        totalStock: 0,
+        inStock: false,
+      });
+    });
+
+    it('no variants, product.totalStock=null/undefined → 0', () => {
+      expect(svc.computeStockFields({ totalStock: null }, [])).toEqual({
+        totalStock: 0,
+        inStock: false,
+      });
+      expect(svc.computeStockFields({}, [])).toEqual({
+        totalStock: 0,
+        inStock: false,
+      });
+    });
+
+    it('variants with null stockQuantity treated as 0', () => {
+      const variants = [{ stockQuantity: null }, { stockQuantity: 5 }];
+      expect(svc.computeStockFields({ totalStock: 0 }, variants)).toEqual({
+        totalStock: 5,
+        inStock: true,
+      });
+    });
+  });
+
   describe('priceFields', () => {
     it('собирает 5 полей с правильными типами', () => {
       const result = svc.priceFields(100, 120, 70);

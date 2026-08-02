@@ -128,3 +128,10 @@ export function setLocalFlag(productId: string, value: boolean): void {
   save();
   notify();
 }
+
+// E5: clear wishlist cache on logout so next user on same device starts fresh.
+export function clearWishlistCache(): void {
+  cache = null;
+  try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  notify();
+}

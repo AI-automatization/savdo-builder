@@ -2,6 +2,7 @@ import { Injectable, HttpStatus } from '@nestjs/common';
 import { ProductsRepository } from '../repositories/products.repository';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { assertProductOwnership } from '../guards/product-ownership.guard';
 
 @Injectable()
 export class DeleteProductUseCase {
@@ -18,13 +19,7 @@ export class DeleteProductUseCase {
       );
     }
 
-    if (product.storeId !== storeId) {
-      throw new DomainException(
-        ErrorCode.FORBIDDEN,
-        'Product does not belong to your store',
-        HttpStatus.FORBIDDEN,
-      );
-    }
+    assertProductOwnership(product, storeId);
 
     // INV-P04: Cannot delete ACTIVE product — must archive first
     if (product.status === 'ACTIVE') {

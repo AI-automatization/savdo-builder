@@ -3,6 +3,7 @@ import { PrismaService } from '../../../database/prisma.service';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../../shared/constants/error-codes';
 import { ChannelTemplateService, TemplateVariables } from '../services/channel-template.service';
+import { ChannelPostBuilderService, ChannelPostStoreInput } from '../services/channel-post-builder.service';
 
 /**
  * FEAT-TG-CHANNEL-TEMPLATE-001: рендер preview шаблона без отправки в TG.
@@ -13,6 +14,10 @@ import { ChannelTemplateService, TemplateVariables } from '../services/channel-t
  *
  * Возвращает rendered caption (HTML) + meta — какой товар взят как sample
  * + список image URLs которые пойдут в media group (для UI mockup).
+ *
+ * Построение `TemplateVariables` делегировано `ChannelPostBuilderService` —
+ * preview обязан байт-в-байт совпадать с реальным постом
+ * (`PostProductToChannelUseCase`). См. DUP-002 в analiz/dry-audit-2026-06-01.md.
  */
 
 export interface PreviewInput {
@@ -35,6 +40,7 @@ export class PreviewChannelPostUseCase {
   constructor(
     private readonly prisma: PrismaService,
     private readonly templateService: ChannelTemplateService,
+    private readonly channelPostBuilder: ChannelPostBuilderService,
   ) {}
 
   async execute(input: PreviewInput): Promise<PreviewResult> {
@@ -56,7 +62,11 @@ export class PreviewChannelPostUseCase {
     const product = await this.findSampleProduct(store.id, input.productId);
 
     const vars: TemplateVariables = product
-      ? this.realProductVars(product, store)
+      ? this.channelPostBuilder.build(
+          product,
+          store,
+          this.channelPostBuilder.buildProductUrl(store.slug, product.id),
+        )
       : this.sampleVars(store);
 
     const template = input.templateOverride !== undefined
@@ -90,67 +100,8 @@ export class PreviewChannelPostUseCase {
     });
   }
 
-  private realProductVars(
-    product: {
-      id: string;
-      title: string;
-      description: string | null;
-      basePrice: unknown;
-      salePrice: unknown;
-      oldPrice: unknown;
-      currencyCode: string;
-      totalStock: number;
-      attributes: Array<{ name: string; value: string }>;
-      variants: Array<{ titleOverride: string | null }>;
-    },
-    store: {
-      name: string;
-      slug: string;
-      telegramChannelId: string | null;
-      telegramContactLink: string;
-      channelContactPhone: string | null;
-      channelInstagramLink: string | null;
-      channelTiktokLink: string | null;
-    },
-  ): TemplateVariables {
-    const currency = product.currencyCode ?? 'UZS';
-    const price = formatPrice(product.salePrice ?? product.basePrice, currency);
-    const hasOldPrice = product.salePrice != null || product.oldPrice != null;
-    const oldPrice = hasOldPrice
-      ? formatPrice(product.salePrice != null ? product.basePrice : product.oldPrice, currency)
-      : '';
-
-    return {
-      title: product.title,
-      price,
-      oldPrice,
-      hasOldPrice,
-      description: product.description ?? '',
-      material: pickAttribute(product.attributes, ['material', 'материал', 'matn']),
-      sizes: pickSizes(product.variants, product.attributes),
-      availability: product.totalStock > 0 ? 'В наличии' : 'Под заказ',
-      deliveryDays: '',
-      contact: store.channelContactPhone || store.telegramContactLink,
-      instagram: store.channelInstagramLink ?? '',
-      tiktok: store.channelTiktokLink ?? '',
-      storeName: store.name,
-      channelLink: store.telegramChannelId
-        ? `https://t.me/${store.telegramChannelId.replace(/^@/, '')}`
-        : '',
-      productUrl: buildProductUrl(store.slug, product.id),
-    };
-  }
-
   /** Sample-данные если у продавца нет ни одного товара. */
-  private sampleVars(store: {
-    name: string;
-    slug: string;
-    telegramChannelId: string | null;
-    telegramContactLink: string;
-    channelContactPhone: string | null;
-    channelInstagramLink: string | null;
-    channelTiktokLink: string | null;
-  }): TemplateVariables {
+  private sampleVars(store: ChannelPostStoreInput): TemplateVariables {
     return {
       title: 'Брендовые рубашки',
       price: '399 000 UZS',
@@ -168,34 +119,7 @@ export class PreviewChannelPostUseCase {
       channelLink: store.telegramChannelId
         ? `https://t.me/${store.telegramChannelId.replace(/^@/, '')}`
         : '',
-      productUrl: buildProductUrl(store.slug, 'sample-product-id'),
+      productUrl: this.channelPostBuilder.buildProductUrl(store.slug, 'sample-product-id'),
     };
   }
-}
-
-function formatPrice(amount: unknown, currency: string): string {
-  const n = Number(String(amount));
-  if (Number.isNaN(n)) return '—';
-  return `${n.toLocaleString('ru-RU')} ${currency}`;
-}
-
-function pickAttribute(attrs: Array<{ name: string; value: string }>, aliases: string[]): string {
-  const lower = aliases.map((a) => a.toLowerCase());
-  return attrs.find((a) => lower.includes(a.name.toLowerCase()))?.value ?? '';
-}
-
-function pickSizes(
-  variants: Array<{ titleOverride: string | null }>,
-  attrs: Array<{ name: string; value: string }>,
-): string {
-  const fromAttr = pickAttribute(attrs, ['size', 'размер', 'razmer']);
-  if (fromAttr) return fromAttr;
-  const titles = variants.map((v) => v.titleOverride?.trim()).filter((t): t is string => Boolean(t));
-  if (titles.length > 0 && titles.length <= 10) return titles.join('-');
-  return '';
-}
-
-function buildProductUrl(slug: string, productId: string): string {
-  const base = (process.env.BUYER_URL ?? '').replace(/\/$/, '');
-  return base ? `${base}/${slug}/products/${productId}` : `/${slug}/products/${productId}`;
 }

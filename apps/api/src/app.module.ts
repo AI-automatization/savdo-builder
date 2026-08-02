@@ -13,6 +13,7 @@ import { featuresConfig } from './config/features.config';
 import { envValidationSchema } from './config/env.validation';
 import { DatabaseModule } from './database/prisma.module';
 import { RedisModule } from './shared/redis.module';
+import { SharedServicesModule } from './shared/shared-services.module';
 import { IdempotencyModule } from './common/idempotency/idempotency.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -28,13 +29,18 @@ import { TelegramModule } from './modules/telegram/telegram.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { AccountDeletionModule } from './modules/account/account-deletion.module';
+import { PartnerModule } from './modules/partner/partner.module';
 import { HealthModule } from './health/health.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { QueuesModule } from './queues/queues.module';
+import { DbBackupModule } from './queues/processors/db-backup.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -49,8 +55,11 @@ import { QueuesModule } from './queues/queues.module';
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 120 }]),
     DatabaseModule,
     RedisModule,
+    SharedServicesModule,
     IdempotencyModule,
     QueuesModule,
+    // BACKUP-001: ежедневный pg_dump → R2 (kill-switch DB_BACKUP_ENABLED).
+    DbBackupModule,
     AuthModule,
     UsersModule,
     SellersModule,
@@ -65,16 +74,21 @@ import { QueuesModule } from './queues/queues.module';
     NotificationsModule,
     ChatModule,
     AdminModule,
+    SubscriptionsModule,
     ModerationModule,
     AnalyticsModule,
     WishlistModule,
     ReviewsModule,
+    AccountDeletionModule,
+    PartnerModule,
     HealthModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+    // SEC-AUDIT-04: глобальный guard — любой новый эндпоинт закрыт по умолчанию.
+    // Публичные эндпоинты помечены @Public() и пропускаются через canActivate.
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
     // Глобальный ThrottlerGuard — без него @Throttle декораторы не работают.
-    // ВНИМАНИЕ: до этого коммита @Throttle({...}) на sendMessage был silent no-op.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })

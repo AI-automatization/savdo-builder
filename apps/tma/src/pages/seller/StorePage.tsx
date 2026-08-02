@@ -7,11 +7,11 @@ import { useTelegram } from '@/providers/TelegramProvider';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { Spinner } from '@/components/ui/Spinner';
+import { ProfileBlockSkeleton } from '@/components/ui/Skeleton';
 import { StoreDirectionsPicker } from '@/components/seller/StoreDirectionsPicker';
 import { useTranslation } from '@/lib/i18n';
 import { glass } from '@/lib/styles';
-import { webStoreUrl } from '@/lib/webUrl';
+import { webStoreUrl, storeDeepLink, tgShareUrl } from '@/lib/webUrl';
 
 interface Store {
   id: string;
@@ -22,6 +22,10 @@ interface Store {
   isPublic: boolean;
   telegramChannelId: string | null;
   telegramChannelTitle: string | null;
+  // STORE-STATUS-BADGE-001: backend пока НЕ возвращает причину отклонения
+  // (поле rejectionReason в Store schema отсутствует). Оставляем optional —
+  // когда модерация начнёт писать причину, UI её сразу покажет без правок.
+  rejectionReason?: string | null;
 }
 
 export default function SellerStorePage() {
@@ -38,6 +42,11 @@ export default function SellerStorePage() {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  // STORE-STATUS-BADGE-001: resubmit flow для REJECTED. После успеха backend
+  // возвращает store со статусом PENDING_REVIEW — кладём в state и UI
+  // автоматически переключает badge/подсказку.
+  const [resubmitting, setResubmitting] = useState(false);
+  const [resubmitMsg, setResubmitMsg] = useState<string>('');
 
   // StoreCategory state удалён вместе с UI блоком (Polat 07.05 — дубликат
   // с StoreDirectionsPicker). API /seller/categories продолжает работать,
@@ -51,22 +60,46 @@ export default function SellerStorePage() {
   const [newStoreTg, setNewStoreTg] = useState('');
   const [createError, setCreateError] = useState('');
 
-  const botUsername = (import.meta.env.VITE_BOT_USERNAME as string) ?? '';
-  // Mini App deep-link если бот настроен, иначе публичная веб-витрина.
-  const storeLink = (s: Store) =>
-    botUsername
-      ? `https://t.me/${botUsername}?startapp=store_${s.slug}`
-      : webStoreUrl(s.slug);
-
+  // TMA-SHARE-001: deep-link строится централизованно в lib/webUrl.ts
+  // (storeDeepLink). Раньше каждый компонент дублировал логику.
   const copyLink = async (s: Store) => {
     try {
-      await navigator.clipboard.writeText(storeLink(s));
+      await navigator.clipboard.writeText(storeDeepLink(s.slug));
       tg?.HapticFeedback.notificationOccurred('success');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       track.storeLinkCopied(s.id);
     } catch {
       tg?.HapticFeedback.notificationOccurred('error');
+    }
+  };
+
+  // TMA-SHARE-002: Telegram native share-sheet. Открывает диалог «куда
+  // переслать» с предзаполненным deep-link и текстом — удобнее чем copy-link
+  // для продавца (один тап вместо copy → switch chat → paste).
+  const shareStore = (s: Store) => {
+    const text = t('seller.store.shareText', { name: s.name });
+    tg?.HapticFeedback.impactOccurred('light');
+    tg?.openTelegramLink?.(tgShareUrl(storeDeepLink(s.slug), text));
+    track.storeLinkCopied(s.id);
+  };
+
+  const resubmitForReview = async () => {
+    if (!store) return;
+    setResubmitting(true);
+    setResubmitMsg('');
+    try {
+      // Backend endpoint: POST /api/v1/seller/store/submit (stores.controller.ts).
+      // Возвращает обновлённый Store со status=PENDING_REVIEW.
+      const updated = await api<Store>('/seller/store/submit', { method: 'POST' });
+      setStore(updated);
+      setResubmitMsg(t('seller.store.resubmitSuccess'));
+      tg?.HapticFeedback.notificationOccurred('success');
+    } catch {
+      setResubmitMsg(t('seller.store.resubmitError'));
+      tg?.HapticFeedback.notificationOccurred('error');
+    } finally {
+      setResubmitting(false);
     }
   };
 
@@ -159,8 +192,9 @@ export default function SellerStorePage() {
     }
   };
 
+  // UIUX-ADMIN-TMA-001: skeleton вместо центрального спиннера — layout не прыгает
   if (loading) {
-    return <div className="flex justify-center py-10"><Spinner size={32} /></div>;
+    return <div className="px-4 py-4"><ProfileBlockSkeleton /></div>;
   }
 
   if (fetchError) {
@@ -277,6 +311,86 @@ export default function SellerStorePage() {
             <Badge status={store.status} />
           </div>
 
+          {/* STORE-STATUS-BADGE-001: подсказка под бейджем статуса.
+              PENDING_REVIEW / DRAFT (legacy) → tg-text-muted нейтрально.
+              REJECTED → красноватый, плюс причина (если backend прислал)
+              и кнопка «Отправить заново». SUSPENDED → text-muted с CTA
+              «свяжитесь с поддержкой». APPROVED → короткий ok-текст. */}
+          {(store.status === 'PENDING_REVIEW' || store.status === 'DRAFT') && (
+            <div
+              className="flex flex-col gap-3 rounded-xl p-4"
+              style={{ background: 'var(--tg-surface)', border: '1px solid var(--tg-border)' }}
+            >
+              <div className="flex items-center gap-2">
+                <span style={{ fontSize: 18 }}>⏳</span>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--tg-text)', margin: 0 }}>
+                    {t('seller.store.status.pendingTitle')}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--tg-text-muted)', margin: 0 }}>
+                    {t('seller.store.status.pendingTime')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2">
+                {[
+                  { emoji: '✅', key: 'seller.store.status.pendingStep1' },
+                  { emoji: '🔍', key: 'seller.store.status.pendingStep2' },
+                  { emoji: '🚀', key: 'seller.store.status.pendingStep3' },
+                ].map(({ emoji, key }) => (
+                  <div key={key} className="flex items-start gap-2">
+                    <span style={{ fontSize: 13, flexShrink: 0 }}>{emoji}</span>
+                    <p className="text-xs" style={{ color: 'var(--tg-text-secondary)', margin: 0 }}>
+                      {t(key)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {store.status === 'APPROVED' && (
+            <p className="text-xs" style={{ color: 'var(--tg-text-muted)' }}>
+              ✅ {t('seller.store.status.approvedHint')}
+            </p>
+          )}
+          {store.status === 'REJECTED' && (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs" style={{ color: 'rgba(248,113,113,0.9)' }}>
+                {t('seller.store.status.rejectedHint')}
+              </p>
+              {store.rejectionReason && (
+                <p className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>
+                  <span style={{ color: 'var(--tg-text-muted)' }}>
+                    {t('seller.store.status.rejectedReasonLabel')}
+                  </span>{' '}
+                  {store.rejectionReason}
+                </p>
+              )}
+              <button
+                onClick={resubmitForReview}
+                disabled={resubmitting}
+                className="self-start px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{
+                  background: 'var(--tg-accent)',
+                  color: '#fff',
+                  cursor: resubmitting ? 'wait' : 'pointer',
+                  opacity: resubmitting ? 0.7 : 1,
+                  border: 'none',
+                }}
+              >
+                {resubmitting ? t('seller.store.resubmitting') : t('seller.store.resubmit')}
+              </button>
+              {resubmitMsg && (
+                <p className="text-xxs" style={{ color: 'var(--tg-text-muted)' }}>{resubmitMsg}</p>
+              )}
+            </div>
+          )}
+          {store.status === 'SUSPENDED' && (
+            <p className="text-xs" style={{ color: 'rgba(248,113,113,0.9)' }}>
+              🚫 {t('seller.store.status.suspendedHint')}
+            </p>
+          )}
+
           {store.description && !editing && (
             <p className="text-xs" style={{ color: 'var(--tg-text-secondary)' }}>{store.description}</p>
           )}
@@ -324,7 +438,10 @@ export default function SellerStorePage() {
             <Button variant="ghost" className="w-full" onClick={() => setEditing(true)}>
               ✏️ {t('common.edit')}
             </Button>
-            <Button className="w-full" onClick={() => copyLink(store)}>
+            <Button className="w-full" onClick={() => shareStore(store)}>
+              📤 {t('seller.store.share')}
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => copyLink(store)}>
               {copied ? t('seller.store.linkCopied') : t('seller.store.copyLink')}
             </Button>
             {(store.status === 'APPROVED' || store.isPublic) && (

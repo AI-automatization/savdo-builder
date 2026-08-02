@@ -1,39 +1,29 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
-import { AdminRepository } from '../repositories/admin.repository';
-import { DomainException } from '../../../common/exceptions/domain.exception';
+/**
+ * ACTIVE → BLOCKED (user-level suspend).
+ *
+ * Реализовано через `createStatusTransitionUseCase` (DUP-001 refactor).
+ *   - guard: `status === 'BLOCKED'` → ADMIN_USER_ALREADY_SUSPENDED (409)
+ *   - update: `adminRepo.setUserStatus(id, 'BLOCKED')`
+ *   - audit: USER_SUSPENDED, payload `{ reason, adminId }`
+ *   - INV-A02: reason обязателен на DTO-level
+ */
 import { ErrorCode } from '../../../shared/constants/error-codes';
+import { createStatusTransitionUseCase } from '../services/admin-status-transition.factory';
 
-@Injectable()
-export class SuspendUserUseCase {
-  constructor(private readonly adminRepo: AdminRepository) {}
+type UserStatus = 'ACTIVE' | 'BLOCKED';
+type User = { id: string; status: UserStatus };
 
-  // INV-A01: AuditLog is mandatory for every admin action.
-  // INV-A02: Suspension requires a reason (enforced by AdminActionDto).
-  async execute(targetUserId: string, actorUserId: string, reason: string) {
-    const user = await this.adminRepo.findUserById(targetUserId);
-    if (!user) {
-      throw new DomainException(ErrorCode.NOT_FOUND, 'User not found', HttpStatus.NOT_FOUND);
-    }
-
-    if (user.status === 'BLOCKED') {
-      throw new DomainException(
-        ErrorCode.ADMIN_USER_ALREADY_SUSPENDED,
-        'User is already suspended',
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    const updated = await this.adminRepo.setUserStatus(targetUserId, 'BLOCKED');
-
-    // INV-A01
-    await this.adminRepo.writeAuditLog({
-      actorUserId,
-      action: 'USER_SUSPENDED',
-      entityType: 'User',
-      entityId: targetUserId,
-      payload: { reason, adminId: actorUserId },
-    });
-
-    return updated;
-  }
-}
+export class SuspendUserUseCase extends createStatusTransitionUseCase<User, UserStatus>({
+  find: (repo, id) => repo.findUserById(id) as Promise<User | null>,
+  update: (repo, id) => repo.setUserStatus(id, 'BLOCKED') as Promise<User>,
+  guard: {
+    kind: 'sameAsTarget',
+    target: 'BLOCKED',
+    conflictErrorCode: ErrorCode.ADMIN_USER_ALREADY_SUSPENDED,
+    conflictMessage: 'User is already suspended',
+  },
+  notFound: { errorCode: ErrorCode.NOT_FOUND, message: 'User not found' },
+  audit: { action: 'USER_SUSPENDED', entityType: 'User' },
+  withReason: true,
+  includePreviousStatus: false,
+}) {}

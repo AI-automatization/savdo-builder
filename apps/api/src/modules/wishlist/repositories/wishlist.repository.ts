@@ -30,7 +30,7 @@ export class WishlistRepository {
             isVisible: true,
             storeId: true,
             store: {
-              select: { id: true, name: true, slug: true, status: true, isPublic: true },
+              select: { id: true, name: true, slug: true, status: true, isPublic: true, isSuspendedByBilling: true },
             },
             images: {
               take: 1,

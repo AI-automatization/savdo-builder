@@ -3,6 +3,7 @@ import { Send, Eye, AlertCircle, CheckCircle, RefreshCw, Megaphone } from 'lucid
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
+import { formatAdminDate } from '../lib/format'
 import { DialogShell } from '../components/admin/DialogShell'
 
 interface BroadcastLog {
@@ -12,13 +13,6 @@ interface BroadcastLog {
   failedCount: number
   createdAt: string
   creator: { phone: string }
-}
-
-function formatDate(iso: string, dateLocale: string) {
-  return new Date(iso).toLocaleString(dateLocale, {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
 }
 
 // TOKEN_RE splits text into: plain segments and recognised Telegram markup tokens.
@@ -376,7 +370,7 @@ export default function BroadcastPage() {
                     {log.creator?.phone ?? '—'}
                   </td>
                   <td style={{ padding: '13px 20px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
-                    {formatDate(log.createdAt, dateLocale)}
+                    {formatAdminDate(log.createdAt, dateLocale)}
                   </td>
                 </tr>
               ))}

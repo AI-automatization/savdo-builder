@@ -45,7 +45,7 @@ describe('DashboardLayout (smoke)', () => {
     expect(screen.getByRole('link', { name: /Заказы/ })).toBeInTheDocument()
   })
 
-  it('показывает logout-кнопку и логотип Savdo', () => {
+  it('показывает logout-кнопку и логотип maxsavdo', () => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
         <I18nProvider>
@@ -60,7 +60,7 @@ describe('DashboardLayout (smoke)', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByText('Savdo')).toBeInTheDocument()
+    expect(screen.getByText('maxsavdo')).toBeInTheDocument()
     expect(screen.getByLabelText(/Выйти/i)).toBeInTheDocument()
   })
 })

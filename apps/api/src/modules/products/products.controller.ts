@@ -42,13 +42,16 @@ import { CreateOptionValueDto } from './dto/create-option-value.dto';
 import { UpdateOptionValueDto } from './dto/update-option-value.dto';
 import { AttachProductImageDto } from './dto/attach-product-image.dto';
 import { UpdateProductImageDto } from './dto/update-product-image.dto';
-import { PrismaService } from '../../database/prisma.service';
+import { ProductImagesRepository } from './repositories/product-images.repository';
+import { ProductAttributesRepository } from './repositories/product-attributes.repository';
 import { SellersRepository } from '../sellers/repositories/sellers.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
+import { PlanLimitGuardService } from '../../shared/plan-limit-guard.service';
 import { WishlistRepository } from '../wishlist/repositories/wishlist.repository';
 import { ProductPresenterService } from './services/product-presenter.service';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
+import { assertProductOwnership } from './guards/product-ownership.guard';
 import { ProductStatus } from '@prisma/client';
 
 @ApiTags('seller')
@@ -70,11 +73,13 @@ export class ProductsController {
     private readonly productsRepo: ProductsRepository,
     private readonly variantsRepo: VariantsRepository,
     private readonly optionGroupsRepo: OptionGroupsRepository,
+    private readonly imagesRepo: ProductImagesRepository,
+    private readonly attributesRepo: ProductAttributesRepository,
     private readonly sellersRepo: SellersRepository,
     private readonly storesRepo: StoresRepository,
-    private readonly prisma: PrismaService,
     private readonly wishlistRepo: WishlistRepository,
     private readonly presenter: ProductPresenterService,
+    private readonly planLimitGuard: PlanLimitGuardService,
   ) {}
 
   // ─── Seller routes ────────────────────────────────────────────────────────
@@ -88,26 +93,28 @@ export class ProductsController {
     @Query('globalCategoryId') globalCategoryId?: string,
     @Query('storeCategoryId') storeCategoryId?: string,
     @Query('limit') limit?: string,
+    // PERF-API-001: серверный поиск (title) — TMA больше не фильтрует клиентом.
+    @Query('search') search?: string,
   ) {
-    const storeId = await this.resolveStoreId(user.sub);
+    const storeId = await this.resolveStoreId(user.sub, { requireActiveSubscription: false });
     const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+    const listFilters = { status, globalCategoryId, storeCategoryId, search };
     const [products, total] = await Promise.all([
-      this.productsRepo.findByStoreId(storeId, {
-        status,
-        globalCategoryId,
-        storeCategoryId,
-        limit: parsedLimit,
-      }),
-      this.productsRepo.countByStoreId(storeId),
+      this.productsRepo.findByStoreId(storeId, { ...listFilters, limit: parsedLimit }),
+      // total с теми же фильтрами — иначе при search счётчик врёт (PERF-API-001).
+      this.productsRepo.countByStoreIdFiltered(storeId, listFilters),
     ]);
     const mapped = products.map((p) => {
       const { _count, images, variants, basePrice, oldPrice, salePrice, ...rest } = p;
-      const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+      // BUG-2: единый stock-агрегат (см. ProductPresenterService.computeStockFields).
+      // Раньше sum(variants.stockQuantity) → single-SKU товары всегда показывались как OOS.
+      const stock = this.presenter.computeStockFields(p, variants);
       return {
         ...rest,
         ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
         variantCount: _count.variants,
-        totalStock,
+        totalStock: stock.totalStock,
+        inStock: stock.inStock,
         mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
       };
     });
@@ -145,16 +152,14 @@ export class ProductsController {
     @CurrentUser() user: JwtPayload,
     @Param('id') id: string,
   ) {
-    const storeId = await this.resolveStoreId(user.sub);
+    const storeId = await this.resolveStoreId(user.sub, { requireActiveSubscription: false });
     const product = await this.productsRepo.findById(id);
 
     if (!product) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
 
-    if (product.storeId !== storeId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
-    }
+    assertProductOwnership(product, storeId);
 
     // TMA-MEDIA-USE-API-URL-001: вкладываем resolved URL прямо в каждый image,
     // чтобы фронт не зависел от VITE_R2_PUBLIC_URL.
@@ -237,9 +242,7 @@ export class ProductsController {
     if (!product) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
-    if (product.storeId !== storeId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
-    }
+    assertProductOwnership(product, storeId);
     return this.postToChannel.execute({ productId: id, force: true });
   }
 
@@ -250,16 +253,14 @@ export class ProductsController {
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
   ) {
-    const storeId = await this.resolveStoreId(user.sub);
+    const storeId = await this.resolveStoreId(user.sub, { requireActiveSubscription: false });
     const product = await this.productsRepo.findById(productId);
 
     if (!product) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
 
-    if (product.storeId !== storeId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
-    }
+    assertProductOwnership(product, storeId);
 
     const variants = await this.variantsRepo.findByProductId(productId);
     return variants.map((v) => this.presenter.normalizeVariant(v));
@@ -475,23 +476,17 @@ export class ProductsController {
     await this.ensureProductOwnership(productId, storeId);
 
     if (dto.isPrimary) {
-      await this.prisma.productImage.updateMany({
-        where: { productId, isPrimary: true },
-        data: { isPrimary: false },
-      });
+      await this.imagesRepo.clearPrimary(productId);
     }
 
-    const existingCount = await this.prisma.productImage.count({ where: { productId } });
+    const existingCount = await this.imagesRepo.countByProductId(productId);
     const isPrimary = dto.isPrimary ?? existingCount === 0;
 
-    return this.prisma.productImage.create({
-      data: {
-        productId,
-        mediaId: dto.mediaId,
-        sortOrder: dto.sortOrder ?? existingCount,
-        isPrimary,
-      },
-      include: { media: true },
+    return this.imagesRepo.create({
+      productId,
+      mediaId: dto.mediaId,
+      sortOrder: dto.sortOrder ?? existingCount,
+      isPrimary,
     });
   }
 
@@ -506,7 +501,7 @@ export class ProductsController {
   ): Promise<void> {
     const storeId = await this.resolveStoreId(user.sub);
     await this.ensureProductOwnership(productId, storeId);
-    await this.prisma.productImage.deleteMany({ where: { id: imageId, productId } });
+    await this.imagesRepo.delete(productId, imageId);
   }
 
   // API-PRODUCT-IMAGES-PATCH-001: reorder (`sortOrder`) + toggle обложки
@@ -533,10 +528,7 @@ export class ProductsController {
     }
 
     // Фото должно принадлежать этому товару — нельзя править чужое по id.
-    const image = await this.prisma.productImage.findFirst({
-      where: { id: imageId, productId },
-      select: { id: true },
-    });
+    const image = await this.imagesRepo.findByProductAndId(productId, imageId);
     if (!image) {
       throw new DomainException(
         ErrorCode.NOT_FOUND,
@@ -547,19 +539,12 @@ export class ProductsController {
 
     // Одна обложка на товар: isPrimary=true снимает флаг с остальных.
     if (dto.isPrimary === true) {
-      await this.prisma.productImage.updateMany({
-        where: { productId, isPrimary: true, id: { not: imageId } },
-        data: { isPrimary: false },
-      });
+      await this.imagesRepo.clearPrimary(productId, imageId);
     }
 
-    return this.prisma.productImage.update({
-      where: { id: imageId },
-      data: {
-        ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
-        ...(dto.isPrimary !== undefined ? { isPrimary: dto.isPrimary } : {}),
-      },
-      include: { media: true },
+    return this.imagesRepo.update(imageId, {
+      sortOrder: dto.sortOrder,
+      isPrimary: dto.isPrimary,
     });
   }
 
@@ -572,12 +557,9 @@ export class ProductsController {
     @CurrentUser() user: JwtPayload,
     @Param('id') productId: string,
   ) {
-    const storeId = await this.resolveStoreId(user.sub);
+    const storeId = await this.resolveStoreId(user.sub, { requireActiveSubscription: false });
     await this.ensureProductOwnership(productId, storeId);
-    return this.prisma.productAttribute.findMany({
-      where: { productId },
-      orderBy: { sortOrder: 'asc' },
-    });
+    return this.attributesRepo.findByProductId(productId);
   }
 
   @Post('seller/products/:id/attributes')
@@ -591,13 +573,11 @@ export class ProductsController {
   ) {
     const storeId = await this.resolveStoreId(user.sub);
     await this.ensureProductOwnership(productId, storeId);
-    return this.prisma.productAttribute.create({
-      data: {
-        productId,
-        name: body.name,
-        value: body.value,
-        sortOrder: body.sortOrder ?? 0,
-      },
+    return this.attributesRepo.create({
+      productId,
+      name: body.name,
+      value: body.value,
+      sortOrder: body.sortOrder ?? 0,
     });
   }
 
@@ -612,9 +592,15 @@ export class ProductsController {
   ) {
     const storeId = await this.resolveStoreId(user.sub);
     await this.ensureProductOwnership(productId, storeId);
-    return this.prisma.productAttribute.update({
-      where: { id: attrId },
-      data: { ...body },
+    // IDOR-001: verify the attribute belongs to this product (not just any product).
+    const attr = await this.attributesRepo.findByProductAndId(productId, attrId);
+    if (!attr) {
+      throw new DomainException(ErrorCode.NOT_FOUND, 'Attribute not found', HttpStatus.NOT_FOUND);
+    }
+    return this.attributesRepo.update(attrId, {
+      name: body.name,
+      value: body.value,
+      sortOrder: body.sortOrder,
     });
   }
 
@@ -629,7 +615,7 @@ export class ProductsController {
   ): Promise<void> {
     const storeId = await this.resolveStoreId(user.sub);
     await this.ensureProductOwnership(productId, storeId);
-    await this.prisma.productAttribute.deleteMany({ where: { id: attrId, productId } });
+    await this.attributesRepo.delete(productId, attrId);
   }
 
   // ─── Storefront / public routes вынесены в `StorefrontController`
@@ -648,15 +634,38 @@ export class ProductsController {
     if (!product) {
       throw new DomainException(ErrorCode.PRODUCT_NOT_FOUND, 'Product not found', HttpStatus.NOT_FOUND);
     }
-    if (product.storeId !== storeId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'Product does not belong to your store', HttpStatus.FORBIDDEN);
-    }
+    assertProductOwnership(product, storeId);
   }
 
-  private async resolveStoreId(userId: string): Promise<string> {
+  /**
+   * Единый seller-access choke-point. Инкапсулирует все гейты доступа:
+   *  - ACCESS-001: blocked seller;
+   *  - SUSPENDED-ENFORCEMENT-001: приостановленная подписка (только для мутаций).
+   *
+   * `requireActiveSubscription` (по умолчанию true) гейтит все mutation-роуты
+   * (create/update/delete товара, варианты, фото, атрибуты, репост в канал).
+   * GET-роуты (чтения) вызывают с `false` — dashboard остаётся read-only при
+   * SUSPENDED, а не мёртвым (business-model-v2 §7). Заказы гейтятся отдельно в
+   * orders-контроллере (открытый вопрос политики к Азиму).
+   */
+  private async resolveStoreId(
+    userId: string,
+    opts: { requireActiveSubscription?: boolean } = {},
+  ): Promise<string> {
+    const { requireActiveSubscription = true } = opts;
     const seller = await this.sellersRepo.findByUserId(userId);
     if (!seller) {
       throw new DomainException(ErrorCode.NOT_FOUND, 'Seller not found', HttpStatus.NOT_FOUND);
+    }
+
+    // ACCESS-001: blocked sellers must not manage products.
+    if (seller.isBlocked) {
+      throw new DomainException(ErrorCode.SELLER_BLOCKED, 'Seller account is blocked', HttpStatus.FORBIDDEN);
+    }
+
+    // SUSPENDED-ENFORCEMENT-001: приостановленный продавец не может менять каталог.
+    if (requireActiveSubscription) {
+      await this.planLimitGuard.assertActiveSubscription(seller.id);
     }
 
     const store = await this.storesRepo.findBySellerId(seller.id);

@@ -57,10 +57,17 @@ export class GetAnalyticsUseCase {
 
   async execute(): Promise<AnalyticsSummary> {
     const since = new Date();
-    since.setDate(since.getDate() - 29);
-    since.setHours(0, 0, 0, 0);
+    since.setUTCDate(since.getUTCDate() - 29);
+    since.setUTCHours(0, 0, 0, 0);
 
     // ── Orders (last 30 days) ─────────────────────────────────────────────────
+    // P1-2: единый набор фильтров для всех KPI.
+    //   • Временное окно: placedAt ∈ [since, now]
+    //   • "Заказы" / "Выручка" / "AOV" считаются по non-CANCELLED orders
+    //     (cancelled заказы не списывают stock и не приносят выручку — их
+    //     включение в counters давало "0 заказов + ненулевая выручка").
+    //   • cancelledPct = cancelled / total (включая cancelled) — это
+    //     соотношение, поэтому знаменатель должен включать оба исхода.
     const orders = await this.prisma.order.findMany({
       where: { placedAt: { gte: since } },
       select: {
@@ -73,12 +80,13 @@ export class GetAnalyticsUseCase {
     });
 
     // KPI
-    const totalOrders = orders.length;
+    const allOrdersCount = orders.length;
     const cancelled = orders.filter(o => o.status === 'CANCELLED').length;
     const paidOrders = orders.filter(o => o.status !== 'CANCELLED');
+    const totalOrders = paidOrders.length;
     const totalRevenue = paidOrders.reduce((sum, o) => sum + Number(o.totalAmount), 0);
-    const avgOrderValue = paidOrders.length > 0 ? totalRevenue / paidOrders.length : 0;
-    const cancelledPct = totalOrders > 0 ? Math.round((cancelled / totalOrders) * 100) : 0;
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+    const cancelledPct = allOrdersCount > 0 ? Math.round((cancelled / allOrdersCount) * 100) : 0;
 
     const [newSellers, newStores] = await Promise.all([
       this.prisma.seller.count({ where: { createdAt: { gte: since } } }),
@@ -95,13 +103,14 @@ export class GetAnalyticsUseCase {
     };
 
     // ── Orders per day ────────────────────────────────────────────────────────
+    // Считаем только non-CANCELLED — те же фильтры, что у totalOrders.
     const dayMap = new Map<string, number>();
     for (let i = 0; i < 30; i++) {
       const d = new Date(since);
-      d.setDate(d.getDate() + i);
+      d.setUTCDate(d.getUTCDate() + i);
       dayMap.set(d.toISOString().slice(0, 10), 0);
     }
-    for (const o of orders) {
+    for (const o of paidOrders) {
       const key = o.placedAt.toISOString().slice(0, 10);
       if (dayMap.has(key)) dayMap.set(key, (dayMap.get(key) ?? 0) + 1);
     }
@@ -110,10 +119,13 @@ export class GetAnalyticsUseCase {
     );
 
     // ── Top 10 stores ─────────────────────────────────────────────────────────
+    // Унифицированно: и count, и revenue считаем по non-CANCELLED.
+    // (Раньше count инкрементился для всех заказов, а revenue только для
+    // non-CANCELLED → магазин с 5 cancelled выглядел как 5 заказов / 0 выручки.)
     const storeMap = new Map<string, { name: string; count: number; revenue: number }>();
-    for (const o of orders) {
+    for (const o of paidOrders) {
       const entry = storeMap.get(o.storeId);
-      const rev = o.status !== 'CANCELLED' ? Number(o.totalAmount) : 0;
+      const rev = Number(o.totalAmount);
       if (entry) {
         entry.count++;
         entry.revenue += rev;
@@ -173,7 +185,7 @@ export class GetAnalyticsUseCase {
     const storeDayMap = new Map<string, number>();
     for (let i = 0; i < 30; i++) {
       const d = new Date(since);
-      d.setDate(d.getDate() + i);
+      d.setUTCDate(d.getUTCDate() + i);
       const key = d.toISOString().slice(0, 10);
       sellerDayMap.set(key, 0);
       storeDayMap.set(key, 0);

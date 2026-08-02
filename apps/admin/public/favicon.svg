@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="20" fill="#0A0A0A"/>
+  <path d="M 35 25 Q 50 8 65 25" stroke="#C9A876" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <defs>
+    <clipPath id="lh"><rect x="0" y="0" width="50" height="100"/></clipPath>
+    <clipPath id="rh"><rect x="50" y="0" width="50" height="100"/></clipPath>
+  </defs>
+  <text x="50" y="85" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif" font-weight="900" font-size="80" fill="#FFFFFF" clip-path="url(#lh)">M</text>
+  <text x="50" y="85" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif" font-weight="900" font-size="80" fill="#C9A876" clip-path="url(#rh)">M</text>
+</svg>

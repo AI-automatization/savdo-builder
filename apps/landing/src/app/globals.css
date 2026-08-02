@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-brand-bg text-brand-text font-sans antialiased;
+    min-height: 100vh;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    @apply bg-brand-accent text-brand-bg;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-accent;
+  }
+}
+
+@layer components {
+  .container-content {
+    @apply mx-auto w-full max-w-content px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-accent px-6 py-3 font-semibold text-brand-bg transition-colors hover:bg-brand-accentHover;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-brand-border bg-brand-surface px-6 py-3 font-semibold text-brand-text transition-colors hover:border-brand-accent;
+  }
+
+  /* Azim glass cards with Polat amber */
+  .card-glass {
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(232, 165, 82, 0.18);
+    border-radius: 20px;
+  }
+
+  .card-glass-dim {
+    background: rgba(255, 255, 255, 0.025);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(232, 165, 82, 0.10);
+    border-radius: 20px;
+  }
+
+  .card-glass-highlight {
+    background: rgba(232, 165, 82, 0.08);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(232, 165, 82, 0.40);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px -20px rgba(232, 165, 82, 0.28);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Scroll-reveal fade used by ProblemSection / WhyUs / FinalCta via useReveal. */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  filter: blur(10px);
+  transition: opacity 0.8s ease, transform 0.8s ease, filter 0.8s ease;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+/* Idle float/glow loops for the Hero phone mockup and its floating chips. */
+@keyframes ms-glow {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.18; }
+}
+@keyframes ms-floaty {
+  0%, 100% { transform: translateY(0px) rotateZ(0deg); }
+  50% { transform: translateY(-10px) rotateZ(0.4deg); }
+}
+@keyframes ms-floaty-2 {
+  0%, 100% { transform: translateY(0px) rotateZ(0deg); }
+  50% { transform: translateY(-14px) rotateZ(-0.6deg); }
+}
+@keyframes ms-floaty-3 {
+  0%, 100% { transform: translateY(0px) rotateZ(0deg); }
+  50% { transform: translateY(-8px) rotateZ(0.8deg); }
+}
+.ms-glow {
+  animation: ms-glow 5s ease-in-out infinite;
+}
+.ms-floaty-idle {
+  animation: ms-floaty 4.5s ease-in-out infinite;
+}
+.ms-floaty-2 {
+  animation: ms-floaty-2 5.5s ease-in-out infinite;
+}
+.ms-floaty-3 {
+  animation: ms-floaty-3 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-glow,
+  .ms-floaty-idle,
+  .ms-floaty-2,
+  .ms-floaty-3 {
+    animation: none;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+}

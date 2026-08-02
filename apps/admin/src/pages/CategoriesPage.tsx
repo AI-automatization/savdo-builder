@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Tags, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, X, Save, AlertCircle } from 'lucide-react'
+import { Tags, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ChevronRight, X, Save, AlertCircle, History } from 'lucide-react'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
+import { DialogShell } from '../components/admin/DialogShell'
 
 interface GlobalCategory {
   id: string
@@ -18,11 +19,29 @@ interface GlobalCategory {
 
 const EMPTY_FORM = { nameRu: '', nameUz: '', slug: '', parentId: '', sortOrder: '0', isActive: true }
 
+// FEAT-CATEGORY-JOURNAL-001: запись журнала (audit_log, entityType=GlobalCategory)
+interface CategoryAuditLog {
+  id: string
+  actorUserId: string | null
+  action: string
+  entityId: string
+  payload: Record<string, any>
+  createdAt: string
+}
+
+// DUP-003: preview slugify должен быть синхронен с backend `SlugService.generate()`.
+// Backend regex: latin-only, dash-separated, fallback на server-side. Если поле slug
+// пустое — backend сгенерирует. Здесь даём UI preview ТОЛЬКО для латиницы — для
+// кириллицы вернём пустую строку, чтобы пользователь видел что нужно вручную задать
+// slug (старая реализация молча возвращала пустую строку для всех кириллических имён,
+// но с `_` вместо `-` — slug не совпадал с тем, что в итоге создавал backend).
+// Контракт: lower + spaces→'-' + strip non-[a-z0-9-] + collapse + trim + slice(80).
 function slugify(s: string) {
   return s.trim().toLowerCase()
-    .replace(/[а-яёa-z0-9]+/gi, (m) => m)
-    .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9_]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
     .slice(0, 80)
 }
 
@@ -39,6 +58,26 @@ export default function CategoriesPage() {
   const [formError, setFormError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  // FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий (модал)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyLogs, setHistoryLogs] = useState<CategoryAuditLog[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState('')
+
+  async function openHistory() {
+    setHistoryOpen(true)
+    setHistoryLoading(true)
+    setHistoryError('')
+    try {
+      const res = await api.get<{ logs: CategoryAuditLog[] }>('/api/v1/admin/audit-log?entityType=GlobalCategory&limit=50')
+      setHistoryLogs(res.logs ?? [])
+    } catch (e: any) {
+      setHistoryError(e.message ?? t('categories.historyLoadError'))
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
 
   const roots = categories.filter(c => !c.parentId)
   const children = (parentId: string) => categories.filter(c => c.parentId === parentId)
@@ -147,14 +186,24 @@ export default function CategoriesPage() {
             {categories.length}
           </span>
         </div>
-        <button
-          onClick={() => openCreate()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-          style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)' }}
-        >
-          <Plus size={14} />
-          {t('categories.add')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={openHistory}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
+            style={{ background: 'var(--surface2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+          >
+            <History size={14} />
+            {t('categories.history')}
+          </button>
+          <button
+            onClick={() => openCreate()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
+            style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.25)' }}
+          >
+            <Plus size={14} />
+            {t('categories.add')}
+          </button>
+        </div>
       </div>
 
       {actionError && (
@@ -228,10 +277,10 @@ export default function CategoriesPage() {
       )}
 
       {/* Delete confirm */}
+      {/* A11Y (UIUX-ADMIN-TMA-001): raw div → DialogShell (focus-trap + Escape + role="dialog") */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
-          <div className="rounded-xl p-6 w-80 shadow-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <h3 className="text-sm font-semibold mb-2" style={{ color: 'var(--text)' }}>{t('categories.deleteConfirmTitle')}</h3>
+        <DialogShell onClose={() => setConfirmDelete(null)} width={320} ariaLabelledBy="cat-delete-title" contentStyle={{ padding: 24 }}>
+            <h3 id="cat-delete-title" className="text-sm font-semibold mb-2" style={{ color: 'var(--text)' }}>{t('categories.deleteConfirmTitle')}</h3>
             <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>
               {t('categories.deleteConfirmText')}
             </p>
@@ -251,16 +300,14 @@ export default function CategoriesPage() {
                 {t('common.delete')}
               </button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
 
-      {/* Create / Edit modal */}
+      {/* Create / Edit modal — A11Y: DialogShell вместо raw div */}
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)' }}>
-          <div className="rounded-xl w-[480px] shadow-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <DialogShell onClose={closeModal} width={480} ariaLabelledBy="cat-modal-title" contentStyle={{ padding: 0 }}>
             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+              <h3 id="cat-modal-title" className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
                 {modal === 'create' ? t('categories.modalCreate') : t('categories.modalEdit')}
               </h3>
               <button onClick={closeModal} aria-label={t('common.close')}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
@@ -338,9 +385,78 @@ export default function CategoriesPage() {
                 {saving ? t('categories.saving') : t('common.save')}
               </button>
             </div>
-          </div>
-        </div>
+        </DialogShell>
       )}
+
+      {/* FEAT-CATEGORY-JOURNAL-001: журнал изменений категорий — A11Y: DialogShell */}
+      {historyOpen && (
+        <DialogShell onClose={() => setHistoryOpen(false)} width={560} ariaLabelledBy="cat-history-title" contentStyle={{ padding: 0, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+              <div className="flex items-center gap-2">
+                <History size={16} style={{ color: 'var(--text-muted)' }} />
+                <h3 id="cat-history-title" className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{t('categories.historyTitle')}</h3>
+              </div>
+              <button onClick={() => setHistoryOpen(false)} aria-label={t('common.close')}><X size={16} style={{ color: 'var(--text-muted)' }} /></button>
+            </div>
+
+            <div className="overflow-y-auto px-5 py-3 flex flex-col gap-2">
+              {historyLoading && (
+                <div className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('common.loading')}</div>
+              )}
+              {!historyLoading && historyError && (
+                <div className="text-sm py-8 text-center" style={{ color: '#f87171' }}>{historyError}</div>
+              )}
+              {!historyLoading && !historyError && historyLogs.length === 0 && (
+                <div className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>{t('categories.historyEmpty')}</div>
+              )}
+              {!historyLoading && !historyError && historyLogs.map(log => (
+                <HistoryEntry key={log.id} log={log} />
+              ))}
+            </div>
+        </DialogShell>
+      )}
+    </div>
+  )
+}
+
+// FEAT-CATEGORY-JOURNAL-001: одна запись журнала категорий
+function HistoryEntry({ log }: { log: CategoryAuditLog }) {
+  const { t } = useTranslation()
+  const meta: Record<string, { label: string; color: string }> = {
+    CATEGORY_CREATED: { label: t('categories.histCreated'), color: '#10B981' },
+    CATEGORY_UPDATED: { label: t('categories.histUpdated'), color: '#818cf8' },
+    CATEGORY_DELETED: { label: t('categories.histDeleted'), color: '#f87171' },
+    CATEGORY_SEEDED:  { label: t('categories.histSeeded'),  color: '#eab308' },
+  }
+  const m = meta[log.action] ?? { label: log.action, color: 'var(--text-muted)' }
+  const p = log.payload ?? {}
+
+  let summary = ''
+  if (log.action === 'CATEGORY_UPDATED' && p.before && p.after) {
+    summary = Object.keys(p.after)
+      .map(k => `${k}: ${JSON.stringify(p.before[k])} → ${JSON.stringify(p.after[k])}`)
+      .join(', ')
+  } else if (log.action === 'CATEGORY_SEEDED') {
+    summary = `${p.categoriesUpserted ?? '?'} кат. / ${p.filtersUpserted ?? '?'} фильтров`
+  } else {
+    summary = [p.nameRu, p.slug ? `(${p.slug})` : ''].filter(Boolean).join(' ')
+  }
+
+  const when = new Date(log.createdAt).toLocaleString('ru', {
+    day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit',
+  })
+
+  return (
+    <div className="flex items-start gap-3 py-2 text-sm" style={{ borderBottom: '1px solid var(--border)' }}>
+      <span className="shrink-0 text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'var(--surface2)', color: m.color, border: `1px solid ${m.color}33` }}>
+        {m.label}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="truncate" style={{ color: 'var(--text)' }}>{summary || '—'}</p>
+        <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-dim)' }}>
+          {when}{log.actorUserId ? ` · ${log.actorUserId.slice(0, 8)}` : ''}
+        </p>
+      </div>
     </div>
   )
 }

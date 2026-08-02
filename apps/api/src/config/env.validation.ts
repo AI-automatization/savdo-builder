@@ -37,7 +37,7 @@ export const envValidationSchema = Joi.object({
   // Telegram Bot — OTP через Telegram (Eskiz ЗАПРЕЩЁН)
   TELEGRAM_BOT_TOKEN: Joi.string().required(),
   TELEGRAM_WEBHOOK_SECRET: Joi.string().allow('').optional(),
-  TELEGRAM_BOT_USERNAME: Joi.string().default('savdo_builderBOT'),
+  TELEGRAM_BOT_USERNAME: Joi.string().default('maxsavdo_bot'),
   // Telegram-канал для хранения медиа (fallback к R2). Бот должен быть
   // админом канала с правом «Публикация сообщений». Если не выставлен и
   // R2 не сконфигурирован — uploadDirect вернёт 503.
@@ -58,6 +58,9 @@ export const envValidationSchema = Joi.object({
   PAYMENT_ONLINE_ENABLED: Joi.boolean().default(false),
   PRODUCT_IMAGE_ATTACHMENT_ENABLED: Joi.boolean().default(false),
   AUTO_CANCEL_PENDING_AFTER_HOURS: Joi.number().default(48),
+  // BACKUP-001: ежедневный pg_dump → R2. Включать ТОЛЬКО на прод-инстансе
+  // (локально/preview дампить прод нечем и незачем).
+  DB_BACKUP_ENABLED: Joi.boolean().default(false),
 
   // CORS
   ALLOWED_ORIGINS: Joi.string().optional(),

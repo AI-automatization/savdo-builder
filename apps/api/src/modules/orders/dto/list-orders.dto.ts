@@ -1,8 +1,8 @@
-import { IsEnum, IsInt, IsISO8601, IsOptional, IsString, Max, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsEnum, IsISO8601, IsOptional, IsString } from 'class-validator';
 import { OrderStatus } from '@prisma/client';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
-export class ListOrdersDto {
+export class ListOrdersDto extends PaginationDto {
   @IsOptional()
   @IsEnum(OrderStatus)
   status?: OrderStatus;
@@ -19,16 +19,9 @@ export class ListOrdersDto {
   @IsISO8601()
   dateTo?: string;
 
+  // FEAT-ORDERS-ARCHIVE-001: query-параметр (строка) — 'true' показывает архив покупателя.
+  // Парсится в boolean в контроллере (query всегда строка).
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 20;
+  @IsString()
+  archived?: string;
 }

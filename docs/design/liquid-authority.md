@@ -1,7 +1,10 @@
-# Design Style: "Liquid Authority"
+# Design Style: "Liquid Authority" — ⚠️ DEPRECATED
 
-> **Обязательно к прочтению** для всех агентов, работающих над UI (web-buyer, web-seller, admin).
-> Это единственный источник правды по дизайну. Не отходить от системы без явного ОК от Полата.
+> 🚫 **УСТАРЕЛО (30.05.2026).** Заменён на
+> [`docs/design/maxsavdo-design-v2.md`](./maxsavdo-design-v2.md) (Dark Luxury Minimalist,
+> Champagne Gold вместо violet, синхронизирован с brand-v2). Этот файл оставлен только
+> для истории — **не использовать как источник правды.** Violet `#818CF8` / slate `#0F172A`
+> ниже — старая палитра, в коде уже заменена (`BRAND-WEB-COLOR-TOKENS-001`, 25.05.2026).
 
 ---
 

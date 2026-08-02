@@ -36,7 +36,8 @@ export class GetWishlistUseCase {
         p.status === 'ACTIVE' &&
         p.isVisible &&
         store?.status === 'APPROVED' &&
-        store?.isPublic === true;
+        store?.isPublic === true &&
+        store?.isSuspendedByBilling !== true;
 
       return {
         id: item.id,

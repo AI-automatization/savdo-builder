@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 1200px; height: 630px;
+    background: radial-gradient(130% 150% at 8% 0%, #1c1c1c 0%, #0a0a0a 50%, #050505 100%);
+    font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+  .frame { position: relative; width: 1200px; height: 630px; display: flex; align-items: center; }
+  .glow { position: absolute; border-radius: 50%; filter: blur(100px); }
+  .glow.g1 { width: 460px; height: 460px; background: #C9A876; opacity: 0.22; top: -180px; left: 380px; }
+  .glow.g2 { width: 320px; height: 320px; background: #3A3A3A; opacity: 0.5; bottom: -140px; left: -80px; }
+
+  /* ── Left: copy ───────────────────────────────────────────── */
+  .left { position: relative; z-index: 2; padding: 0 20px 0 72px; width: 540px; flex-shrink: 0; }
+  .top-row { display: flex; align-items: center; gap: 16px; margin-bottom: 40px; }
+  .mark { width: 48px; height: 48px; flex-shrink: 0; }
+  .wordmark { color: #F5F5F5; font-size: 24px; font-weight: 700; }
+  .wordmark span { color: #C9A876; }
+
+  .headline-uz { color: #FFFFFF; font-size: 33px; font-weight: 800; line-height: 1.25; }
+  .headline-ru { color: #C9A876; font-size: 33px; font-weight: 800; line-height: 1.25; margin-top: 6px; }
+  .sub { color: #9A9A9A; font-size: 18px; font-weight: 400; line-height: 1.55; margin-top: 22px; max-width: 430px; }
+  .flags { display: flex; gap: 10px; margin-top: 30px; }
+  .flag-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+    color: #D8D8D8; font-size: 14px; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+  }
+
+  /* ── Right: real TMA storefront mockup ───────────────────── */
+  .phone-wrap { position: relative; z-index: 2; margin-left: auto; margin-right: 86px; }
+  .phone {
+    width: 300px; height: 615px;
+    background: #0A0A0A;
+    border-radius: 42px;
+    border: 10px solid #050505;
+    box-shadow: 0 40px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.05);
+    overflow: hidden;
+    position: relative;
+  }
+  .notch { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 84px; height: 18px; background: #050505; border-radius: 10px; z-index: 5; }
+  .screen {
+    width: 100%; height: 100%;
+    background: linear-gradient(160deg, #0A0A0A 0%, #101010 50%, #0A0A0A 100%);
+    display: flex; flex-direction: column;
+    padding-top: 30px;
+  }
+
+  /* store header card — mirrors StorePage.tsx `glass` + avatar pattern */
+  .s-header { margin: 10px 12px 0; padding: 12px; background: #141414; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; }
+  .s-header-row { display: flex; align-items: center; gap: 10px; }
+  .s-avatar {
+    width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+    background: rgba(201,168,118,0.18); border: 1px solid rgba(201,168,118,0.34);
+    color: #C9A876; font-weight: 800; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .s-store-name { font-size: 13px; font-weight: 700; color: #FFFFFF; display: flex; align-items: center; gap: 5px; }
+  .s-verified { width: 14px; height: 14px; border-radius: 50%; background: rgba(37,99,235,0.25); border: 1px solid rgba(37,99,235,0.5); color: #60a5fa; font-size: 9px; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+  .s-store-meta { display: flex; gap: 5px; margin-top: 4px; }
+  .s-meta-chip { font-size: 9px; font-weight: 600; color: #C9A876; background: rgba(201,168,118,0.10); border: 1px solid rgba(201,168,118,0.30); padding: 2px 6px; border-radius: 6px; }
+  .s-rating { font-size: 9px; color: #A3A3A3; margin-left: 2px; }
+
+  /* category chips */
+  .s-cats { display: flex; gap: 6px; margin: 10px 12px 0; }
+  .s-cat { font-size: 10px; font-weight: 600; padding: 5px 10px; border-radius: 999px; color: #E5E5E5; border: 1px solid rgba(255,255,255,0.08); background: #141414; white-space: nowrap; }
+  .s-cat.active { color: #0A0A0A; background: #C9A876; border-color: #C9A876; }
+
+  /* product grid — mirrors ProductCard.tsx */
+  .s-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 12px 0; }
+  .p-card { border-radius: 12px; overflow: hidden; background: #141414; border: 1px solid rgba(255,255,255,0.08); }
+  .p-img { aspect-ratio: 1/1; background: linear-gradient(135deg, #1F1F1F, #141414); display: flex; align-items: center; justify-content: center; font-size: 30px; }
+  .p-body { padding: 7px 7px 8px; }
+  .p-title { font-size: 10.5px; font-weight: 600; color: #FFFFFF; line-height: 1.3; }
+  .p-price { font-size: 11.5px; font-weight: 700; color: #C9A876; margin-top: 3px; }
+  .p-row { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+  .p-store { font-size: 9px; color: #E5E5E5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .p-add { width: 20px; height: 20px; border-radius: 6px; background: rgba(201,168,118,0.18); border: 1px solid rgba(201,168,118,0.34); color: #C9A876; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  /* bottom nav — mirrors BottomNav.tsx */
+  .s-nav { margin-top: auto; display: flex; border-top: 1px solid rgba(255,255,255,0.08); padding: 8px 0 10px; background: #0A0A0A; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative; }
+  .nav-icon { font-size: 15px; }
+  .nav-icon.dim { filter: grayscale(60%) brightness(0.7); }
+  .nav-label { font-size: 8px; font-weight: 600; color: #E5E5E5; }
+  .nav-label.active { color: #C9A876; }
+  .nav-underline { width: 18px; height: 2px; border-radius: 1px; background: #C9A876; position: absolute; top: -8px; }
+  .nav-badge { position: absolute; top: -3px; right: 16px; min-width: 13px; height: 13px; border-radius: 7px; background: #C9A876; color: #0A0A0A; font-size: 8px; font-weight: 800; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+
+  /* Реальный toast из apps/tma/src/components/ui/Toast.tsx (type: success) */
+  .badge-float {
+    position: absolute; left: 16px; right: 16px; top: 30px;
+    background: rgba(52,211,153,0.15); color: #34D399; font-size: 13px; font-weight: 600;
+    padding: 11px 16px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    border: 1px solid rgba(52,211,153,0.35);
+    z-index: 6;
+  }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="glow g1"></div>
+    <div class="glow g2"></div>
+
+    <div class="left">
+      <div class="top-row">
+        <svg class="mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <clipPath id="cl"><rect x="0" y="0" width="50" height="100"/></clipPath>
+          <clipPath id="cr"><rect x="50" y="0" width="50" height="100"/></clipPath>
+          <path d="M 35 22 Q 50 4 65 22" stroke="#C9A876" stroke-width="6" fill="none" stroke-linecap="round"/>
+          <text x="50" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-weight="900" font-size="100" fill="#F5F5F5" clip-path="url(#cl)">M</text>
+          <text x="50" y="92" text-anchor="middle" font-family="Inter, sans-serif" font-weight="900" font-size="100" fill="#C9A876" clip-path="url(#cr)">M</text>
+        </svg>
+        <div class="wordmark">max<span>savdo</span></div>
+      </div>
+
+      <div class="headline-uz">Oʻzbekiston sotuvchilari<br>uchun marketpleys</div>
+      <div class="headline-ru">Маркетплейс продавцов<br>Узбекистана</div>
+
+      <div class="sub">Создайте магазин прямо в Telegram — каталог, заказы и оплата в одном боте, без сайта и разработчиков.</div>
+
+      <div class="flags">
+        <div class="flag-chip">🇺🇿 Oʻzbekcha</div>
+        <div class="flag-chip">🇷🇺 Русский</div>
+      </div>
+    </div>
+
+    <div class="phone-wrap">
+      <div class="badge-float">🆕 Новый заказ #1042</div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+
+          <div class="s-header">
+            <div class="s-header-row">
+              <div class="s-avatar">B</div>
+              <div>
+                <div class="s-store-name">Bellissima Store <span class="s-verified">✓</span></div>
+                <div class="s-store-meta">
+                  <span class="s-meta-chip">↗ Sayt</span>
+                  <span class="s-meta-chip">📤 Ulashish</span>
+                  <span class="s-rating">⭐ 4.8 (120)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="s-cats">
+            <div class="s-cat active">Barchasi</div>
+            <div class="s-cat">Kiyim</div>
+            <div class="s-cat">Poyabzal</div>
+          </div>
+
+          <div class="s-grid">
+            <div class="p-card">
+              <div class="p-img">🧥</div>
+              <div class="p-body">
+                <div class="p-title">Zamonaviy kurtka</div>
+                <div class="p-price">249 000 soʻm</div>
+                <div class="p-row"><span class="p-store">🏪 Bellissima</span><span class="p-add">+</span></div>
+              </div>
+            </div>
+            <div class="p-card">
+              <div class="p-img">👟</div>
+              <div class="p-body">
+                <div class="p-title">Sport krossovka</div>
+                <div class="p-price">340 000 soʻm</div>
+                <div class="p-row"><span class="p-store">🏪 Bellissima</span><span class="p-add">+</span></div>
+              </div>
+            </div>
+            <div class="p-card">
+              <div class="p-img">👜</div>
+              <div class="p-body">
+                <div class="p-title">Qoʻl sumkasi</div>
+                <div class="p-price">185 000 soʻm</div>
+                <div class="p-row"><span class="p-store">🏪 Bellissima</span><span class="p-add">+</span></div>
+              </div>
+            </div>
+            <div class="p-card">
+              <div class="p-img">🧢</div>
+              <div class="p-body">
+                <div class="p-title">Beysbolka</div>
+                <div class="p-price">89 000 soʻm</div>
+                <div class="p-row"><span class="p-store">🏪 Bellissima</span><span class="p-add">+</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="s-nav">
+            <div class="nav-item">
+              <div class="nav-underline"></div>
+              <div class="nav-icon">🏪</div>
+              <div class="nav-label active">Doʻkonlar</div>
+            </div>
+            <div class="nav-item">
+              <div class="nav-badge">2</div>
+              <div class="nav-icon dim">🛒</div>
+              <div class="nav-label">Savat</div>
+            </div>
+            <div class="nav-item">
+              <div class="nav-icon dim">📦</div>
+              <div class="nav-label">Buyurtma</div>
+            </div>
+            <div class="nav-item">
+              <div class="nav-icon dim">💬</div>
+              <div class="nav-label">Chat</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

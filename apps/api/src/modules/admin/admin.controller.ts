@@ -22,6 +22,7 @@ import { AdminPermission } from '../../common/decorators/admin-permission.decora
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
+import { OrderStatus } from '@prisma/client';
 
 import { AdminRepository } from './repositories/admin.repository';
 // ProductsRepository / ProductStatus инжектятся в AdminProductsController, не здесь.
@@ -149,9 +150,16 @@ export class AdminController {
   ) {
     await this.resolveAdminUser(user);
 
+    // ARCH-DEBT as-any cleanup: невалидный ?status= раньше уходил в Prisma
+    // как есть (as any) и ронял запрос — теперь трактуется как «без фильтра».
+    const orderStatus =
+      status && (Object.values(OrderStatus) as string[]).includes(status)
+        ? (status as OrderStatus)
+        : undefined;
+
     if (storeId) {
       const result = await this.ordersRepo.findByStoreId(storeId, {
-        status: status as any,
+        status: orderStatus,
         page:   page  ? Number(page)  : 1,
         limit:  limit ? Math.min(Number(limit), 100) : 20,
       });
@@ -160,7 +168,7 @@ export class AdminController {
 
     // All orders — use raw Prisma via admin repo
     return this.adminRepo.listOrders({
-      status: status as any,
+      status: orderStatus,
       page:   page  ? Number(page)  : 1,
       limit:  limit ? Math.min(Number(limit), 100) : 20,
     });

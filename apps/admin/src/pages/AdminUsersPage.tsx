@@ -1,18 +1,42 @@
 import { useState } from 'react'
-import { Shield, Plus, UserCog, Trash2, AlertCircle, Phone, Search } from 'lucide-react'
+import { Shield, Plus, UserCog, Trash2, AlertCircle, Phone, Search, Layers, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
 import { api } from '../lib/api'
 import { useFocusTrap } from '../lib/use-focus-trap'
-import { ROLE_OPTIONS, ROLE_BADGE, type AdminRole } from '../lib/admin-roles'
+import { ROLE_OPTIONS, ROLE_BADGE, roleLabel, type AdminRole } from '../lib/admin-roles'
+
+// FEAT-CUSTOM-ROLES-001: кастомная admin-роль (из /admin/custom-roles)
+interface CustomRole {
+  id: string
+  name: string
+  label: string
+  permissions: string[]
+  createdAt: string
+}
+
+// Опция роли для пикеров (базовая или кастомная).
+interface RoleOption { value: string; label: string; description: string }
+
+function buildRoleOptions(custom: CustomRole[], includeSuper: boolean): RoleOption[] {
+  const base: RoleOption[] = ROLE_OPTIONS
+    .filter(r => includeSuper || r.value !== 'super_admin')
+    .map(r => ({ value: r.value, label: r.label, description: r.description }))
+  const customOpts: RoleOption[] = custom.map(r => ({
+    value: r.name,
+    label: r.label,
+    description: `Кастомная роль · ${r.permissions.length} прав`,
+  }))
+  return [...base, ...customOpts]
+}
 
 // API contract from super-admin.controller.ts admin-users-management.use-case.ts list().
 // Backend возвращает плоский массив AdminRow[]; поле adminRole (НЕ role); user без fullName.
 interface AdminRow {
   id: string
   userId: string
-  adminRole: AdminRole
+  adminRole: string // базовая ИЛИ имя кастомной роли
   isSuperadmin: boolean
   mfaEnabled?: boolean
   lastLoginAt?: string | null
@@ -27,21 +51,29 @@ interface AdminRow {
 interface AdminMe {
   id: string
   userId: string
-  adminRole: AdminRole
+  adminRole: string
   isSuperadmin: boolean
   mfaEnabled: boolean
+}
+
+// Безопасный бейдж роли: базовая — из ROLE_BADGE, кастомная — нейтральный стиль.
+function roleBadge(role: string): { bg: string; text: string; label: string } {
+  return ROLE_BADGE[role as AdminRole] ?? { bg: 'rgba(129,140,248,0.10)', text: '#818CF8', label: roleLabel(role) }
 }
 
 export default function AdminUsersPage() {
   const { t, locale } = useTranslation()
   const { data: admins, loading, error, refetch } = useFetch<AdminRow[]>('/api/v1/admin/admins')
   const { data: me } = useFetch<AdminMe>('/api/v1/admin/auth/me')
+  const { data: customRoles, refetch: refetchRoles } = useFetch<CustomRole[]>('/api/v1/admin/custom-roles')
   const [editTarget, setEditTarget] = useState<AdminRow | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [removeTarget, setRemoveTarget] = useState<AdminRow | null>(null)
+  const [rolesOpen, setRolesOpen] = useState(false)
 
   const adminsList = admins ?? []
-  const currentRole: AdminRole | null = me?.adminRole ?? null
+  const customRolesList = customRoles ?? []
+  const currentRole: string | null = me?.adminRole ?? null
   const currentAdminId: string | null = me?.id ?? null
   const isSuperAdmin = currentRole === 'super_admin'
 
@@ -71,19 +103,27 @@ export default function AdminUsersPage() {
           </div>
         </div>
         {isSuperAdmin && (
-          <button
-            onClick={() => setAddOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-          >
-            <Plus size={14} /> {t('adminUsers.add')}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => setRolesOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              <Layers size={14} /> {t('customRoles.manage')}
+            </button>
+            <button
+              onClick={() => setAddOpen(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 14px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              <Plus size={14} /> {t('adminUsers.add')}
+            </button>
+          </div>
         )}
       </div>
 
       {!isSuperAdmin && currentRole && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderRadius: 10, marginBottom: 20, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', color: '#F59E0B', fontSize: 13 }}>
           <AlertCircle size={15} />
-          {t('adminUsers.superAdminOnly')} <strong>{ROLE_BADGE[currentRole].label}</strong>
+          {t('adminUsers.superAdminOnly')} <strong>{roleBadge(currentRole).label}</strong>
         </div>
       )}
 
@@ -104,7 +144,7 @@ export default function AdminUsersPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
           {adminsList.map(admin => {
-            const cfg = ROLE_BADGE[admin.adminRole] ?? ROLE_BADGE.read_only
+            const cfg = roleBadge(admin.adminRole)
             const isSelf = admin.id === currentAdminId
             return (
               <div
@@ -167,6 +207,7 @@ export default function AdminUsersPage() {
       {editTarget && (
         <EditRoleDialog
           admin={editTarget}
+          customRoles={customRolesList}
           onClose={() => setEditTarget(null)}
           onSaved={() => { setEditTarget(null); refetch() }}
         />
@@ -175,8 +216,18 @@ export default function AdminUsersPage() {
       {/* Add Admin Modal */}
       {addOpen && (
         <AddAdminDialog
+          customRoles={customRolesList}
           onClose={() => setAddOpen(false)}
           onSaved={() => { setAddOpen(false); refetch() }}
+        />
+      )}
+
+      {/* Custom Roles management */}
+      {rolesOpen && (
+        <CustomRolesDialog
+          roles={customRolesList}
+          onClose={() => setRolesOpen(false)}
+          onChanged={refetchRoles}
         />
       )}
 
@@ -184,7 +235,7 @@ export default function AdminUsersPage() {
       {removeTarget && (
         <ConfirmDialog
           title={t('adminUsers.removeConfirmTitle')}
-          description={t('adminUsers.removeConfirmDesc', { phone: removeTarget.user.phone, role: ROLE_BADGE[removeTarget.adminRole].label })}
+          description={t('adminUsers.removeConfirmDesc', { phone: removeTarget.user.phone, role: roleBadge(removeTarget.adminRole).label })}
           actionLabel={t('common.delete')}
           actionColor="#EF4444"
           onConfirm={handleRemove}
@@ -197,17 +248,18 @@ export default function AdminUsersPage() {
 
 // ── Edit Role ────────────────────────────────────────────────────────────────
 
-function EditRoleDialog({ admin, onClose, onSaved }: { admin: AdminRow; onClose: () => void; onSaved: () => void }) {
+function EditRoleDialog({ admin, customRoles, onClose, onSaved }: { admin: AdminRow; customRoles: CustomRole[]; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation()
-  const [role, setRole] = useState<AdminRole>(admin.adminRole)
+  const [role, setRole] = useState<string>(admin.adminRole)
   const [loading, setLoading] = useState(false)
+  const options = buildRoleOptions(customRoles, true)
 
   const submit = async () => {
     setLoading(true)
     try {
       // Backend (super-admin.controller.ts:131) expects @Body('adminRole'), не 'role'.
       await api.patch(`/api/v1/admin/admins/${admin.id}/role`, { adminRole: role })
-      toast.success(t('adminUsers.roleUpdated', { role: ROLE_BADGE[role].label }))
+      toast.success(t('adminUsers.roleUpdated', { role: roleLabel(role) }))
       onSaved()
     } catch (e: any) {
       toast.error(e.message ?? t('adminUsers.errChangeRole'))
@@ -224,7 +276,7 @@ function EditRoleDialog({ admin, onClose, onSaved }: { admin: AdminRow; onClose:
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-        {ROLE_OPTIONS.map(opt => {
+        {options.map(opt => {
           const isActive = role === opt.value
           return (
             <label
@@ -273,14 +325,15 @@ function EditRoleDialog({ admin, onClose, onSaved }: { admin: AdminRow; onClose:
 
 interface FoundUser { id: string; phone: string; role: string; fullName?: string | null }
 
-function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function AddAdminDialog({ customRoles, onClose, onSaved }: { customRoles: CustomRole[]; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation()
   const [phone, setPhone] = useState('')
   const [searching, setSearching] = useState(false)
   const [found, setFound] = useState<FoundUser | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
-  const [role, setRole] = useState<AdminRole>('moderator')
+  const [role, setRole] = useState<string>('moderator')
   const [creating, setCreating] = useState(false)
+  const options = buildRoleOptions(customRoles, false)
 
   const lookup = async () => {
     if (!phone.trim()) return
@@ -308,7 +361,7 @@ function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       // Backend (super-admin.controller.ts:115) expects {phone, adminRole}, не {userId, role}.
       // Phone берём из found, чтобы избежать опечаток пользователя.
       await api.post('/api/v1/admin/admins', { phone: found.phone, adminRole: role })
-      toast.success(t('adminUsers.roleAssigned', { role: ROLE_BADGE[role].label, phone: found.phone }))
+      toast.success(t('adminUsers.roleAssigned', { role: roleLabel(role), phone: found.phone }))
       onSaved()
     } catch (e: any) {
       toast.error(e.message ?? t('adminUsers.errCreate'))
@@ -363,7 +416,7 @@ function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
 
           <label style={labelStyle}>{t('adminUsers.assignRole')}</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-            {ROLE_OPTIONS.filter(r => r.value !== 'super_admin').map(opt => {
+            {options.map(opt => {
               const isActive = role === opt.value
               return (
                 <label
@@ -397,6 +450,174 @@ function AddAdminDialog({ onClose, onSaved }: { onClose: () => void; onSaved: ()
           {creating ? t('adminUsers.creating') : t('adminUsers.assignRole')}
         </button>
       </div>
+    </ModalShell>
+  )
+}
+
+// ── FEAT-CUSTOM-ROLES-001: управление кастомными ролями ───────────────────────
+
+function CustomRolesDialog({ roles, onClose, onChanged }: { roles: CustomRole[]; onClose: () => void; onChanged: () => void }) {
+  const { t } = useTranslation()
+  const { data: vocab } = useFetch<{ permissions: string[] }>('/api/v1/admin/permissions/vocabulary')
+  const permissions = vocab?.permissions ?? []
+  const [form, setForm] = useState<{ id: string | null; name: string; label: string; perms: Set<string> } | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [confirmDel, setConfirmDel] = useState<CustomRole | null>(null)
+
+  // Группируем словарь по ресурсу (часть до ':') для аккуратного грида.
+  const groups = permissions.reduce<Record<string, string[]>>((acc, p) => {
+    const res = p.split(':')[0]
+    ;(acc[res] ??= []).push(p)
+    return acc
+  }, {})
+
+  const openCreate = () => setForm({ id: null, name: '', label: '', perms: new Set() })
+  const openEdit = (r: CustomRole) => setForm({ id: r.id, name: r.name, label: r.label, perms: new Set(r.permissions) })
+
+  const togglePerm = (p: string) => setForm(f => {
+    if (!f) return f
+    const perms = new Set(f.perms)
+    perms.has(p) ? perms.delete(p) : perms.add(p)
+    return { ...f, perms }
+  })
+
+  const save = async () => {
+    if (!form) return
+    if (!form.label.trim() || form.perms.size === 0) {
+      toast.error(t('customRoles.errRequired'))
+      return
+    }
+    setSaving(true)
+    try {
+      const permsArr = [...form.perms]
+      if (form.id) {
+        await api.patch(`/api/v1/admin/custom-roles/${form.id}`, { label: form.label.trim(), permissions: permsArr })
+      } else {
+        if (!form.name.trim()) { toast.error(t('customRoles.errName')); setSaving(false); return }
+        await api.post('/api/v1/admin/custom-roles', { name: form.name.trim(), label: form.label.trim(), permissions: permsArr })
+      }
+      toast.success(t('customRoles.saved'))
+      setForm(null)
+      onChanged()
+    } catch (e: any) {
+      toast.error(e.message ?? t('customRoles.errSave'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const doDelete = async () => {
+    if (!confirmDel) return
+    try {
+      await api.delete(`/api/v1/admin/custom-roles/${confirmDel.id}`)
+      toast.success(t('customRoles.deleted'))
+      setConfirmDel(null)
+      onChanged()
+    } catch (e: any) {
+      toast.error(e.message ?? t('customRoles.errDelete'))
+    }
+  }
+
+  return (
+    <ModalShell onClose={onClose} width={620}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>{t('customRoles.title')}</h3>
+        {!form && (
+          <button onClick={openCreate} style={{ ...btnPrimary, height: 32, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Plus size={13} /> {t('customRoles.new')}
+          </button>
+        )}
+      </div>
+      <p style={{ margin: '6px 0 18px', fontSize: 13, color: 'var(--text-muted)' }}>{t('customRoles.hint')}</p>
+
+      {!form && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {roles.length === 0 && (
+            <div style={{ padding: 24, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', background: 'var(--surface2)', borderRadius: 10 }}>
+              {t('customRoles.empty')}
+            </div>
+          )}
+          {roles.map(r => (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface2)' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{r.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)', fontFamily: 'monospace', marginTop: 2 }}>{r.name} · {r.permissions.length} прав</div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <button onClick={() => openEdit(r)} aria-label={t('common.edit')} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Pencil size={13} />
+                </button>
+                <button onClick={() => setConfirmDel(r)} aria-label={t('common.delete')} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border-error)', background: 'var(--surface-error)', color: 'var(--error)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {form && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {!form.id && (
+            <div>
+              <label style={labelStyle}>{t('customRoles.fieldName')}</label>
+              <input
+                value={form.name}
+                onChange={e => setForm(f => f && ({ ...f, name: e.target.value }))}
+                placeholder="catalog_manager"
+                style={{ width: '100%', height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'monospace' }}
+              />
+            </div>
+          )}
+          <div>
+            <label style={labelStyle}>{t('customRoles.fieldLabel')}</label>
+            <input
+              value={form.label}
+              onChange={e => setForm(f => f && ({ ...f, label: e.target.value }))}
+              placeholder="Менеджер каталога"
+              style={{ width: '100%', height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', fontSize: 13, outline: 'none' }}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>{t('customRoles.fieldPerms')} ({form.perms.size})</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 320, overflowY: 'auto', padding: 4 }}>
+              {Object.entries(groups).map(([res, perms]) => (
+                <div key={res}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{res}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6 }}>
+                    {perms.map(p => {
+                      const on = form.perms.has(p)
+                      return (
+                        <label key={p} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 8, cursor: 'pointer', fontSize: 12, border: on ? '1px solid var(--primary)' : '1px solid var(--border)', background: on ? 'rgba(129,140,248,0.06)' : 'var(--surface2)', color: 'var(--text)' }}>
+                          <input type="checkbox" checked={on} onChange={() => togglePerm(p)} style={{ accentColor: 'var(--primary)' }} />
+                          <span style={{ fontFamily: 'monospace' }}>{p.split(':')[1]}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button onClick={() => setForm(null)} style={btnSecondary}>{t('common.cancel')}</button>
+            <button onClick={save} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.5 : 1 }}>
+              {saving ? t('adminUsers.saving') : t('common.save')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmDel && (
+        <ConfirmDialog
+          title={t('customRoles.deleteTitle')}
+          description={t('customRoles.deleteDesc', { role: confirmDel.label })}
+          actionLabel={t('common.delete')}
+          actionColor="#EF4444"
+          onConfirm={doDelete}
+          onCancel={() => setConfirmDel(null)}
+        />
+      )}
     </ModalShell>
   )
 }

@@ -4,6 +4,7 @@
 
 export * from './enums';
 export * from './common';
+export * from './slug';
 export * from './api/auth';
 export * from './api/stores';
 export * from './api/products';
@@ -14,3 +15,5 @@ export * from './api/notifications';
 export * from './api/wishlist';
 export * from './api/search';
 export * from './api/storefront';
+export * from './api/partner';
+export * from './api/subscriptions';

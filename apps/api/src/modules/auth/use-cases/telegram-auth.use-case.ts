@@ -73,6 +73,17 @@ export class TelegramAuthUseCase {
       throw new DomainException(ErrorCode.UNAUTHORIZED, 'Invalid Telegram initData signature', HttpStatus.UNAUTHORIZED);
     }
 
+    // A2-TG-REPLAY-001: Telegram docs recommend rejecting initData older than 24h.
+    // Without this check, an intercepted initData is valid indefinitely.
+    const authDate = params.get('auth_date');
+    if (!authDate) {
+      throw new DomainException(ErrorCode.VALIDATION_ERROR, 'Missing auth_date in initData', HttpStatus.BAD_REQUEST);
+    }
+    const authDateMs = Number(authDate) * 1000;
+    if (isNaN(authDateMs) || Date.now() - authDateMs > 24 * 60 * 60 * 1000) {
+      throw new DomainException(ErrorCode.UNAUTHORIZED, 'Telegram initData has expired', HttpStatus.UNAUTHORIZED);
+    }
+
     // Parse user from initData
     const userParam = params.get('user');
     if (!userParam) {
@@ -119,6 +130,46 @@ export class TelegramAuthUseCase {
       }
     }
 
+    // API-USER-LOGIN-BLOCK-001 + API-AUTO-RESTORE-001: гард soft-deleted / BLOCKED
+    // на входе. ПОРЯДОК ПРОВЕРОК ВАЖЕН — deletedAt FIRST, потом status:
+    //   1. deletedAt set И в окне 90 дней → авто-restore (self-delete grace period).
+    //   2. deletedAt set И старше 90 дней → 403 ACCOUNT_PERMANENTLY_DELETED.
+    //   3. deletedAt = null, status='BLOCKED' → admin-ban, 403 UNAUTHORIZED.
+    //   4. остальное → обычный login.
+    // Перепутать порядок нельзя: softDeleteUserTx ставит deletedAt+BLOCKED
+    // ОБА, а admin-ban — только status=BLOCKED. Auto-restore допустим строго
+    // для self-delete, иначе админский бан обходился бы «перелогином».
+    if (resolvedUser.deletedAt) {
+      const outcome = await this.authRepo.restoreUserIfWithinGrace(resolvedUser.id);
+      if (outcome.state === 'restored') {
+        resolvedUser.deletedAt = null;
+        resolvedUser.status = 'ACTIVE';
+        this.logger.warn(
+          `Account restored within grace period: user=${resolvedUser.id} previousDeletedAt=${outcome.previousDeletedAt.toISOString()}`,
+        );
+      } else if (outcome.state === 'expired') {
+        this.logger.warn(
+          `Login blocked (permanently deleted): user=${resolvedUser.id} deletedAt=${outcome.deletedAt.toISOString()}`,
+        );
+        throw new DomainException(
+          ErrorCode.ACCOUNT_PERMANENTLY_DELETED,
+          'Аккаунт удалён безвозвратно. Зарегистрируйтесь заново.',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      // state === 'not_deleted' — гонка (другой запрос уже восстановил), продолжаем.
+    } else if (resolvedUser.status === 'BLOCKED') {
+      // Admin-suspended (без deletedAt) — auto-restore НЕ применяется.
+      this.logger.warn(
+        `Login blocked (admin-suspended): user=${resolvedUser.id} status=${resolvedUser.status}`,
+      );
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Account is suspended',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     // Create session
     const sessionId = randomUUID();
     const rawToken = this.tokenService.generateRefreshToken();
@@ -152,6 +203,9 @@ export class TelegramAuthUseCase {
       ...(adminClaims?.adminRole && { adminRole: adminClaims.adminRole }),
     });
 
+    // HYBRID-6: способности для тоггла контекста в TMA (продавец/покупатель).
+    const capabilities = await this.authRepo.findCapabilities(resolvedUser.id);
+
     return {
       token: accessToken,
       refreshToken,
@@ -159,6 +213,7 @@ export class TelegramAuthUseCase {
         id: resolvedUser.id,
         role: resolvedUser.role,
         phone: resolvedUser.phone,
+        capabilities,
       },
     };
   }

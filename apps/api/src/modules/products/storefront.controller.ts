@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Header,
   Param,
   Query,
   UseGuards,
@@ -10,12 +11,13 @@ import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { ErrorCode } from '../../shared/constants/error-codes';
 import { HttpStatus } from '@nestjs/common';
 
-import { PrismaService } from '../../database/prisma.service';
 import { ProductsRepository, PublicProductListItem } from './repositories/products.repository';
+import { UsersRepository } from '../users/repositories/users.repository';
 import { StoresRepository } from '../stores/repositories/stores.repository';
 import { WishlistRepository } from '../wishlist/repositories/wishlist.repository';
 import { ProductPresenterService } from './services/product-presenter.service';
@@ -55,7 +57,7 @@ export class StorefrontController {
     private readonly productsRepo: ProductsRepository,
     private readonly storesRepo: StoresRepository,
     private readonly wishlistRepo: WishlistRepository,
-    private readonly prisma: PrismaService,
+    private readonly usersRepo: UsersRepository,
     private readonly presenter: ProductPresenterService,
     private readonly getFeatured: GetFeaturedStorefrontUseCase,
   ) {}
@@ -71,9 +73,34 @@ export class StorefrontController {
    * Throttle 60/min — защита от scraping (вышу глобального 120/min baseline).
    */
   @Get('storefront/featured')
+  @Public()
   @Throttle({ default: { ttl: 60_000, limit: 60 } })
   async getFeaturedStorefront() {
     return this.getFeatured.execute();
+  }
+
+  // ─── SEO-AUDIT-001: sitemap feed ─────────────────────────────────────────
+
+  /**
+   * GET /api/v1/storefront/sitemap
+   *
+   * Фид для динамического sitemap.xml web-buyer: slug'и публичных магазинов
+   * + id видимых товаров, оба с updatedAt (честный lastmod вместо new Date()).
+   * URL из slug/id собирает фронт — API не знает канонический хост.
+   *
+   * Cache-Control 1h + Throttle 10/min: фид дешёвый (select 2 полей),
+   * но дёргают его только генераторы sitemap, чаще незачем.
+   */
+  @Get('storefront/sitemap')
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Header('Cache-Control', 'public, max-age=3600')
+  async getSitemapFeed() {
+    const [stores, products] = await Promise.all([
+      this.storesRepo.findAllPublishedForSitemap(),
+      this.productsRepo.findAllPublicForSitemap(),
+    ]);
+    return { stores, products };
   }
 
   // ─── Stores ──────────────────────────────────────────────────────────────
@@ -82,6 +109,7 @@ export class StorefrontController {
   // Без параметров — первая страница, limit 50 (прежнее поведение).
   // Ответ всегда `{ data, meta }` — meta добавлен, старые клиенты читают data.
   @Get('storefront/stores')
+  @Public()
   async listStorefrontStores(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -105,25 +133,49 @@ export class StorefrontController {
   }
 
   @Get('storefront/stores/:slug')
+  @Public()
   async getStorefrontStoreBySlug(@Param('slug') slug: string) {
-    const store = await this.storesRepo.findBySlug(slug);
-    if (!store) {
-      throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
-    }
-    const s = store as typeof store & { logoMediaId?: string | null; coverMediaId?: string | null };
-    const { logoUrl, coverUrl } = await this.presenter.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
-    return { ...store, logoUrl, coverUrl };
+    return this.mapPublicStoreBySlug(slug);
   }
 
   @Get('stores/:slug')
+  @Public()
   async getStoreBySlug(@Param('slug') slug: string) {
+    return this.mapPublicStoreBySlug(slug);
+  }
+
+  /**
+   * Общий маппер обоих public by-slug endpoints.
+   * SELLER-PAYMENT-REQUISITES-001: findBySlug отдаёт ВСЕ колонки Store —
+   * сырые payment-поля вырезаем и отдаём `paymentRequisites` объектом,
+   * где карта видна ТОЛЬКО при acceptsCardTransfer=true.
+   */
+  private async mapPublicStoreBySlug(slug: string) {
     const store = await this.storesRepo.findBySlug(slug);
     if (!store) {
       throw new DomainException(ErrorCode.STORE_NOT_FOUND, 'Store not found', HttpStatus.NOT_FOUND);
     }
-    const s = store as typeof store & { logoMediaId?: string | null; coverMediaId?: string | null };
-    const { logoUrl, coverUrl } = await this.presenter.resolveStoreImageUrls(s.logoMediaId, s.coverMediaId);
-    return { ...store, logoUrl, coverUrl };
+    const {
+      paymentCardNumber, paymentCardHolder, paymentClickLink, paymentPaymeLink,
+      acceptsCash, acceptsCardTransfer,
+      ...safe
+    } = store;
+    const { logoUrl, coverUrl } = await this.presenter.resolveStoreImageUrls(
+      store.logoMediaId, store.coverMediaId,
+    );
+    return {
+      ...safe,
+      logoUrl,
+      coverUrl,
+      paymentRequisites: {
+        acceptsCash,
+        acceptsCardTransfer,
+        cardNumber: acceptsCardTransfer ? paymentCardNumber : null,
+        cardHolder: acceptsCardTransfer ? paymentCardHolder : null,
+        clickLink: acceptsCardTransfer ? paymentClickLink : null,
+        paymeLink: acceptsCardTransfer ? paymentPaymeLink : null,
+      },
+    };
   }
 
   // ─── Search ──────────────────────────────────────────────────────────────
@@ -133,6 +185,7 @@ export class StorefrontController {
    * Case-insensitive ILIKE, минимум 2 символа.
    */
   @Get('storefront/search')
+  @Public()
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   async searchStorefront(
     @Query('q') q?: string,
@@ -167,6 +220,7 @@ export class StorefrontController {
   // ─── Products by store slug ──────────────────────────────────────────────
 
   @Get('stores/:slug/products')
+  @Public()
   async listStoreProductsBySlug(
     @Param('slug') slug: string,
     @Query('globalCategoryId') globalCategoryId?: string,
@@ -187,13 +241,16 @@ export class StorefrontController {
 
     const mapProduct = (p: PublicProductListItem) => {
       const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
-      const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+      // BUG-2: единый stock-агрегат (см. ProductPresenterService.computeStockFields).
+      // Раньше всегда sum(variants) → single-SKU товары (без variants) показывались как OOS.
+      const stock = this.presenter.computeStockFields(p, variants);
       return {
         ...rest,
         ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
         images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
         variantCount: _count.variants,
-        totalStock,
+        totalStock: stock.totalStock,
+        inStock: stock.inStock,
       };
     };
 
@@ -220,6 +277,7 @@ export class StorefrontController {
   }
 
   @Get('stores/:slug/products/:id')
+  @Public()
   async getStoreProductBySlug(
     @Param('slug') slug: string,
     @Param('id') id: string,
@@ -242,6 +300,10 @@ export class StorefrontController {
     }));
     // API-PRODUCT-STORE-TRUST-SIGNALS-001: embed store с trust signals.
     const storeRef = await this.presenter.mapProductStoreRef(product.store);
+    // BUG-2: единый stock-агрегат, та же формула что в list mapper'ах.
+    // Без этого detail отдавал raw denorm `product.totalStock` (мог отставать
+    // от variants) и не предоставлял `inStock` boolean для фронта.
+    const stock = this.presenter.computeStockFields(product, product.variants);
     return {
       ...product,
       ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
@@ -249,12 +311,15 @@ export class StorefrontController {
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
       store: storeRef,
+      totalStock: stock.totalStock,
+      inStock: stock.inStock,
     };
   }
 
   // ─── Storefront products feed ────────────────────────────────────────────
 
   @Get('storefront/products')
+  @Public()
   @UseGuards(OptionalJwtAuthGuard)
   @Throttle({ default: { ttl: 60_000, limit: 60 } })
   async listStorefrontProducts(
@@ -297,7 +362,8 @@ export class StorefrontController {
       });
       data = result.products.map((p) => {
         const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
-        const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+        // BUG-2: единый stock-агрегат (см. ProductPresenterService.computeStockFields).
+        const stock = this.presenter.computeStockFields(p, variants);
         return {
           ...rest,
           ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
@@ -305,7 +371,8 @@ export class StorefrontController {
           images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
           mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
           variantCount: _count.variants,
-          totalStock,
+          totalStock: stock.totalStock,
+          inStock: stock.inStock,
         };
       });
       total = result.total;
@@ -324,14 +391,16 @@ export class StorefrontController {
       });
       data = result.products.map((p) => {
         const { _count, variants, basePrice, oldPrice, salePrice, images, ...rest } = p;
-        const totalStock = variants.reduce((s, v) => s + (Number(v.stockQuantity) || 0), 0);
+        // BUG-2: единый stock-агрегат (см. ProductPresenterService.computeStockFields).
+        const stock = this.presenter.computeStockFields(p, variants);
         return {
           ...rest,
           ...this.presenter.priceFields(basePrice, oldPrice, salePrice),
           images: images.map((img) => ({ url: this.presenter.resolveImageUrl(img.media) })),
           mediaUrls: images.map((img) => this.presenter.resolveImageUrl(img.media)),
           variantCount: _count.variants,
-          totalStock,
+          totalStock: stock.totalStock,
+          inStock: stock.inStock,
         };
       });
       total = result.total;
@@ -354,6 +423,7 @@ export class StorefrontController {
   }
 
   @Get('storefront/products/:id')
+  @Public()
   @UseGuards(OptionalJwtAuthGuard)
   async getStorefrontProduct(
     @CurrentUser() user: JwtPayload | undefined,
@@ -381,6 +451,8 @@ export class StorefrontController {
       }
     }
 
+    // BUG-2: единый stock-агрегат, та же формула что в list mapper'ах.
+    const stock = this.presenter.computeStockFields(product, product.variants);
     return {
       ...product,
       ...this.presenter.priceFields(product.basePrice, product.oldPrice, product.salePrice),
@@ -388,15 +460,13 @@ export class StorefrontController {
       mediaUrls: images.map((img) => img.url),
       variants: product.variants.map((v) => this.presenter.normalizeVariant(v)),
       store: storeRef,
+      totalStock: stock.totalStock,
+      inStock: stock.inStock,
       ...(inWishlist !== undefined ? { inWishlist } : {}),
     };
   }
 
   private async resolveBuyerIdOrNull(userId: string): Promise<string | null> {
-    const buyer = await this.prisma.buyer.findUnique({
-      where: { userId },
-      select: { id: true },
-    });
-    return buyer?.id ?? null;
+    return this.usersRepo.findBuyerIdByUserId(userId);
   }
 }

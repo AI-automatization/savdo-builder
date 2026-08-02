@@ -16,6 +16,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser, JwtPayload } from '../../common/decorators/current-user.decorator';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { UpdateCartItemDto } from './dto/update-cart-item.dto';
@@ -65,6 +66,7 @@ export class CartController {
   // ─── GET /api/v1/cart ─────────────────────────────────────────────────────
 
   @Get()
+  @Public()
   @UseGuards(OptionalJwtAuthGuard)
   async getCart(
     @CurrentUser() user: JwtPayload | undefined,
@@ -77,6 +79,7 @@ export class CartController {
   // ─── POST /api/v1/cart/items ──────────────────────────────────────────────
 
   @Post('items')
+  @Public()
   @UseGuards(OptionalJwtAuthGuard)
   @Throttle({ default: { ttl: 60_000, limit: 60 } }) // anti-spam: anonymous может звать
   @HttpCode(HttpStatus.CREATED)
@@ -95,6 +98,7 @@ export class CartController {
   // ─── PATCH /api/v1/cart/items/:itemId ─────────────────────────────────────
 
   @Patch('items/:itemId')
+  @Public()
   @UseGuards(OptionalJwtAuthGuard)
   @Throttle({ default: { ttl: 60_000, limit: 60 } })
   async updateItem(
@@ -124,6 +128,7 @@ export class CartController {
   // ─── DELETE /api/v1/cart/items/:itemId ────────────────────────────────────
 
   @Delete('items/:itemId')
+  @Public()
   @UseGuards(OptionalJwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeItem(
@@ -148,6 +153,7 @@ export class CartController {
   // ─── DELETE /api/v1/cart ──────────────────────────────────────────────────
 
   @Delete()
+  @Public()
   @UseGuards(OptionalJwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async clearCart(

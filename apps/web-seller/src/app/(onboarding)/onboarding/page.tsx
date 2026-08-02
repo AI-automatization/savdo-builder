@@ -15,12 +15,20 @@ import { MaxsavdoLogo } from '@/components/brand/MaxsavdoLogo';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+const CYRILLIC: Record<string, string> = {
+  а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'yo', ж: 'zh', з: 'z', и: 'i', й: 'j', к: 'k',
+  л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f', х: 'kh', ц: 'ts',
+  ч: 'ch', ш: 'sh', щ: 'shch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+};
+
 function toSlug(name: string) {
   return name
     .toLowerCase()
+    .replace(/[а-яё]/g, (c) => CYRILLIC[c] ?? '')
     .replace(/[^\w\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
     .slice(0, 60);
 }
 
@@ -199,7 +207,6 @@ function Step1({ onNext }: { onNext: (data: Step1Data) => void }) {
 interface Step2Data {
   telegramUsername: string;
   city: string;
-  telegramContactLink: string;
 }
 
 function Step2({
@@ -247,25 +254,8 @@ function Step2({
           />
         </div>
         <FieldError message={errors.telegramUsername?.message} />
-      </div>
-
-      <div>
-        <Label required>Telegram-ссылка для покупателей</Label>
-        <input
-          className="focus:outline-none"
-          style={inputStyle}
-          placeholder="https://t.me/texnoshop"
-          {...register('telegramContactLink', {
-            required: 'Введите ссылку',
-            pattern: {
-              value: /^https:\/\/t\.me\/.+/,
-              message: 'Должна начинаться с https://t.me/',
-            },
-          })}
-        />
-        <FieldError message={errors.telegramContactLink?.message} />
         <p className="mt-1 text-xs" style={{ color: colors.textDim }}>
-          Ссылка на ваш канал, группу или личный чат
+          Покупатели попадут на ваш профиль по ссылке https://t.me/{'{username}'}
         </p>
       </div>
 
@@ -525,16 +515,15 @@ export default function OnboardingPage() {
       }
 
       // Normalise telegram username
-      const telegramUsername = data.telegramUsername.startsWith('@')
-        ? data.telegramUsername
-        : `@${data.telegramUsername}`;
+      const bareUsername = data.telegramUsername.replace(/^@/, '');
+      const telegramUsername = `@${bareUsername}`;
 
       const [store] = await Promise.all([
         createStore.mutateAsync({
           name:                step1Data.name,
           slug:                step1Data.slug,
           city:                data.city,
-          telegramContactLink: data.telegramContactLink,
+          telegramContactLink: `https://t.me/${bareUsername}`,
         }),
         updateProfile.mutateAsync({ telegramUsername }),
       ]);

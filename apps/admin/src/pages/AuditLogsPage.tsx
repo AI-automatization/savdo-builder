@@ -2,6 +2,7 @@ import { ScrollText, Search, RefreshCw, AlertCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useFetch } from '../lib/hooks'
 import { useTranslation } from '../lib/i18n'
+import { formatAdminDate } from '../lib/format'
 import { PaginationBar } from '../components/admin/PaginationBar'
 
 interface AuditLog {
@@ -31,12 +32,6 @@ const ACTION_CFG: Record<string, { color: string; bg: string }> = {
   'store.unsuspend':        { color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
 }
 
-function formatDate(iso: string, dateLocale: string) {
-  return new Date(iso).toLocaleString(dateLocale, {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  })
-}
 
 export default function AuditLogsPage() {
   const { t, locale } = useTranslation()
@@ -147,7 +142,7 @@ export default function AuditLogsPage() {
                     </span>
                   </td>
                   <td style={{ padding: '13px 20px', color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
-                    {formatDate(log.createdAt, dateLocale)}
+                    {formatAdminDate(log.createdAt, dateLocale)}
                   </td>
                 </tr>
               )

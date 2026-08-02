@@ -37,7 +37,7 @@ describe('LoginPage (smoke)', () => {
     expect(screen.getByRole('button', { name: /Получить код/i })).toBeInTheDocument()
   })
 
-  it('показывает заголовок Savdo Admin', () => {
+  it('показывает заголовок maxsavdo Admin', () => {
     render(
       <MemoryRouter>
         <I18nProvider>
@@ -45,6 +45,6 @@ describe('LoginPage (smoke)', () => {
         </I18nProvider>
       </MemoryRouter>,
     )
-    expect(screen.getByRole('heading', { name: /Savdo Admin/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /maxsavdo Admin/i })).toBeInTheDocument()
   })
 })

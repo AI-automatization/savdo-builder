@@ -20,6 +20,8 @@ describe('store moderation use-cases', () => {
     updateStoreStatus: jest.Mock;
     unapproveStore: jest.Mock;
     writeAuditLog: jest.Mock;
+    findStoreOwnerUserId: jest.Mock;
+    reconcileSellerContextToBuyer: jest.Mock;
   };
 
   beforeEach(() => {
@@ -29,6 +31,9 @@ describe('store moderation use-cases', () => {
       updateStoreStatus: jest.fn().mockImplementation(async (_id, s) => ({ id: 's1', status: s })),
       unapproveStore: jest.fn().mockResolvedValue({ id: 's1', status: 'PENDING_REVIEW' }),
       writeAuditLog: jest.fn().mockResolvedValue(undefined),
+      // HYBRID-5 postEffect в ArchiveStoreUseCase
+      findStoreOwnerUserId: jest.fn().mockResolvedValue('owner-1'),
+      reconcileSellerContextToBuyer: jest.fn().mockResolvedValue(undefined),
     };
   });
 
@@ -132,6 +137,27 @@ describe('store moderation use-cases', () => {
         entityId: 's1',
         payload: { reason: 'inactive 6mo', adminId: 'a-1', previousStatus: 'APPROVED' },
       });
+    });
+
+    // HYBRID-5: архивация реконсилирует активный контекст владельца
+    it('archive → реконсиляция контекста владельца SELLER→BUYER', async () => {
+      adminRepo.findStoreById.mockResolvedValue({ id: 's1', status: 'APPROVED' });
+      await useCase.execute('s1', 'a-1', 'cleanup');
+      expect(adminRepo.findStoreOwnerUserId).toHaveBeenCalledWith('s1');
+      expect(adminRepo.reconcileSellerContextToBuyer).toHaveBeenCalledWith('owner-1');
+    });
+
+    it('владелец не найден (осиротевший store) → реконсиляция скипается без падения', async () => {
+      adminRepo.findStoreById.mockResolvedValue({ id: 's1', status: 'APPROVED' });
+      adminRepo.findStoreOwnerUserId.mockResolvedValue(null);
+      await expect(useCase.execute('s1', 'a-1', 'cleanup')).resolves.toBeDefined();
+      expect(adminRepo.reconcileSellerContextToBuyer).not.toHaveBeenCalled();
+    });
+
+    it('guard-отказ (уже ARCHIVED) → реконсиляция НЕ вызывается', async () => {
+      adminRepo.findStoreById.mockResolvedValue({ id: 's1', status: 'ARCHIVED' });
+      await expect(useCase.execute('s1', 'a-1', 'x')).rejects.toThrow(/already archived/);
+      expect(adminRepo.reconcileSellerContextToBuyer).not.toHaveBeenCalled();
     });
   });
 
