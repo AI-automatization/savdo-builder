@@ -33,32 +33,38 @@ export default function Header() {
       }}
     >
       <div className="max-w-7xl mx-auto flex items-center gap-3">
-        {/* Logo */}
-        <Link
-          href={slug ? `/${slug}` : "/"}
-          className="flex-shrink-0"
-          aria-label="maxsavdo"
-        >
-          <MaxsavdoLogo size={28} withWordmark />
-        </Link>
+        {/* Logo + catalog nav share a baseline wrapper: wordmark (~17px) and nav
+            links (14px) sit at different font-sizes, so centering their boxes
+            (items-center) left the smaller nav text visually low/uneven next to
+            the logo — items-baseline aligns their actual text baselines instead. */}
+        <div className="flex items-baseline gap-3">
+          {/* Logo */}
+          <Link
+            href={slug ? `/${slug}` : "/"}
+            className="flex-shrink-0"
+            aria-label="maxsavdo"
+          >
+            <MaxsavdoLogo size={28} withWordmark />
+          </Link>
 
-        {/* Catalog nav — desktop only */}
-        <nav className="hidden md:flex items-center gap-4 ml-2 flex-shrink-0">
-          <Link
-            href="/stores"
-            className="text-sm font-semibold transition-opacity hover:opacity-80"
-            style={{ color: colors.textBody }}
-          >
-            {t('header.stores')}
-          </Link>
-          <Link
-            href="/products"
-            className="text-sm font-semibold transition-opacity hover:opacity-80"
-            style={{ color: colors.textBody }}
-          >
-            {t('header.products')}
-          </Link>
-        </nav>
+          {/* Catalog nav — desktop only */}
+          <nav className="hidden md:flex items-baseline gap-4 ml-2 flex-shrink-0">
+            <Link
+              href="/stores"
+              className="text-sm font-semibold transition-opacity hover:opacity-80"
+              style={{ color: colors.textBody }}
+            >
+              {t('header.stores')}
+            </Link>
+            <Link
+              href="/products"
+              className="text-sm font-semibold transition-opacity hover:opacity-80"
+              style={{ color: colors.textBody }}
+            >
+              {t('header.products')}
+            </Link>
+          </nav>
+        </div>
 
         {/* Search — grows */}
         <HeaderSearch />
