@@ -239,7 +239,10 @@ function PhoneScreen({ locale }: { locale: Locale }) {
             >
               <div className="relative" style={{ aspectRatio: '1/1' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.img} alt={p.name} className="h-full w-full object-cover" />
+                {/* Intrinsic size (all four tiles are 400x400) so the browser can
+                    reserve the box before the file lands — the container sizes the
+                    image, but without these the row still reflows on slow networks. */}
+                <img src={p.img} alt={p.name} width={400} height={400} className="h-full w-full object-cover" />
                 {p.off && (
                   <span className="absolute left-1 top-1 rounded px-1 py-0.5 text-[7px] font-bold" style={{ background: '#E8A552', color: '#0F0F0F' }}>
                     {p.off}
@@ -349,7 +352,7 @@ function PhoneScreen({ locale }: { locale: Locale }) {
         <div className="flex items-center gap-2 rounded-xl p-2" style={{ background: '#1A1A1A', border: '1px solid rgba(232,165,82,0.14)' }}>
           <span className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={m.products[CART_ADDED_INDEX].img} alt="" className="h-full w-full object-cover" />
+            <img src={m.products[CART_ADDED_INDEX].img} alt="" width={400} height={400} className="h-full w-full object-cover" />
           </span>
           <div className="min-w-0 flex-1">
             <div className="truncate text-[9px] font-semibold text-brand-text">{m.cartToastProduct}</div>
@@ -429,7 +432,7 @@ function PhoneScreen({ locale }: { locale: Locale }) {
         style={{ border: '1px solid rgba(232,165,82,0.55)' }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={m.products[CART_ADDED_INDEX].img} alt="" className="h-full w-full object-cover" />
+        <img src={m.products[CART_ADDED_INDEX].img} alt="" width={400} height={400} className="h-full w-full object-cover" />
       </span>
 
       {/* bottom nav */}

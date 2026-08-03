@@ -5,6 +5,7 @@ import { guidePath, guidesIndexPath } from "./guides";
 import { SITE_URL } from "./seo";
 
 const TELEGRAM_BOT_URL = "https://t.me/maxsavdo_bot";
+const TELEGRAM_CHANNEL_URL = "https://t.me/Maxsavdo_0";
 const CONTACT_EMAIL = "hello@maxsavdo.uz";
 
 /**
@@ -47,7 +48,13 @@ export function organizationJsonLd() {
     // one: entity reconciliation is what GEO engines use to decide two mentions are
     // the same company, and a dead URL breaks that link. Add real social profiles
     // here as they go live.
-    sameAs: [TELEGRAM_BOT_URL],
+    //
+    // Both entries below were fetched before being added — t.me/Maxsavdo_0 returns
+    // og:title "MaxSavdo". Instagram is deliberately absent: instagram.com blocks
+    // server-side fetches and answers 200 with a generic shell for any handle, so
+    // there is no way to verify the profile from here. Add it once someone confirms
+    // the handle by hand.
+    sameAs: [TELEGRAM_BOT_URL, TELEGRAM_CHANNEL_URL],
     // Mirrors what apps/web-buyer already publishes, so both hosts resolve to the
     // same parent entity instead of looking like two unrelated companies.
     parentOrganization: {
