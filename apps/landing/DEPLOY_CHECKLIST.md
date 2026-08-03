@@ -67,3 +67,69 @@ cd apps/landing && npx tsc --noEmit && echo "✅ TypeScript OK" || echo "❌ Typ
 ```
 
 Если видишь `✅ TypeScript OK` — можно пушить.
+
+---
+
+# Возобновление после оплаты Railway (состояние на 03.08.2026)
+
+Билды заморожены: триал TezCode Team истёк, подписка не оплачена, сервис `landing`
+под **Limited Access**, деплой от 31.07 висит в `INITIALIZING` 73+ часов. Прод отдаёт
+сборку от **29.07**. Всё, что ниже, готово и ждёт только оплаты.
+
+Порядок важен: шаг 2 без шага 3 даст молча пустую аналитику.
+
+### 1. Оплатить план
+
+Railway → проект `savdo builder` → Billing. Финансовое действие команды.
+После оплаты убедиться, что баннер Limited Access на сервисе `landing` пропал.
+
+### 2. Влить контент
+
+PR **#7** (`seo/landing-aeo-geo-2026-07-30` → `main`) — 6 гайдов, `/faq`, sitemap на
+28 URL, AEO/GEO-разметка, плюс страницы из `main`. Ветка уже смержена с `main`
+(0 позади), `tsc` и `next build` зелёные.
+
+Перед merge — два открытых вопроса в описании PR: пять FAQ-ответов лежат в
+`faqCategories` и никуда не смаршрутизированы, и в шапке стало 8 пунктов навигации.
+
+### 3. Задать переменные в Railway → сервис `landing` → Variables
+
+Код уже прокидывает их как build args (`railway.toml [build.args]` + `Dockerfile ARG/ENV`),
+без значений скрипты просто не рендерятся:
+
+| Переменная | Откуда берётся |
+|---|---|
+| `NEXT_PUBLIC_GA_ID` | GA4 → Admin → Data streams → `G-XXXXXXXXXX` |
+| `NEXT_PUBLIC_YANDEX_METRICA_ID` | Метрика → номер счётчика, только цифры |
+| `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` | GSC → Settings → Ownership → HTML tag |
+| `NEXT_PUBLIC_YANDEX_VERIFICATION` | Вебмастер → Права доступа → Мета-тег |
+| `NEXT_PUBLIC_BING_SITE_VERIFICATION` | Bing Webmaster (веб-поиск ChatGPT читает индекс Bing) |
+
+GA4-аккаунта на 03.08 ещё нет — заводить под владельцем, не под личной почтой.
+
+### 4. Новый деплой, не рестарт
+
+`NEXT_PUBLIC_*` инлайнятся Next.js **на этапе сборки**. Рестарт переменные не подхватит.
+
+### 5. Проверить живьём — не «выглядит нормально», а по фактам
+
+```bash
+curl -sI https://maxsavdo.uz/qollanma | head -1          # 200, не 404
+curl -s https://maxsavdo.uz/sitemap.xml | grep -c "<loc>" # 28
+curl -sI https://maxsavdo.uz/about | head -1             # 200 — страница из main
+curl -s https://maxsavdo.uz/ | grep -c "googletagmanager" # 1, если GA_ID задан
+```
+
+Если `/qollanma` отдаёт 200, а `/about` — 404 (или наоборот), задеплоена не та ветка.
+Это уже случалось трижды: `LANDING-BRANCH-DRIFT-001`, `LANDING-BRANCH-STALE-002`,
+`LANDING-SEO-CONTENT-NOT-DEPLOYED-001`.
+
+### 6. После выката
+
+- GSC → **URL Inspection** по `/qollanma` и `/faq` → «Запросить индексирование».
+  Отчёт «Индексирование → Страницы» около недели отвечает «данные обрабатываются»
+  и будет бесполезен, пока URL всего два — Inspection отвечает сразу.
+- Core Web Vitals перемерить заново: 3.0s LCP были сняты со сборки 29.07, а хиро
+  с тех пор переписан (`a1da3da8`) и картиночных preload'ов в нём больше нет.
+- CrUX обновляется 28-дневным скользящим окном — раньше чем через несколько недель
+  поля не появятся, и на таком трафике их может не быть вовсе.
