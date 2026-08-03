@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, ChevronDown } from 'lucide-react';
+import { HOMEPAGE_FAQ_COUNT } from '@/lib/i18n';
 
 export type Locale = 'uz' | 'ru';
 
@@ -13,6 +15,7 @@ export type FAQItem = {
 export type FAQDict = {
   title: string;
   subtitle?: string;
+  allLabel?: string;
   items: FAQItem[];
 };
 
@@ -21,8 +24,15 @@ type FAQProps = {
   dict: FAQDict;
 };
 
-export default function FAQ({ dict }: FAQProps) {
+export default function FAQ({ locale, dict }: FAQProps) {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
+
+  // The homepage shows a subset and links to the full set on /faq. Two reasons:
+  // the section stays scannable, and /faq gets a real internal link instead of
+  // depending on the sitemap alone for discovery.
+  const shown = dict.items.slice(0, HOMEPAGE_FAQ_COUNT);
+  const hasMore = dict.items.length > shown.length;
+  const faqHref = locale === 'uz' ? '/faq' : '/ru/faq';
 
   return (
     <section id="faq" className="py-20 lg:py-28">
@@ -37,7 +47,7 @@ export default function FAQ({ dict }: FAQProps) {
         </div>
 
         <ul className="mt-12 flex flex-col gap-3">
-          {dict.items.map((item, idx) => {
+          {shown.map((item, idx) => {
             const open = openIdx === idx;
             const panelId = `faq-panel-${idx}`;
             const buttonId = `faq-button-${idx}`;
@@ -81,6 +91,18 @@ export default function FAQ({ dict }: FAQProps) {
             );
           })}
         </ul>
+
+        {hasMore && dict.allLabel ? (
+          <div className="mt-8 text-center">
+            <Link
+              href={faqHref}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-accent"
+            >
+              {dict.allLabel}
+              <ArrowRight size={15} aria-hidden />
+            </Link>
+          </div>
+        ) : null}
       </div>
     </section>
   );

@@ -9,6 +9,7 @@ export type FooterDict = {
   rights: string;
   contact: string;
   bot: string;
+  resources: string;
 };
 
 type FooterProps = {
@@ -31,6 +32,11 @@ export default function Footer({ locale, dict, nav }: FooterProps) {
   const year = new Date().getFullYear();
   const home = locale === 'uz' ? '/' : '/ru';
   const p = (path: string) => (locale === 'uz' ? `/${path}` : `/ru/${path}`);
+  // Sitewide links to the content pages. A page reachable only from the sitemap gets
+  // crawled late and treated as peripheral; a footer link on every page does not.
+  // The guides slug differs per locale (qollanma / rukovodstva), so `p()` can't build it.
+  const guidesHref = locale === 'uz' ? '/qollanma' : '/ru/rukovodstva';
+  const guidesLabel = locale === 'uz' ? 'Qoʻllanmalar' : 'Руководства';
 
   return (
     <footer
@@ -69,6 +75,7 @@ export default function Footer({ locale, dict, nav }: FooterProps) {
             {nav.support}
           </h4>
           <ul className="mt-4 flex flex-col gap-3 text-sm">
+            <li><Link href={guidesHref} className="text-brand-muted transition-colors hover:text-brand-accent">{guidesLabel}</Link></li>
             <li><Link href={p('faq')} className="text-brand-muted transition-colors hover:text-brand-accent">{nav.faq}</Link></li>
             <li><Link href={p('support')} className="text-brand-muted transition-colors hover:text-brand-accent">{nav.support}</Link></li>
             <li><Link href={p('contacts')} className="text-brand-muted transition-colors hover:text-brand-accent">{nav.contacts}</Link></li>

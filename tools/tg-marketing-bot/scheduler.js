@@ -24,6 +24,11 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
 const CHANNEL = process.env.CHANNEL;
 
+// REVIEW_MODE=true bo'lsa, tayyor post kanalga EMAS, adminga yuboriladi — ko'rib chiqib,
+// ma'qul bo'lsa kanalga forward qilinadi. Birinchi hafta uchun tavsiya etiladi: AI matni
+// nazoratsiz kanalga chiqishidan oldin uslub/ohang haqiqatda mos kelishini ko'rib olish kerak.
+const REVIEW_MODE = process.env.REVIEW_MODE === "true";
+
 for (const [name, value] of Object.entries({ TELEGRAM_BOT_TOKEN, ADMIN_CHAT_ID, CHANNEL })) {
   if (!value) {
     console.error(`Xato: .env faylida ${name} to'ldirilmagan.`);
@@ -99,11 +104,24 @@ async function runDailyPost() {
     await buildVideo(imagePath, audioPath, videoPath);
 
     const safeCaption = truncateCaption(escapeHtml(caption));
-    await bot.sendVideo(CHANNEL, videoPath, { caption: safeCaption, parse_mode: "HTML" });
+    const destination = REVIEW_MODE ? ADMIN_CHAT_ID : CHANNEL;
+    await bot.sendVideo(destination, videoPath, { caption: safeCaption, parse_mode: "HTML" });
 
     saveTopic(topic);
-    console.log("Kanalga muvaffaqiyatli joylandi.");
-    await bot.sendMessage(ADMIN_CHAT_ID, `✅ Kunlik post joylandi.\n\nMavzu: ${topic}`);
+
+    if (REVIEW_MODE) {
+      console.log("REVIEW_MODE: post adminga yuborildi, kanalga joylanmadi.");
+      await bot.sendMessage(
+        ADMIN_CHAT_ID,
+        `👆 Kunlik post tayyor (REVIEW_MODE — kanalga JOYLANMADI).\n\n` +
+          `Mavzu: ${topic}\n\n` +
+          `Ma'qul bo'lsa — yuqoridagi videoni ${CHANNEL} kanaliga forward qiling.\n` +
+          `Avtomatik joylashga o'tish uchun .env da REVIEW_MODE=false qiling.`,
+      );
+    } else {
+      console.log("Kanalga muvaffaqiyatli joylandi.");
+      await bot.sendMessage(ADMIN_CHAT_ID, `✅ Kunlik post joylandi.\n\nMavzu: ${topic}`);
+    }
   } catch (error) {
     console.error("Kunlik post xatosi:", error);
     try {

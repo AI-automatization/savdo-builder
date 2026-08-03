@@ -145,6 +145,57 @@
 - **Что осталось:** issue #6 (order-export webhook, наш → RAOS) — отдельная задача,
   `INTEG-RAOS-002b` в `analiz/tasks.md`.
 
+## 2026-07-30 (Юсуф/Claude) — LANDING-PRICING-FALSE-CLAIMS-001: лендинг обещал фичи, которых нет в коде
+
+- **Важность:** 🔴 · **Дата:** 30.07.2026 · **Домен:** `apps/landing` (зона Юсуфа)
+- **Файлы:** `src/lib/i18n.ts`, `src/lib/guides.ts`, `public/llms.txt`
+- **Как нашли:** не код-ревью — сверка текста тарифов лендинга с
+  `apps/api/src/modules/subscriptions/plan-config.ts` (single source of truth по тарифам)
+  во время работы над SEO-контентом.
+
+### Что было не так
+
+| Обещание на лендинге | Что в `plan-config.ts` | Итог |
+|---|---|---|
+| Pro: «Maxsus domen (.uz)» / «Свой домен (.uz)» | PRO features: `core, abandoned_carts, priority_support, branding` — домена нет. `grep customDomain` по `apps/api/src` + `packages/db` пусто | 🔴 фича не существует |
+| Studio: «Bir nechta operator», «Rollar va ruxsatlar» | STUDIO features: `+api, white_label, multi_store`. В `schema.prisma` **нет модели** StoreStaff/Operator/роли | 🔴 фича не существует |
+| FAQ (uz+ru): «Да, на Pro и Studio можно подключить свой домен» | то же самое | 🔴 прямая ложь в FAQPage-разметке |
+| Free: только «50 товаров» | `ordersLimitPerMonth: 50` — **HARD block, магазин скрывается при превышении** | 🔴 умолчали о жёстком лимите |
+
+- **⚠️ Это рецидив, а не новая находка.** Ровно эти обещания («свой домен», «без бейджа»,
+  «AI-подача») были признаны несуществующими и вычищены из `web-seller` **25.07.2026**
+  (`WEB-SELLER-SCREENS-AUDIT-003` п.2, коммит `c9446078`). В `apps/landing` их тогда не тронули —
+  разные ветки, разные зоны. За 5 дней ложь не только дожила, но и размножилась: новые
+  guide-страницы (`/qollanma/telegram-dokon-narxi`, `/ru/rukovodstva/skolko-stoit-magazin-v-telegram`)
+  повторили её в таблицах тарифов, а `llms.txt` — в блоке для AI-ассистентов.
+- **Почему это дороже обычной опечатки:** текст уходит в `Offer` JSON-LD и в FAQPage-разметку,
+  то есть ровно в то, что AI-движки цитируют как факт о продукте. Плюс это обещание, под которое
+  человек платит 149 000 сум/мес.
+
+### Что сделано
+
+- `i18n.ts` (uz+ru): убран «свой домен» из Pro, убраны «операторы/роли» из Studio, в Free
+  добавлен лимит 50 заказов/мес, в Pro добавлен честный «безлимит заказов».
+- FAQ (uz+ru): ответ про свой домен переписан на «пока нет, в планах» — по образцу уже
+  существующего честного ответа про несколько магазинов (INV-S01).
+- `guides.ts` (uz+ru): таблицы тарифов и FAQ гайда приведены к `plan-config.ts`; вместо
+  вычеркнутого домена — реальное ограничение Free (50 заказов, скрытие магазина).
+- `llms.txt`: тарифы переписаны + добавлена явная строка, что своих доменов нет ни на одном
+  тарифе и один продавец = один магазин (чтобы AI не достроил обратное).
+- **Проверено:** `tsc --noEmit` EXIT 0, `next build` EXIT 0 (14 маршрутов, 6 guide-страниц
+  пререндерятся). В собранном HTML: `Свой домен`/`Maxsus domen` — 0 вхождений,
+  `Несколько операторов` — 0, `Offer` в JSON-LD отдаёт `0 / 149000 / 399000` — совпадает с
+  `plan-config.ts`.
+
+### 🔲 Осталось — решение Азима (бизнес, не код)
+
+Ни один feature-флаг из `plan-config.ts` (`white_label`, `multi_store`, `api`, `branding`,
+`abandoned_carts`) **нигде не enforced** — `grep` по `apps/api/src` даёт только пример в
+JSDoc-комментарии `plan-limit-guard.service.ts:25`. Фактически Pro и Studio сейчас отличаются
+**только ценой**: лимиты товаров и заказов у обоих `null`. Studio за 399 000 продаёт то же
+самое, что Pro за 149 000. Это вопрос к монетизации (зона Азима), а не к тексту лендинга —
+здесь оставлены только «приоритетная поддержка» и «API-доступ» как наименее ложные.
+
 ## 2026-07-28 (Claude) — AUTH-OTP-ERROR-MESSAGE-SWALLOWED-001: непонятная ошибка при TELEGRAM_NOT_LINKED
 
 - **Важность:** 🟡 · **Дата:** 28.07.2026 · **Домен:** `apps/web-seller`, `apps/web-buyer`
@@ -9044,3 +9095,27 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
     реально существуют в `apps/web-buyer/public/`, 404 нет.
 - **Проверено:** `tsc --noEmit` EXIT 0 в обоих апах, `next build` чист (landing — все роуты
   статичные, включая новый `/llms.txt`... файл лежит в `public/`, не роут, отдаётся as-is).
+
+### ✅ [TG-AUTOPOST-001] Kanalga avtomatik post — sozlash uchun tayyor holatga keltirildi
+- **Важность:** 🟡
+- **Дата:** 01.08.2026
+- **Файлы:** `tools/tg-marketing-bot/{scheduler.js, telegram.js, get_chat_id.js, README.md, .env.example}`
+- **Что сделано:**
+  - Инфраструктура уже существовала (`scheduler.js`: Groq тема+текст → HF картинка → edge-TTS
+    голос → ffmpeg видео → sendVideo в @Maxsavdo_0; `setup_scheduled_task.ps1` для ежедневного
+    запуска). Не работала по двум причинам: нет `.env` (репо переклонирован 29.07, токены
+    были только в старом клоне) и задача `MaxSavdoDailyPost` не зарегистрирована в Task Scheduler.
+  - `REVIEW_MODE` (новый флаг в scheduler.js): при `true` готовый пост уходит админу, а не в
+    канал — админ пересылает вручную. Первую неделю рекомендовано держать `true`: `checkPostQuality`
+    ловит только механику (запрещённые фразы, CTA, хештеги, длина), тон бренда должен увидеть человек.
+  - Исправлена курица-и-яйцо: `telegram.js` требовал `ADMIN_CHAT_ID` при старте, но узнать его
+    можно только командой `/whoami` у этого же бота. Теперь переменная опциональна — без неё
+    работает только `/whoami`, остальные команды закрыты (`isAdmin()` возвращает false).
+  - Новый `get_chat_id.js` — читает `getUpdates` и печатает chat_id всех, кто писал боту
+    (нужен только `TELEGRAM_BOT_TOKEN`).
+  - `README.md` — как настроить, откуда брать каждый ключ, три способа получить `ADMIN_CHAT_ID`,
+    ограничения Task Scheduler (работает только при включённом ПК).
+  - `npm install` выполнен (199 пакетов), `node --check` чист, ffmpeg 8.1.2 в PATH.
+- **Осталось (не сделано, нужен Азим):** заполнить в `.env` `TELEGRAM_BOT_TOKEN`, `GROQ_API_KEY`,
+  `HF_API_TOKEN`, `ADMIN_CHAT_ID` → прогон `node scheduler.js` → регистрация ежедневной задачи.
+  Не проверено вживую: доступность `FLUX.1-schnell` через HF router на бесплатном токене.

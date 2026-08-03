@@ -118,12 +118,41 @@
   animation: ms-floaty-3 4s ease-in-out infinite;
 }
 
+/* Hero phone, non-pinned layout only (mobile / reduced motion). The pinned
+   desktop hero drives the same arrive-then-breathe motion from GSAP instead,
+   because ScrollTrigger's pin re-inserts that subtree on refresh and restarts
+   any CSS animation on it — see the comment in Hero.tsx. Keep the two in sync:
+   0.8s entrance, then a 7s / -9px float with no rotation (at 520px tall the
+   chips' wobble reads as drift). */
+@keyframes ms-phone-in {
+  from { opacity: 0; transform: translate3d(40px, 10px, 0) scale(0.97); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes ms-phone-idle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-9px); }
+}
+/* Two animations, not one: the entrance holds its end state via `both`, and the
+   idle loop starts exactly where it stops (delay == entrance duration) and then
+   owns `transform` from there — a single keyframe set can't do both without the
+   loop replaying the fly-in every 7s. */
+.ms-phone-enter {
+  animation:
+    ms-phone-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both,
+    ms-phone-idle 7s ease-in-out 0.8s infinite;
+  will-change: transform, opacity;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ms-glow,
   .ms-floaty-idle,
   .ms-floaty-2,
   .ms-floaty-3 {
     animation: none;
+  }
+  .ms-phone-enter {
+    animation: none;
+    opacity: 1;
   }
   .reveal {
     opacity: 1;

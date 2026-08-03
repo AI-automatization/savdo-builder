@@ -45,7 +45,10 @@ function FaqGroup({ title, items }: { title: string; items: { q: string; a: stri
 }
 
 export default function FaqPageContent({ locale, dict }: { locale: Locale; dict: Dict }) {
-  const d = dict.faqPage;
+  // Renamed during the main→SEO-branch merge: `faqPage` now belongs to the routed
+  // /faq page (FaqList + FAQPage JSON-LD). This categorised copy is kept because it
+  // carries five questions that list does not — see LANDING-FAQ-CONTENT-MERGE-001.
+  const d = dict.faqCategories;
   const supportHref = locale === "uz" ? "/support" : "/ru/support";
 
   return (

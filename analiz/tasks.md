@@ -5,6 +5,188 @@
 
 ---
 
+## 🟠 [PRICING-TIERS-NOT-ENFORCED-001] Pro и Studio различаются только ценой — ни один feature-флаг не enforced
+- **Домен:** монетизация/бизнес-модель — **Азим** (не код) · **Кто взял:** не назначено
+- **Кто нашёл:** Юсуф/Claude 30.07.2026, попутно с `LANDING-PRICING-FALSE-CLAIMS-001` (done.md).
+- **Факт (проверено grep, не предположение):** флаги `white_label`, `multi_store`, `api`,
+  `branding` из `apps/api/src/modules/subscriptions/plan-config.ts` **не встречаются нигде** в
+  `apps/api/src`. `abandoned_carts` встречается один раз — в JSDoc-примере
+  `plan-limit-guard.service.ts:25`, то есть тоже не enforced.
+- **Что это значит на практике:** реально различаются только `productsLimit` и
+  `ordersLimitPerMonth`, и у PRO и STUDIO оба `null`. То есть **Studio за 399 000 сум/мес даёт
+  ровно то же, что Pro за 149 000** — за исключением обещаний, которых нет в коде.
+- **Дополнительно:** `STUDIO.features` содержит `multi_store` («до 3 магазинов» в комментарии),
+  что прямо противоречит инварианту INV-S01 (один продавец = один магазин), на котором построены
+  и лендинг, и FAQ, и гайды. Одно из двух неверно.
+- **Что решить (это продуктовое решение, не правка текста):** чем Studio отличается от Pro —
+  либо реализовать хотя бы один флаг, либо пересобрать сетку тарифов. До этого решения текст на
+  лендинге оставлен минимально-честным («приоритетная поддержка», «API-доступ»).
+
+## 🔴 [LANDING-ENV-SEO-MEASURE-001] Аналитика и Yandex/Bing verification: **код готов, не хватает env vars в Railway**
+- **Домен:** Railway-сервис `landing` (инфра — Полат; доступ к дашборду есть и у Азима) ·
+  **Кто взял:** не назначено
+- **Кто нашёл:** Юсуф/Claude 30.07.2026 — живая проверка `maxsavdo.uz` + чтение кода.
+- **⚠️ ИСПРАВЛЕНО 31.07.2026 — первая редакция этой задачи была неверной.** Я написал «просто
+  задайте 4 переменные в Railway Variables». **Этого недостаточно, и само по себе оно не
+  сработает.** Причина найдена после чтения Obsidian `_bugs.md` (запись 28.07 «NEXT_PUBLIC_* не
+  долетают до бандла без build args») и проверки файлов через `git show`.
+- **Реальное состояние (проверено на `main` И на `seo/landing-aeo-geo-2026-07-30` — одинаково):**
+  - `apps/landing/Dockerfile` — 6 `ARG`+`ENV`: `API_URL`, `BOT_USERNAME`, `SITE_URL`,
+    `GOOGLE_SITE_VERIFICATION`, `YANDEX_VERIFICATION`, `BING_SITE_VERIFICATION`
+  - `apps/landing/railway.toml [build.args]` — **только 3**: `API_URL`, `BOT_USERNAME`, `SITE_URL`
+  - `NEXT_PUBLIC_GA_ID` и `NEXT_PUBLIC_YANDEX_METRICA_ID` — **отсутствуют в обоих файлах**
+- **Что это значит:** `NEXT_PUBLIC_*` инлайнятся Next.js на этапе сборки, внутри Docker-образа.
+  Если build arg не доехал — в бандл уходит `undefined`, `Analytics.tsx` возвращает `null`,
+  ошибок в логах нет. Verification-коды точно так же не попадут в `<head>`.
+- **Правильный порядок (правило из записи 28.07 — три места сразу):**
+  1. `apps/landing/railway.toml` → `[build.args]`: добавить 5 строк — 3 verification +
+     `NEXT_PUBLIC_GA_ID` + `NEXT_PUBLIC_YANDEX_METRICA_ID`
+  2. `apps/landing/Dockerfile` → `ARG`+`ENV` для `GA_ID` и `YANDEX_METRICA_ID`
+     (3 verification там уже есть)
+  3. Railway → сервис `landing` → Variables: сами значения
+  4. **Новый деплой** — рестарта недостаточно
+- **🔎 Открытый вопрос, проверить в дашборде:** `google-site-verification` на живом сайте
+  **работает**, хотя `railway.toml` его в `build.args` не передаёт. Значит он приходит другим
+  путём — вероятно build arg задан вручную в Railway UI. Если так, конфигурация живёт не в репо,
+  а в дашборде, и следующий человек её не увидит. Стоит перенести в `railway.toml`.
+- **Попутно (тот же файл, тот же класс — branch drift):** `railway.toml [variables]` устарел —
+  `NEXT_PUBLIC_BOT_USERNAME = "savdo_builderBOT"` (в записи 28.07 значится исправленным на
+  `maxsavdo_bot`) и `NEXT_PUBLIC_API_URL = "savdo-api-production.up.railway.app"` (по
+  `DEPLOY-DOMAIN-MAXSAVDO-001` должен быть `api.maxsavdo.uz`).
+- **Почему это блокер, а не «потом»:** GSC подключили на днях, но GSC показывает только Google.
+  Без Metrica не видно Яндекс-трафик (в УЗ это большая доля), без GA4 не видно AI-рефералов
+  (`chatgpt.com`, `perplexity.ai`) — то есть эффект всей SEO/GEO-работы сейчас не измеряется.
+  Bing отдельно важен: **веб-поиск ChatGPT опирается на индекс Bing**.
+- **Оговорка по зонам:** сам `apps/landing` — Юсуф, но правка Railway Variables это инфра.
+  Кто именно жмёт — согласовать, задача здесь just to unblock, не про код.
+
+## 🔴 [LANDING-SEO-CONTENT-NOT-DEPLOYED-001] Landing в проде старше и `main`, и SEO-ветки — гайды, FAQ, sitemap отдают 404
+- **Домен:** apps/landing (Юсуф) + merge/деплой · **Кто взял:** не назначено
+- **Кто нашёл:** Claude 03.08.2026 — живая проверка домена + чтение ветки
+  `seo/landing-aeo-geo-2026-07-30` (на ней же и лежит весь контент).
+- **Суть:** весь informational-слой написан и лежит в ветке, но **не в проде**.
+- **⚠️ УТОЧНЕНО 03.08.2026 (первая редакция была неполной).** Я написал «ветка на 6 коммитов
+  впереди main, надо смержить». Это половина картины и она вводит в заблуждение:
+  - ветка **7 впереди и 10 ПОЗАДИ** `origin/main`, merge-base — `21e347f3`. Ветки разошлись.
+  - `main` тоже **не задеплоен**: `2cc84cc6 feat(landing): add About/How-it-works/FAQ/Cases/
+    Blog/Contacts/Support` есть в main, а живьём `/about`, `/blog`, `/cases`, `/contacts` —
+    все 404. То есть в проде крутится сборка старше обеих веток.
+  - **проблема шире одной ветки:** сломана доставка landing как таковая, а не merge.
+  - PR «как есть» показал бы удаление чужой работы: `de9fc86d feat(partner): INTEG-RAOS-002a`
+    (partner update/stock/delete эндпоинты, Полат), 7 landing-страниц из `2cc84cc6`,
+    brand-palette миграции `e1598c65`/`20fbc0f2` в tma и web-buyer, `f61233f4` slug.ts.
+    Поэтому PR не открывался.
+  - **Конфликт гарантирован:** обе стороны правили `apps/landing/src/app/(uz)/faq/page.tsx` —
+    main завёл свою FAQ-страницу, ветка переписала её на `FaqList` + AEO-разметку.
+    Какая версия остаётся — контентное решение, не техническое.
+- **🛑 КОРЕНЬ ПРИЧИНЫ НАЙДЕН 03.08.2026 — это не контент и не merge, это БИЛЛИНГ Railway.**
+  Проект `savdo builder`, сервис `landing`: триал TezCode Team истёк, подписка не оплачена.
+  В дашборде — «Trial maxed out» / «Your subscription is unpaid», на сервисе баннер
+  **Limited Access**: *«Your trial has expired… Upgrade your plan to continue deploying»*.
+  Деплой `chore: disable pnpm auto-switch…` (31.07) висит в **INITIALIZING — "Taking a
+  snapshot of the code"** больше 73 часов. Прод отдаёт сборку от **29.07**
+  (`fix(landing): render the hero headline as h1…` — последний ACTIVE-деплой).
+  Остальные сервисы (api, web-buyer, tma, admin, seller) Online только потому, что
+  *работают*, а не пересобираются — заморозка бьёт только по новым сборкам.
+  - **Практический вывод:** merge, PR и любой новый SEO-контент **не меняют ничего**, пока
+    билд заморожен. Диагностику начинать с биллинга, а не с контент-слоя.
+  - Оплата/выбор плана — финансовое действие команды, не Claude.
+- **Порядок работ (согласовано 03.08.2026):** merge `origin/main` в ветку — **сделан Claude
+  по просьбе Юсуфа** (коммит `e0d10ac6`, FAQ оставлен ветковый). PR открывается после.
+  Но выкатка всё равно ждёт оплаты Railway.
+- **Что говорит GSC (3 месяца до 03.08.2026):** 16 кликов, 40 показов, видимых запросов
+  всего два — `sof savdo uz` (2 показа) и `savdo dasturi` (1). Ни брендовых, ни
+  `telegram doʻkon`-запросов нет вообще. Это ровно то, чего и ждёшь от сайта, у которого
+  в индексе 2 URL. Отчёт «Индексирование → Страницы» около недели отвечает «данные
+  обрабатываются» и будет бесполезен, пока URL всего два — быстрее спросить URL Inspection.
+- **Доказательства (живая проверка 03.08.2026):**
+  ```
+  maxsavdo.uz/faq              → 404
+  maxsavdo.uz/qollanma         → 404
+  maxsavdo.uz/ru/rukovodstva   → 404
+  maxsavdo.uz/about /blog      → 404   (это уже страницы из main, не из ветки)
+  maxsavdo.uz/sitemap.xml      → 2 URL (/ и /ru)
+  ```
+  Внутренние ссылки на живой главной — только `/` и `/ru`. То есть `/faq` для Google не
+  «не проиндексирован», а **никогда не был обнаружен**: нет в sitemap, нет входящих ссылок,
+  сам отдаёт 404. В GSC он не появится даже как ошибка.
+  Живой и индексируемый FAQ сейчас один — секция на главной, `FAQPage @id: …#faq`, 5 вопросов.
+  Отдельное ожидание снять: rich results по FAQ Google убрал для всех сайтов 07.05.2026,
+  так что после деплоя страница даст AEO/GEO-эффект и пользу пользователю, но не сниппет.
+  При этом `apps/landing/src/app/sitemap.ts:36` генерирует ~12 URL (6 статических + гайды),
+  а `lib/guides.ts` содержит **6 гайдов** (3 темы × uz/ru), 23 FAQ-вопроса, 8 таблиц, 2 HowTo.
+- **Что именно не доехало:** темы попадают ровно в informational-интент, которого сейчас у
+  сайта нет вообще: `telegramda-dokon-ochish`, `telegram-dokon-narxi`,
+  `instagram-dokonni-telegramga-kochirish` (+ ru-двойники).
+- **Качество контента проверено, не «на глаз»:** `content_quality.py` (claude-seo) по uz-гайдам —
+  **80/100**, filler 0, AI-pattern 0. Продуктовые факты соблюдены (Telegram-only вход, без SMS,
+  один продавец = один магазин). То есть блокер чисто в доставке, не в тексте.
+- **Почему это первый приоритет по E-E-A-T:** ни одна другая правка не даёт сопоставимого
+  эффекта — контент уже оплачен работой, просто не отдаётся.
+- **Класс проблемы знакомый:** ср. `LANDING-BRANCH-STALE-002` и `LANDING-BRANCH-DRIFT-001`
+  в `logs.md` — ветки landing уже дважды молча расходились с прод-сборкой.
+- **Проверка что сделано:** `maxsavdo.uz/qollanma` отдаёт 200, `sitemap.xml` содержит 12 URL,
+  и заодно `/about` из `main` тоже отвечает 200 — иначе задеплоена опять не та сборка.
+- **Файлы:** `apps/landing/src/lib/guides.ts`, `apps/landing/src/app/sitemap.ts`,
+  `apps/landing/src/app/(uz)/qollanma/`, `apps/landing/src/app/(ru)/ru/rukovodstva/`,
+  `apps/landing/src/app/(uz)/faq/`, `apps/landing/src/app/(ru)/ru/faq/`.
+
+## 🟠 [LANDING-EEAT-GAPS-001] E-E-A-T лендинга: Experience и Authoritativeness — слабые
+- **Домен:** apps/landing (Юсуф) · **Кто взял:** не назначено
+- **Кто нашёл:** Claude 03.08.2026 — разбор кода по QRG-фреймворку E-E-A-T (сентябрь 2025).
+- **Оценка по компонентам:** Experience — слабо · Expertise — средне · Authoritativeness — слабо ·
+  Trust — средне-сильно. Итого ≈ 55/100 («moderate»).
+- **Находки, по убыванию дешевизны фикса:**
+  1. **`sameAs` — одна ссылка.** `lib/jsonld.ts:49` → `sameAs: [TELEGRAM_BOT_URL]`. При этом
+     живые профили есть: Instagram `@maxsavdo`, канал `@Maxsavdo_0`. Комментарий в самом коде
+     этого и ждёт («Add real social profiles here as they go live»). Одна строка — и entity
+     reconciliation для GEO-движков становится сильно надёжнее.
+  2. **В гайдах нет ни одной картинки.** `components/GuideBody.tsx` не рендерит изображения
+     вообще. 3-4 реальных скриншота флоу «бот → магазин» — единственное, что поднимает
+     Experience, и ровно то, что конкурент не может выдумать.
+  3. **Автор = организация.** `lib/jsonld.ts:302` → `author: { "@id": ORG_ID }`. Нет имени,
+     нет байлайна, нет био. Плюс у всех 6 гайдов одинаковый `updated: "2026-07-30"` — читается
+     как разовая партия.
+  4. **Нет отзывов вообще.** Ни testimonial-блока, ни `AggregateRating`. Важно: пустой рейтинг
+     ставить нельзя — это ломает Trust, а не чинит. Сначала реальные отзывы продавцов.
+- **Что НЕ трогать:** `HowTo` в `lib/jsonld.ts:105` оставлен осознанно — в комментарии прямо
+  написано, что Google убрал HowTo rich results и разметка держится ради AEO/GEO, а не сниппета.
+  Решение обоснованное.
+- **Что в плюсе (не ломать):** `Organization` с `legalName`/`address`/`contactPoint`/
+  `parentOrganization: TezCode`, честный `lastModified` в `sitemap.ts:5`, прозрачные тарифы,
+  `llms.txt` с прямой оговоркой «если файл устарел — верь странице».
+- **Файлы:** `apps/landing/src/lib/jsonld.ts`, `apps/landing/src/components/GuideBody.tsx`,
+  `apps/landing/src/lib/guides.ts`.
+
+## 🔴 [BUYER-SITEMAP-TEST-STORE-001] shop.maxsavdo.uz: тестовый магазин в sitemap, отдаётся Google
+- **Домен:** apps/web-buyer + возможно `GET /storefront/sitemap` (Полат) · **Кто взял:** не назначено
+- **Кто нашёл:** Юсуф/Claude 30.07.2026, живая проверка домена (не код-ревью). Подробности,
+  доказательства и варианты фикса — `analiz/logs.md → BUYER-SITEMAP-TEST-STORE-001`.
+- **Кратко:** `shop.maxsavdo.uz/sitemap.xml` содержит `/test-udalit-ms1gi4um` + 2 его товара
+  (`priority 0.8`, `changefreq daily`). Страницы живые, 200, `<title>fdgh — ТЕСТ - удалить</title>`,
+  `description: "test"`. Из 2 реальных магазинов в выдаче один — тестовый.
+- **Срочность:** GSC подключен на днях — первый краул субдомена увидит эти страницы.
+- **🔄 ПЕРЕПРОВЕРЕНО 03.08.2026 (Claude, живая выгрузка) — описание выше частично устарело:**
+  - `shop.maxsavdo.uz/sitemap.xml` **больше не содержит** тестовый магазин. Сейчас там ровно
+    9 статических URL: `/`, `/terms`, `/privacy`, `/offer`, `/refund`, `/help`, `/stores`,
+    `/products`, `/raos`. Эта половина задачи, судя по всему, закрыта.
+  - **Но магазин по-прежнему живой и виден в каталоге.** `/products` отдаёт 2 товара, оба из
+    `test-udalit-ms1gi4um`, с рабочей `Product` + `Offer`-разметкой (`price: 10000`,
+    `availability: InStock`), `<title>ТЕСТ - удалить — ТЕСТ - удалить</title>`. То есть из
+    поиска они выпали, а живой посетитель каталога всё ещё видит витрину из двух фейков.
+  - Сами карточки товара отдают `<meta name="robots" content="noindex, nofollow">` —
+    индексации нет, но это не отменяет UX/доверие: каталог `/products` собственного `noindex`
+    **не имеет** и индексируется вместе с фейковыми карточками внутри.
+  - **Отдельный вопрос, шире этой задачи:** `noindex` на карточках товара — это правило для
+    непроверенных магазинов или для всех? `/raos/products` (единственный реальный магазин)
+    тоже отдаёт `noindex` и пуст. Если `noindex` стоит на всех товарах, то e-commerce-SEO на
+    `shop.maxsavdo.uz` отсутствует как явление, и это продуктовое решение, а не баг вёрстки.
+- **Что сделать:** фильтр состояния магазина в фиде/`sitemap.ts` (в `StorefrontSitemapFeed`
+  сейчас такого признака нет) либо `noindex`; плюс разово удалить тестовый магазин из прод-БД
+  (образец — `PROD-DB-CLEANUP-001`) и снять URL через GSC Removals.
+- **Файлы:** `apps/web-buyer/src/app/sitemap.ts`, `apps/api` storefront sitemap use-case,
+  `packages/types/src/api/storefront.ts`.
+
 ## 🔴 [SEO-AUDIT-002] web-buyer: sitemap не включает товары/магазины + нет priority на LCP-картинках
 - **Домен:** apps/web-buyer · **Кто взял:** не назначено
 - **Контекст:** SEO-аудит 02.08.2026 (полный отчёт — Artifact, см. Obsidian/чат) по 6 факторам
@@ -2285,3 +2467,43 @@ API-010, API-011, API-012, API-013, API-014 — реализованы на фр
 - [x] **[AUDIT-007]** API client: console.warn если NEXT_PUBLIC_API_URL не задан
 - [x] **[AUDIT-008]** web-seller: удалён лишний pnpm-workspace.yaml
 
+
+---
+
+## 🟡 [SEO-GEO-AEO-2026-07-30] Заход после подключения Search Console — что осталось
+
+Две ветки готовы к ревью, **не запушены**:
+- `seo/landing-aeo-geo-2026-07-30` (от `main`) — контентный слой лендинга
+- `seo/web-buyer-index-hygiene-2026-07-30` (от `origin/web-buyer`, worktree
+  `.worktrees/web-buyer-seo`) — гигиена индексации витрины
+
+### Сделано
+- Лендинг: `/faq` · `/ru/faq`, `/qollanma` · `/ru/rukovodstva` + по 3 руководства на
+  локаль. Sitemap 2 → 12 URL. HowTo / Article / BreadcrumbList / CollectionPage,
+  FAQ 5 → 14 с самодостаточными ответами. llms.txt переписан.
+- web-buyer: тестовый магазин выключен из индекса (см. `SEO-TEST-STORE-INDEXED-001`
+  в logs.md), canonical на всех статичных роутах, `/stores` и `/products` получили
+  собственные метаданные вместо унаследованных с главной.
+
+### Осталось — нужны решения, не код
+
+- 🟡 **Лимит заказов на Studio** — Азим сказал, что у Studio свой отдельный лимит, но
+  число не назвал. Сейчас во всех текстах (i18n, guides, llms.txt) Studio описан как
+  «всё из Pro + API», без числа. Как только число известно — проставить в четырёх
+  местах: `i18n.ts` (uz+ru), `guides.ts` (обе таблицы), `llms.txt`.
+- 🟡 **Удалить тестовый магазин в админке** — код-защита это только заглушка, см.
+  `SEO-TEST-STORE-INDEXED-001`.
+- 🟢 **`/stores` и `/products` — client components.** Метаданные и canonical теперь свои,
+  но сам контент каталога рендерится на клиенте: в первом HTML товаров и магазинов нет.
+  Для страниц магазина и товара это в своё время починили (SEO-AUDIT-001 п.3-4), для
+  каталогов — нет. Отдельная задача, не метаданные.
+- 🟢 **Узбекский на витрине.** Метаданные web-buyer получили uz-ключевики и
+  `og:alternateLocale`, но hreflang там не поставить — язык переключается на клиенте,
+  отдельных URL на локаль нет. Настоящее uz-покрытие = либо path-based локали
+  (`/uz/...`, архитектурное решение), либо uz-описания у продавцов. См.
+  `seo-geo-aeo-report-2026-07-24.md` §3.3 — вопрос с 24.07 так и открыт.
+- 🟢 **`sameAs` у Organization** — сейчас одна ссылка (бот). Для GEO важна склейка
+  сущности: как появятся реальные профили (канал, Instagram, YouTube) — добавить в
+  `apps/landing/src/lib/jsonld.ts`. Несуществующие URL туда не писать, это ломает склейку.
+- 🟢 **`WEB-BUYER-TSCONFIG-TYPES-001`** — `tsc --noEmit` в web-buyer всегда красный,
+  см. logs.md.

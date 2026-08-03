@@ -10,6 +10,7 @@ export type HeaderDict = {
     stores: string;
     pricing: string;
     faq: string;
+    guides: string;
     start: string;
     cases: string;
     blog: string;
@@ -19,15 +20,37 @@ export type HeaderDict = {
 type HeaderProps = {
   locale: Locale;
   dict: HeaderDict;
+  /**
+   * Where the section anchors point. Omitted on the homepage (plain `#how`).
+   * On any sub-page it must be that locale's home path, otherwise `#how` resolves
+   * against the current URL — `/faq#how` — and the link goes nowhere.
+   */
+  anchorBase?: string;
+  /**
+   * Target of the uz/ru switch. Defaults to the other locale's homepage; sub-pages
+   * pass their own translated URL so switching language keeps you on the same page.
+   */
+  switchHref?: string;
 };
 
 const BOT_URL = 'https://t.me/maxsavdo_bot';
 
-export default function Header({ locale, dict }: HeaderProps) {
+export default function Header({
+  locale,
+  dict,
+  anchorBase = '',
+  switchHref,
+}: HeaderProps) {
   const otherLocale: Locale = locale === 'uz' ? 'ru' : 'uz';
-  const otherHref = otherLocale === 'uz' ? '/' : '/ru';
+  const otherHref = switchHref ?? (otherLocale === 'uz' ? '/' : '/ru');
   const home = locale === 'uz' ? '/' : '/ru';
   const p = (path: string) => (locale === 'uz' ? `/${path}` : `/ru/${path}`);
+  // Anchors have to point at the homepage from every sub-page. Pages that know their
+  // own base pass it explicitly; the rest fall back to `home` rather than to '', which
+  // would emit a bare `#how` and scroll to nothing on About/Blog/Cases/Support.
+  const anchors = anchorBase || home;
+  // Locale-specific slug, so `p()` can't build it.
+  const guidesHref = locale === 'uz' ? '/qollanma' : '/ru/rukovodstva';
 
   return (
     <header
@@ -62,9 +85,13 @@ export default function Header({ locale, dict }: HeaderProps) {
           aria-label="primary"
         >
           {[
-            { href: `${home}#how`, label: dict.nav.how },
-            { href: `${home}#features`, label: dict.nav.features },
-            { href: `${home}#pricing`, label: dict.nav.pricing },
+            { href: `${anchors}#how`, label: dict.nav.how },
+            { href: `${anchors}#features`, label: dict.nav.features },
+            { href: `${anchors}#stores`, label: dict.nav.stores },
+            { href: `${anchors}#pricing`, label: dict.nav.pricing },
+            // Real URLs, not anchors: these are crawlable pages of their own and the
+            // internal links are what gets them discovered.
+            { href: guidesHref, label: dict.nav.guides },
             { href: p('cases'), label: dict.nav.cases },
             { href: p('blog'), label: dict.nav.blog },
             { href: p('faq'), label: dict.nav.faq },
