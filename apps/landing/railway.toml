@@ -3,10 +3,19 @@ builder = "DOCKERFILE"
 dockerfilePath = "apps/landing/Dockerfile"
 watchPatterns = ["apps/landing/**"]
 
+# Every NEXT_PUBLIC_* the app reads must be listed here. Next.js inlines these at
+# build time, inside the Docker image — a variable that exists only in Railway
+# Variables never reaches the bundle, it arrives as `undefined` and fails silently
+# (Analytics renders null, verification tags vanish from <head>, no error in logs).
 [build.args]
 NEXT_PUBLIC_API_URL = "${{NEXT_PUBLIC_API_URL}}"
 NEXT_PUBLIC_BOT_USERNAME = "${{NEXT_PUBLIC_BOT_USERNAME}}"
 NEXT_PUBLIC_SITE_URL = "${{NEXT_PUBLIC_SITE_URL}}"
+NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION = "${{NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION}}"
+NEXT_PUBLIC_YANDEX_VERIFICATION = "${{NEXT_PUBLIC_YANDEX_VERIFICATION}}"
+NEXT_PUBLIC_BING_SITE_VERIFICATION = "${{NEXT_PUBLIC_BING_SITE_VERIFICATION}}"
+NEXT_PUBLIC_GA_ID = "${{NEXT_PUBLIC_GA_ID}}"
+NEXT_PUBLIC_YANDEX_METRICA_ID = "${{NEXT_PUBLIC_YANDEX_METRICA_ID}}"
 
 [deploy]
 startCommand = "node server.js"
@@ -17,7 +26,7 @@ restartPolicyMaxRetries = 3
 
 [variables]
 NEXT_PUBLIC_API_URL = "https://savdo-api-production.up.railway.app"
-NEXT_PUBLIC_BOT_USERNAME = "savdo_builderBOT"
+NEXT_PUBLIC_BOT_USERNAME = "maxsavdo_bot"
 NEXT_PUBLIC_SITE_URL = "https://maxsavdo.uz"
 NODE_ENV = "production"
 NEXT_TELEMETRY_DISABLED = "1"
