@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Guide } from "@/lib/guides";
 
 type GuideBodyProps = {
@@ -48,6 +49,28 @@ export default function GuideBody({ guide, updatedLabel }: GuideBodyProps) {
               {paragraph}
             </p>
           ))}
+
+          {section.image ? (
+            // Intrinsic width/height come from the file itself so the browser can
+            // reserve the box before it loads. `sizes` matches the article column
+            // (max-w-3xl = 48rem) so phones are not sent the desktop-width file.
+            <figure className="mt-6">
+              <Image
+                src={section.image.src}
+                alt={section.image.alt}
+                width={section.image.width}
+                height={section.image.height}
+                sizes="(min-width: 768px) 48rem, 100vw"
+                className="h-auto w-full rounded-xl"
+                style={{ border: "1px solid rgba(232,165,82,0.18)" }}
+              />
+              {section.image.caption ? (
+                <figcaption className="mt-2 text-xs leading-relaxed text-brand-muted">
+                  {section.image.caption}
+                </figcaption>
+              ) : null}
+            </figure>
+          ) : null}
 
           {section.bullets ? (
             <ul className="mt-4 flex flex-col gap-2">

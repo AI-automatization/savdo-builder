@@ -29,11 +29,33 @@ export type GuideTable = {
   rows: string[][];
 };
 
+/**
+ * A real screenshot of the flow the section describes.
+ *
+ * Why this exists: Experience is the one E-E-A-T dimension a competitor cannot
+ * fabricate, and text alone carries none of it. A genuine capture of the bot
+ * creating a shop is worth more here than another paragraph.
+ *
+ * `width`/`height` are the file's intrinsic pixels, not the display size — they
+ * are what lets the browser reserve the box before the file lands (CLS).
+ * `alt` describes what is on screen; it is not a place to repeat the heading.
+ */
+export type GuideImage = {
+  /** Path under `public/`, e.g. `/guides/open-shop-bot-start.png`. */
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  /** Optional visible caption under the image. */
+  caption?: string;
+};
+
 export type GuideSection = {
   heading: string;
   body?: string[];
   bullets?: string[];
   table?: GuideTable;
+  image?: GuideImage;
 };
 
 export type GuideHowTo = {
