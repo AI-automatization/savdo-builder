@@ -424,6 +424,19 @@ export class ProductsRepository {
     });
   }
 
+  /**
+   * INTEG-RAOS-002 (issue #5): прямая запись Product.totalStock — только для
+   * single-SKU товаров (hasVariants=false). Товары с вариантами держат сток
+   * per-variant (AdjustStockUseCase) — вызывающий код обязан проверить
+   * hasVariants до вызова этого метода.
+   */
+  async setTotalStock(id: string, stock: number): Promise<Product> {
+    return this.prisma.product.update({
+      where: { id },
+      data: { totalStock: stock },
+    });
+  }
+
   async findAllPublic(filters?: {
     q?: string;
     globalCategoryId?: string;

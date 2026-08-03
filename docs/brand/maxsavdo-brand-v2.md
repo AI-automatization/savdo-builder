@@ -56,12 +56,24 @@ Source: brand book от 24.05.2026 — `docs/brand/assets/maxsavdo/brand-book-pa
 
 | Имя | HEX | RGB | CSS var | Назначение |
 |-----|-----|-----|---------|-----------|
-| **Rich Black** | `#0A0A0A` | `10,10,10` | `--brand-black` | Primary background, primary text on light |
-| **Champagne Gold** | `#C9A876` | `201,168,118` | `--brand-gold` | Accent, CTA, premium элементы, активные состояния |
-| **Champagne Gold Light** | `#E8C898` | `232,200,152` | `--brand-gold-light` | Highlights, hover-gradients (виден на app-icon) |
+| **Rich Black** | `#0F0F0F` | `15,15,15` | `--brand-black` | Primary background, primary text on light |
+| **Champagne Gold** | `#E8A552` | `232,165,82` | `--brand-gold` | Accent, CTA, премиум-элементы, активные состояния |
+| **Champagne Gold Light** | `#FFC574` | `255,197,116` | `--brand-gold-light` | Текст/акцент на тёмном фоне (лучше читается, чем базовый gold) |
+| **Champagne Gold Hover** | `#D4922E` | `212,146,46` | `--brand-gold-hover` | Hover/pressed на светлом фоне; darken-состояние заполненных кнопок |
 | **Pure White** | `#FFFFFF` | `255,255,255` | `--brand-white` | Light background, primary text on dark |
 
-> ✅ **Финализировано 25.05.2026** (Азим, visual eyedropper по brand-book JPG; OCR-цифры в JPG битые — `#C0563D` для gold = терракот, `#C13236` для чёрного = красный, ошибки распознавания/дизайнера, проигнорированы). Champagne Gold подтверждён как `#C9A876`. Закрывает `BRAND-PALETTE-HEX-PICK-001`.
+> ✅ **Обновлено 28.07.2026 (v3, канон = `apps/landing`).** Владелец подтвердил: после рескина
+> лендинга (27.07.2026, коммит `661e9ec`) его палитра — новый канон для всего проекта, а не
+> прежний eyedropper-пик от 25.05.2026. Rich Black `#0A0A0A → #0F0F0F`, Champagne Gold
+> `#C9A876 → #E8A552`. Добавлена явная пара hover-состояний вместо одной "Light"-версии:
+> **Hover `#D4922E`** (темнее — для заполненных кнопок на светлом фоне/базовое hover-состояние,
+> сама формула из `apps/landing/tailwind.config.ts`) и **Light `#FFC574`** (светлее — только там,
+> где accent-цвет используется как ТЕКСТ на тёмном фоне и обычный `#E8A552` даёт недостаточный
+> контраст; посчитан сохранением исходной дельты осветления `C9A876→E8C898`, применённой к новому
+> базовому golde). Синхронизировано в `apps/web-buyer`, `apps/web-seller`, `apps/tma`
+> (`docs/design/maxsavdo-design-v2.md` §Цвет ссылается сюда же). `apps/landing` — источник, не
+> трогался. Старое: Champagne Gold `#C9A876` (закрывало `BRAND-PALETTE-HEX-PICK-001`,
+> 25.05.2026, Азим, visual eyedropper по brand-book JPG).
 
 ### Supporting (нейтрали)
 
@@ -151,8 +163,8 @@ const inter = Inter({
 // packages/ui/tailwind-tokens.ts (или inline в каждом app)
 colors: {
   brand: {
-    black: '#0A0A0A',
-    gold: '#C9A876',
+    black: '#0F0F0F',
+    gold: '#E8A552',
     white: '#FFFFFF',
     surface: {
       dark: '#1A1A1A',
@@ -171,20 +183,20 @@ colors: {
 
 ```css
 :root[data-theme="dark"] {
-  --bg-primary: #0A0A0A;
+  --bg-primary: #0F0F0F;
   --bg-surface: #1A1A1A;
   --text-primary: #FFFFFF;
-  --text-secondary: #C9A876;
-  --accent: #C9A876;
+  --text-secondary: #E8A552;
+  --accent: #E8A552;
   --border: #3A3A3A;
 }
 
 :root[data-theme="light"] {
   --bg-primary: #FFFFFF;
   --bg-surface: #F8F8F8;
-  --text-primary: #0A0A0A;
-  --text-secondary: #C9A876;
-  --accent: #C9A876;
+  --text-primary: #0F0F0F;
+  --text-secondary: #E8A552;
+  --accent: #E8A552;
   --border: #E5E5E5;
 }
 ```
@@ -196,7 +208,7 @@ colors: {
 | Старая система | Новая (maxsavdo v2) |
 |----------------|----------------------|
 | Soft Color Lifestyle (terracotta + cream) | **Dark Luxury Minimalist** (black + gold + white) |
-| Violet brand color (`#7C3AED`) | **Champagne Gold** (`#C9A876`) |
+| Violet brand color (`#7C3AED`) | **Champagne Gold** (`#E8A552`, было `#C9A876` до 28.07.2026) |
 | Logo: монограмма "S" (старый бренд) | **Logo: монограмма "M" с bag handle** |
 | Brand name: "Savdo" / "Savdo Builder" (старое) | **maxsavdo** |
 | `docs/brand/brand-book.md` | **`docs/brand/maxsavdo-brand-v2.md`** (этот файл) |

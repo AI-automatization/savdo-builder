@@ -1,5 +1,150 @@
 # Done — Азим + Полат
 
+## 2026-08-02 (Claude) — ONBOARD-SLUG-TRANSLIT-DEDUP-001: packages/types/slug.ts выровнен (частично)
+
+- **Важность:** 🟡 · **Дата:** 02.08.2026 · **Домен:** `packages/types`
+- **Находка перед фиксом:** запись от 25.07 в tasks.md утверждала, что таблицы транслитерации
+  packages/types и web-seller расходятся (`й→y` vs `й→j`) — прочитал оба файла напрямую, это
+  оказалось неточным: таблицы идентичны. Реальные различия были только в maxLength-дефолте и
+  char-filter regex. Скорректировал запись в tasks.md, чтобы не вводить в заблуждение дальше.
+- **Что сделано:** `toLatinSlug()` в `packages/types/src/slug.ts` — дефолт `maxLength` 40→60
+  (матчит исторический контракт `SlugService`/web-seller onboarding, а не произвольное число),
+  char-filter `[^a-z0-9\s-]`→`[^\w\s-]` (безопаснее для уже живых slug с подчёркиванием),
+  добавлен leading/trailing hyphen-strip (был только в web-seller). Таблица транслитерации не
+  менялась — уже совпадала.
+- **Проверено:** `tsc --noEmit` (apps/api, единственное место с похожим кодом — не импортирует
+  из `types`, риска нет), ручной прогон функции в node (кириллица+подчёркивание+переполнение 60).
+- **Осталось (не в этой сессии):** подтянуть файл в ветки `web-seller`/`web-buyer` (git-топология,
+  main не мержится туда автоматически) и переключить `onboarding/page.tsx` на импорт из `types`.
+  `web-seller` сейчас на hold — не трогал.
+- **Файлы:** `packages/types/src/slug.ts`, `analiz/tasks.md` (исправлена неточная запись).
+
+## 2026-08-02 (Claude) — TMA-BECOME-SELLER-GAP-001: seller без магазина попадал на пустой дашборд
+
+- **Важность:** 🔴 · **Дата:** 02.08.2026 · **Домен:** `apps/tma`
+- **Root cause:** `ProfilePage.handleBecomeSeller` → `applyAsSeller()` (`POST /seller/apply`) только
+  апгрейдит role BUYER→SELLER, магазин не создаёт. `SellerGuard` (`App.tsx:86-92`) проверял только
+  `role`, не наличие магазина — seller без стора попадал на `/seller` (DashboardPage), которая тихо
+  глотала ошибки своих fetch'ей (`Promise.allSettled`) и показывала пустой дашборд без единой подсказки.
+- **Фикс:** `SellerLayout` (`App.tsx`) уже резолвил `storeId` через `resolveStoreIdForSeller()` для
+  websocket-биндинга (`TMA-SELLER-WS-NOTIFY-001`) — переиспользовал тот же вызов (без нового запроса):
+  если `storeId` пуст и текущий путь не `/seller/store`, редиректим туда (`navigate(..., {replace:true})`).
+  `/seller/store` (`StorePage.tsx`) уже умеет рендерить форму создания при 404 — просто туда никто не вёл.
+  Решение (в) из вариантов задачи — минимальное изменение, без правки ProfilePage/DashboardPage.
+- **Проверено:** `tsc -b` + `vite build` чисто.
+- **Файлы:** `apps/tma/src/App.tsx` (SellerLayout).
+
+## 2026-08-01 (Claude) — PIPELINE-TEST-001: полный Railway-like прогон apps/api перед пушем
+
+- **Важность:** 🟡 · **Дата:** 01.08.2026 · **Домен:** apps/api, docker-compose.yml
+- **Контекст:** просили не просто `docker build`, а полный пайплайн-тест "по меркам
+  билдинга в Railway" перед пушем кода #5 (INTEG-RAOS-002a). Использовал существующий
+  `docker-compose.yml` ("Локальная Railway-like среда") — postgres+redis+api, тот же
+  `apps/api/Dockerfile`, что и в `apps/api/railway.toml` (`builder=DOCKERFILE`).
+- **Нашёл и починил 2 реальных бага локального пайплайна (не в моём коде #5):**
+  1. `apps/api/start.sh` на диске был в CRLF (Windows `core.autocrlf=true` конвертировал
+     при чекауте) → `sh` внутри alpine падал на `set -e` ("illegal option"), контейнер
+     уходил в вечный crash-loop. Сам git-блоб (`git show HEAD:...`) — чистый LF, значит
+     **на Railway (чекаут с GitHub на Linux) это НЕ воспроизводится** — чисто локальный
+     Windows-артефакт. Восстановил файл из git (`git show HEAD:... > start.sh`) —
+     `git diff` пустой, реального изменения нет.
+  2. `docker-compose.yml` никогда не задавал `APP_URL`, а `env.validation.ts:12` требует
+     его (`Joi.required()`, добавлено при TMA-PHOTO-UPLOAD-DIAG-001) → контейнер падал
+     на старте с "Config validation error". На Railway переменная задана в дашборде —
+     прод не затронут, это пробел именно локального стенда. Добавил
+     `APP_URL: http://localhost:3000` в `docker-compose.yml`.
+- **После фиксов — полный цикл на реальных Postgres 16 + Redis 7:**
+  `prisma migrate deploy` — все 55 миграций применились чисто на свежей БД → Nest
+  поднялся, все роуты замаплены (включая 4 новых partner-эндпоинта из #5) → healthcheck
+  контейнера `healthy` (тот же путь `/api/v1/health`, что у Railway) → smoke-test:
+  `GET /health/live` 200, все 4 partner-эндпоинта без ключа → 401, с мусорным ключом →
+  корректный `401 {"code":"UNAUTHORIZED"}` JSON (не 500-крэш).
+- **Попутный security-note (не чинил, вне скоупа):** контейнер `runner`-стадии бежит от
+  root (`whoami` → root, нет `USER` в Dockerfile) — стандартная OWASP-рекомендация не
+  запускать процесс от root в контейнере. Не трогал — требует отдельной проверки
+  (pg_dump/backup-скрипт, права на volume), не тривиальный точечный фикс.
+- **Файлы:** `docker-compose.yml` (+APP_URL), `apps/api/start.sh` (line-ending fix,
+  content идентичен HEAD — `git diff` пустой).
+- **Вывод:** код #5 полностью проходит Railway-эквивалентный build+migrate+start+
+  healthcheck цикл. Локальный стенд (`docker-compose.yml`) был неполным для двух
+  независимых от #5 причин — теперь исправен для будущих прогонов.
+
+## 2026-07-31 (Claude) — TMA-LIGHT-THEME-AUDIT-001: 4 бага светлой темы
+
+- **Важность:** 🟡 · **Дата:** 31.07.2026 · **Домен:** `apps/tma`
+- **Контекст:** аудит по запросу владельца ("белая тема слишком неудобная"). Нашёл 4
+  конкретных бага статическим анализом (grep + расчёт WCAG-контраста), не на глаз.
+- **Что сделано:**
+  1. `pages/seller/ChatPage.tsx:664` — поле ввода сообщения: было `color: '#fff'`
+     хардкодом на `var(--tg-surface-hover)` (в light = `#F5F5F5`, текст фактически
+     невидим при наборе). → `var(--tg-text-primary)`. У покупательского чата это
+     место уже было правильным — пропустили при миграции палитры 28.07.
+  2. `index.css` — `--tg-bottomnav-shadow` не был определён нигде → `BottomNav.tsx`
+     всегда падал на inline-фоллбек `rgba(0,0,0,0.40)`, тюненный под тёмный фон.
+     В light тень нижней навигации была в ~6.7 раза тяжелее чем `--tg-card-shadow`.
+     Добавил токен в оба theme-блока (`dark: 0.40`, `light: 0.06`, как у card-shadow).
+  3. `--tg-text-dim`: было `#A3A3A3` в light — контраст на белом 2.53:1 (WCAG AA
+     требует 4.5:1 для текста). Используется как реальный текст (`.section-label` и
+     т.п.), не декоративно. → `#6E6E6E` (~5.1:1). Синхронизировано в `lib/themes.ts`
+     (не используется в рантайме, но держим как честный референс).
+  4. `.scroll-fade-x::after` — градиент затухания был `var(--tg-bg) → rgba(15,15,15,0)`
+     хардкодом. В dark совпадало (bg = rgb(15,15,15), чистое затухание). В light
+     (bg = белый) градиент шёл в прозрачный ЧЁРНЫЙ → серая муть на середине вместо
+     исчезновения в белое. Добавил `--tg-bg-rgb` (raw R,G,B без alpha) на тему,
+     переключил на `rgba(var(--tg-bg-rgb), 0)` — теперь работает в обеих темах одним
+     правилом.
+- **Проверено:** `tsc -b` чисто, `vite build` чисто. Живой браузер НЕ проверял —
+  TMA требует Telegram WebApp контекст (initData/JWT), локального dev-mock нет,
+  поднимать полноценную авторизованную сессию ради 4 CSS-токенов не стал.
+  Верификация — расчёт контраста (WCAG формула) + чистая сборка.
+- **Файлы:** `apps/tma/src/{index.css,lib/themes.ts,pages/seller/ChatPage.tsx}`
+- **Что НЕ трогал (отдельная, более крупная находка при аудите, не входила в
+  запрошенные 4):** белый текст (`color:'#fff'`) на золотом `var(--tg-accent)` фоне
+  в нескольких местах (`StorePage.tsx:375`, `OrdersPage.tsx:619`,
+  `BottomNav.tsx:115` и др.) — контраст ~2.1:1, тоже не проходит WCAG AA, но это
+  не light-theme-specific (тот же баг в обеих темах) и затрагивает design-system
+  паттерн кнопок сразу в нескольких компонентах — не стал трогать без отдельного ОК.
+
+## 2026-07-31 (Claude) — INTEG-RAOS-002a: Partner API update/stock/delete (issue #5)
+
+- **Важность:** 🔴 · **Дата:** 31.07.2026 · **Домен:** `apps/api/src/modules/partner`
+- **Контекст:** RAOS-сторона интеграции (`integrations/savdo/`) уже задеплоена (PR #426, Ибрат),
+  но у нас в Partner API был только `create` товара — RAOS'овские `updateProduct`/`updateStock`/
+  `deleteProduct` (см. `SavdoOutboundService` в raos-pos-cosmetics) слали запросы в никуда.
+- **Что сделано:**
+  - `PATCH /api/v1/partner/products/:id` — частичный update (name→title, price→basePrice,
+    description; переиспользует `UpdateProductUseCase`, значит и его валидацию цены).
+    `imageUrl` — замена обложки (скачать→залить→новая primary→удалить старую строку).
+    `isActive` — маппинг на state machine (`ChangeProductStatusUseCase`), идемпотентно
+    (no-op если товар уже в целевом статусе — партнёр может ретраить).
+  - `PATCH /api/v1/partner/products/:id/stock` — прямой `Product.totalStock` (партнёрские
+    товары создаются без вариантов → single-SKU режим, см. `product-presenter.service.ts`).
+    Явный 422, если у товара позже завели варианты (сток тогда per-variant, поле никто не
+    читает) — не молчим, объясняем.
+  - `DELETE /api/v1/partner/products/:id` — авто-архивирует ACTIVE перед soft-delete (INV-P04
+    запрещает удалять активный товар напрямую, RAOS не обязан знать наш state machine).
+    Отвечает `200 { id, deleted: true }`, не `204` — RAOS-клиент всегда делает
+    `await response.json()`, пустое тело сломало бы его парсинг.
+  - DRY: вынес download+anti-SSRF-валидацию фото из `PartnerCreateProductUseCase` в общий
+    `partner/utils/partner-image.util.ts` (второй потребитель — update).
+  - `ProductsModule`: экспортировал `UpdateProductUseCase` (не был exported).
+  - Тесты: 17 новых кейсов в `partner.use-cases.spec.ts` (27 итого в файле, все зелёные),
+    `tsc --noEmit` чист.
+- **Файлы:** `apps/api/src/modules/partner/{partner.controller.ts,partner.module.ts,
+  dto/partner-update-product.dto.ts,dto/partner-update-stock.dto.ts,
+  use-cases/partner-update-product.use-case.ts,use-cases/partner-update-stock.use-case.ts,
+  use-cases/partner-delete-product.use-case.ts,use-cases/partner-create-product.use-case.ts,
+  utils/partner-image.util.ts,use-cases/partner.use-cases.spec.ts}`,
+  `apps/api/src/modules/products/{products.module.ts,repositories/products.repository.ts}`
+  (добавлен `setTotalStock`), `docs/contracts/partner-api-raos.md`.
+- **⚠️ Найден баг НЕ у нас, а на RAOS-стороне** (не чинил — чужой репозиторий/зона, сообщить
+  Ибрату): `SavdoOutboundService.createProduct` в raos-pos-cosmetics ожидает
+  `{ data: { product: { id } } }`, но наш ответ плоский `{ id, ... }` — `res.product.id` упадёт
+  при первом реальном push товара. Пока не проявляется, т.к. `savdoVisible` нигде не
+  проставляется (issue #427 на их стороне). Записано в `analiz/tasks.md` (`INTEG-RAOS-002b`).
+- **Что осталось:** issue #6 (order-export webhook, наш → RAOS) — отдельная задача,
+  `INTEG-RAOS-002b` в `analiz/tasks.md`.
+
 ## 2026-07-30 (Юсуф/Claude) — LANDING-PRICING-FALSE-CLAIMS-001: лендинг обещал фичи, которых нет в коде
 
 - **Важность:** 🔴 · **Дата:** 30.07.2026 · **Домен:** `apps/landing` (зона Юсуфа)
@@ -50,6 +195,59 @@ JSDoc-комментарии `plan-limit-guard.service.ts:25`. Фактичес�
 **только ценой**: лимиты товаров и заказов у обоих `null`. Studio за 399 000 продаёт то же
 самое, что Pro за 149 000. Это вопрос к монетизации (зона Азима), а не к тексту лендинга —
 здесь оставлены только «приоритетная поддержка» и «API-доступ» как наименее ложные.
+
+## 2026-07-28 (Claude) — AUTH-OTP-ERROR-MESSAGE-SWALLOWED-001: непонятная ошибка при TELEGRAM_NOT_LINKED
+
+- **Важность:** 🟡 · **Дата:** 28.07.2026 · **Домен:** `apps/web-seller`, `apps/web-buyer`
+- **Root cause:** OTP в проекте идёт только через Telegram-бот (`@maxsavdo_bot`, никакого SMS/Eskiz).
+  `apps/api/src/modules/auth/services/otp.service.ts:118-124` корректно кидает `TELEGRAM_NOT_LINKED`
+  с явным текстом ("Откройте @maxsavdo_bot и поделитесь номером телефона"), если у телефона ещё нет
+  привязанного `telegramId` — то есть для СОВСЕМ нового юзера, который ни разу не писал боту. Но
+  фронтенд не показывал этот текст:
+  - `apps/web-seller/src/app/(auth)/login/page.tsx:70-71` (было) — брал `error.message` (сырой axios,
+    "Request failed with status code 400") вместо `error.response.data.message`.
+  - `apps/web-buyer/src/components/auth/OtpGate.tsx:32-33,41-42` (было) — вообще хардкодил generic
+    текст на любую ошибку через пустой `catch {}`, backend-сообщение никогда не доходило до экрана.
+  Итог: новый продавец/покупатель, зашедший напрямую на web (минуя бота), утыкался в бесполезную
+  ошибку без единой подсказки, что регистрация физически невозможна без предварительного открытия бота.
+- **Что сделано:** в обоих файлах добавлен unwrap `err.response?.data?.message ?? err.message ?? fallback`
+  (паттерн уже был в `apps/web-seller/.../chat/page.tsx:167-172`, просто скопирован в auth-флоу). Плюс
+  добавлена явная ссылка на `@maxsavdo_bot` рядом с ошибкой на шаге ввода телефона в обоих приложениях
+  (раньше ссылка на бота была только на шаге ввода кода, т.е. уже после того как код физически не
+  мог уйти).
+- **Не сделано:** глубокая переработка регистрационного флоу (например, принудительный редирект на
+  deep-link бота вместо формы на сайте) — не просили, обошлись минимальным UX-фиксом ошибки.
+
+## 2026-07-28 (Claude) — BRAND-PALETTE-CANON-LANDING-001: перевод shop/seller/TMA под палитру лендинга
+
+- **Важность:** 🟡 · **Дата:** 28.07.2026 · **Домен:** `apps/web-buyer`, `apps/web-seller`, `apps/tma`,
+  `docs/brand`, `docs/design`
+- **Контекст:** владелец указал, что после рескина `apps/landing` (27.07, коммит `661e9ec`, зона
+  Юсуфа) три остальных клиента визуально разошлись с лендингом. Проверка показала обратное тому,
+  что предполагалось: web-buyer/web-seller/TMA были согласованы МЕЖДУ СОБОЙ и с задокументированной
+  `docs/brand/maxsavdo-brand-v2.md` (`#0A0A0A`/`#C9A876`, eyedropper от 25.05.2026) — расхождение
+  было только в лендинге (`#0F0F0F`/`#E8A552`). Владелец подтвердил явно: **палитра лендинга — новый
+  канон**, привести остальное под неё.
+- **Что сделано:**
+  1. Rich Black `#0A0A0A → #0F0F0F`, Champagne Gold `#C9A876 → #E8A552` — заменено во всех
+     hex/rgba-вхождениях в `apps/web-buyer`, `apps/web-seller`, `apps/tma` (globals.css, icon/apple-icon/
+     opengraph-image, manifest.ts, MaxsavdoLogo/Mark, index.css, styles.ts, themes.ts и т.д. — 23 файла).
+  2. Hover/light-состояния золота разведены по смыслу (раньше был один "Champagne Gold Light"):
+     **`#D4922E`** (темнее — filled-кнопки на светлом фоне, ровно формула из
+     `apps/landing/tailwind.config.ts`) и **`#FFC574`** (светлее — только там, где gold используется
+     как ТЕКСТ на тёмном фоне: `--tg-accent-text` dark theme, SELLER-role accent в TMA, который по
+     дизайну должен быть ярче BUYER — если бы взял везде `#D4922E`, SELLER стал бы темнее вместо ярче,
+     а текст-акцент на тёмном фоне потерял бы контраст). Посчитано сохранением исходной дельты
+     осветления `C9A876→E8C898`, применённой к новому базовому gold.
+  3. `docs/brand/maxsavdo-brand-v2.md` §2 (Core) и §5 (tokens) — обновлён HEX, добавлена запись v3
+     с датой/причиной смены канона. `docs/design/maxsavdo-design-v2.md` — синхронизированы ссылки на HEX.
+  4. Попутно пофикшен `debug/hooks/pre-edit-check.ps1` — блокировал правки в `apps/web-buyer`/
+     `web-seller` по устаревшему правилу зон (до реорганизации 27.07.2026 v2); поправлен под актуальное
+     (`apps/landing` = зона Юсуфа), плюс исправлен захардкоженный путь `debug/savdo-builder` →
+     `debug/projects/savdo-builder`.
+- **Не тронуто:** `apps/landing` (источник канона, зона Юсуфа), `apps/admin` (не упоминался владельцем).
+- **Проверка:** `grep` подтвердил отсутствие старых hex/rgba во всех файлах; не собирал/не деплоил
+  (деплой отдельным решением владельца — прод, без staging).
 
 ## 2026-07-27 (Claude) — LANDING-SEO-FIX-001: технический SEO лендинга (P0/P1 из аудита 26.07)
 

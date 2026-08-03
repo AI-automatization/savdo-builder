@@ -15,28 +15,28 @@ export type FooterDict = {
 type FooterProps = {
   locale: Locale;
   dict: FooterDict;
+  nav: {
+    cases: string;
+    blog: string;
+    about: string;
+    contacts: string;
+    support: string;
+    faq: string;
+  };
 };
 
 const BOT_URL = 'https://t.me/maxsavdo_bot';
 const EMAIL = 'hello@maxsavdo.uz';
 
-export default function Footer({ locale, dict }: FooterProps) {
+export default function Footer({ locale, dict, nav }: FooterProps) {
   const year = new Date().getFullYear();
   const home = locale === 'uz' ? '/' : '/ru';
+  const p = (path: string) => (locale === 'uz' ? `/${path}` : `/ru/${path}`);
   // Sitewide links to the content pages. A page reachable only from the sitemap gets
   // crawled late and treated as peripheral; a footer link on every page does not.
+  // The guides slug differs per locale (qollanma / rukovodstva), so `p()` can't build it.
   const guidesHref = locale === 'uz' ? '/qollanma' : '/ru/rukovodstva';
-  const faqHref = locale === 'uz' ? '/faq' : '/ru/faq';
-  const resourceLinks =
-    locale === 'uz'
-      ? [
-          { href: guidesHref, label: 'Qoʻllanmalar' },
-          { href: faqHref, label: 'Savollar va javoblar' },
-        ]
-      : [
-          { href: guidesHref, label: 'Руководства' },
-          { href: faqHref, label: 'Вопросы и ответы' },
-        ];
+  const guidesLabel = locale === 'uz' ? 'Qoʻllanmalar' : 'Руководства';
 
   return (
     <footer
@@ -48,8 +48,8 @@ export default function Footer({ locale, dict }: FooterProps) {
         WebkitBackdropFilter: 'blur(12px)',
       }}
     >
-      <div className="mx-auto grid w-full max-w-content gap-10 px-4 py-14 sm:px-6 lg:grid-cols-3 lg:gap-12 lg:px-8">
-        <div>
+      <div className="mx-auto grid w-full max-w-content gap-10 px-4 py-14 sm:px-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8 lg:px-8">
+        <div className="sm:col-span-2 lg:col-span-1">
           <Link href={home} className="flex items-center gap-2.5" aria-label="MaxSavdo">
             <Image src="/logo-maxsavdo.svg" alt="MaxSavdo" width={34} height={34} />
             <span className="text-lg font-bold tracking-tight text-brand-text">MaxSavdo</span>
@@ -61,19 +61,24 @@ export default function Footer({ locale, dict }: FooterProps) {
 
         <div>
           <h4 className="text-xs font-semibold uppercase tracking-widest text-brand-muted">
-            {dict.resources}
+            {nav.about}
           </h4>
           <ul className="mt-4 flex flex-col gap-3 text-sm">
-            {resourceLinks.map((link) => (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className="text-brand-muted transition-colors hover:text-brand-accent"
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
+            <li><Link href={p('about')} className="text-brand-muted transition-colors hover:text-brand-accent">{nav.about}</Link></li>
+            <li><Link href={p('cases')} className="text-brand-muted transition-colors hover:text-brand-accent">{nav.cases}</Link></li>
+            <li><Link href={p('blog')} className="text-brand-muted transition-colors hover:text-brand-accent">{nav.blog}</Link></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-widest text-brand-muted">
+            {nav.support}
+          </h4>
+          <ul className="mt-4 flex flex-col gap-3 text-sm">
+            <li><Link href={guidesHref} className="text-brand-muted transition-colors hover:text-brand-accent">{guidesLabel}</Link></li>
+            <li><Link href={p('faq')} className="text-brand-muted transition-colors hover:text-brand-accent">{nav.faq}</Link></li>
+            <li><Link href={p('support')} className="text-brand-muted transition-colors hover:text-brand-accent">{nav.support}</Link></li>
+            <li><Link href={p('contacts')} className="text-brand-muted transition-colors hover:text-brand-accent">{nav.contacts}</Link></li>
           </ul>
         </div>
 

@@ -12,6 +12,8 @@ export type HeaderDict = {
     faq: string;
     guides: string;
     start: string;
+    cases: string;
+    blog: string;
   };
 };
 
@@ -41,8 +43,14 @@ export default function Header({
 }: HeaderProps) {
   const otherLocale: Locale = locale === 'uz' ? 'ru' : 'uz';
   const otherHref = switchHref ?? (otherLocale === 'uz' ? '/' : '/ru');
+  const home = locale === 'uz' ? '/' : '/ru';
+  const p = (path: string) => (locale === 'uz' ? `/${path}` : `/ru/${path}`);
+  // Anchors have to point at the homepage from every sub-page. Pages that know their
+  // own base pass it explicitly; the rest fall back to `home` rather than to '', which
+  // would emit a bare `#how` and scroll to nothing on About/Blog/Cases/Support.
+  const anchors = anchorBase || home;
+  // Locale-specific slug, so `p()` can't build it.
   const guidesHref = locale === 'uz' ? '/qollanma' : '/ru/rukovodstva';
-  const faqHref = locale === 'uz' ? '/faq' : '/ru/faq';
 
   return (
     <header
@@ -77,14 +85,16 @@ export default function Header({
           aria-label="primary"
         >
           {[
-            { href: `${anchorBase}#how`, label: dict.nav.how },
-            { href: `${anchorBase}#features`, label: dict.nav.features },
-            { href: `${anchorBase}#stores`, label: dict.nav.stores },
-            { href: `${anchorBase}#pricing`, label: dict.nav.pricing },
-            // Real URLs, not anchors: these two are crawlable pages of their own and
-            // the internal links are what gets them discovered.
+            { href: `${anchors}#how`, label: dict.nav.how },
+            { href: `${anchors}#features`, label: dict.nav.features },
+            { href: `${anchors}#stores`, label: dict.nav.stores },
+            { href: `${anchors}#pricing`, label: dict.nav.pricing },
+            // Real URLs, not anchors: these are crawlable pages of their own and the
+            // internal links are what gets them discovered.
             { href: guidesHref, label: dict.nav.guides },
-            { href: faqHref, label: dict.nav.faq },
+            { href: p('cases'), label: dict.nav.cases },
+            { href: p('blog'), label: dict.nav.blog },
+            { href: p('faq'), label: dict.nav.faq },
           ].map((item) => (
             <a
               key={item.href}

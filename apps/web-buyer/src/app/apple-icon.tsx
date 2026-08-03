@@ -9,7 +9,7 @@ export default function AppleIcon() {
     (
       <div
         style={{
-          background: '#0A0A0A',
+          background: '#0F0F0F',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -26,7 +26,7 @@ export default function AppleIcon() {
             top: 28,
             width: 70,
             height: 44,
-            border: '6px solid #C9A876',
+            border: '6px solid #E8A552',
             borderBottom: 'none',
             borderRadius: '100% 100% 0 0 / 100% 100% 0 0',
           }}
@@ -36,7 +36,7 @@ export default function AppleIcon() {
           style={{
             fontSize: 150,
             fontWeight: 900,
-            color: '#C9A876',
+            color: '#E8A552',
             lineHeight: 1,
             marginTop: 24,
             letterSpacing: -6,

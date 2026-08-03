@@ -61,7 +61,7 @@ export default function RuGuidesIndexPage() {
         />
       </main>
       <FinalCta dict={dict.finalCta} ctaLabel={dict.hero.ctaPrimary} />
-      <Footer locale={locale} dict={dict.footer} />
+      <Footer locale={locale} dict={dict.footer} nav={dict.nav} />
     </>
   );
 }

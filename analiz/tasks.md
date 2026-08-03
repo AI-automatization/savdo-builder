@@ -169,6 +169,70 @@
 - **Файлы:** `apps/web-buyer/src/app/sitemap.ts`, `apps/api` storefront sitemap use-case,
   `packages/types/src/api/storefront.ts`.
 
+## 🔴 [SEO-AUDIT-002] web-buyer: sitemap не включает товары/магазины + нет priority на LCP-картинках
+- **Домен:** apps/web-buyer · **Кто взял:** не назначено
+- **Контекст:** SEO-аудит 02.08.2026 (полный отчёт — Artifact, см. Obsidian/чат) по 6 факторам
+  (EEAT/Search Intent/YMYL/CWV/Microdata/Behavioral). Два P1-находки:
+  1. `apps/web-buyer/src/app/sitemap.ts` отдаёт только 5 статических URL — ни одного товара/магазина.
+     Backend уже готов: `GET /storefront/sitemap` (`products.repository.ts:503
+     findAllPublicForSitemap()`) возвращает id+updatedAt+slug всех ACTIVE товаров — просто не
+     вызывается с фронта. Нужно ~15-20 строк в sitemap.ts.
+  2. Ни один `<Image>` во всём web-buyer не использует `priority` (0 совпадений). Первая
+     картинка товара/магазина — вероятный LCP-элемент, без `priority` next/image грузит её
+     lazy, что напрямую бьёт по LCP.
+- **P2 (не блокер, но стоит сделать):** нет `web-vitals`/RUM вообще — CWV не измеряются на
+  реальном трафике; нет `AggregateRating`/`BreadcrumbList` в Product JSON-LD хотя данные в БД есть.
+- **Файлы:** `apps/web-buyer/src/app/sitemap.ts`, `apps/web-buyer/src/components/store/ProductCard.tsx`,
+  `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx` (JSON-LD).
+
+---
+
+## 🔴 [INTEG-RAOS-002b] Order-export webhook maxsavdo → RAOS (issue #6) — ⛔ ЗАБЛОКИРОВАНО, ждём Ибрата
+- **Домен:** apps/api (Checkout/Orders + новый outbound-клиент) · **Кто взял:** Полат
+- **Контекст:** 28-29.07.2026 — RAOS-сторона интеграции (`integrations/savdo/`) реализована,
+  прошла ревью Ибрата, **PR #426 смёржен и задеплоен на Railway**. Issue #5 (update/stock/delete
+  в Partner API) закрыт 31.07.2026 — см. `analiz/done.md` (`INTEG-RAOS-002a`).
+- **⛔ БЛОКЕР найден 31.07.2026 (прочитал реальный код RAOS-стороны, не issue-текст —
+  `gh` недоступен в окружении):** `POST /savdo/orders` на RAOS-стороне
+  (`savdo-order.service.ts:37-44`, raos-pos-cosmetics) резолвит `items[].productId` и
+  `sellerId` НАПРЯМУЮ как `WHERE id IN (...)` по СВОИМ таблицам (RAOS `Product.id`,
+  RAOS tenant id) — без fallback по SKU. Чтобы собрать такой body, нам нужны две вещи,
+  которых сейчас нет НИ У НАС, НИ НА ИХ СТОРОНЕ:
+  1. **RAOS-tenant (sellerId) для нашего стора.** `PartnerApiKey` (packages/db/schema.prisma:576)
+     не хранит внешний tenant id — нечем заполнить `sellerId` в body.
+  2. **RAOS product id для товаров, которые они же нам запушили.** Их
+     `SavdoOutboundService.createProduct` шлёт нам `{name,price,sku?,description?,imageUrl?,stock}`
+     — без своего id. А наш `PartnerCreateProductDto` не имеет поля для приёма внешнего id,
+     даже если бы они его прислали. Т.е. связки maxsavdo.productId ↔ raos.productId просто
+     не существует ни в одной БД.
+  - **Не чинил сам** — попросил владельца (Полат) переслать эту находку Ибрату, чтобы
+    решить на уровне контракта (кто добавляет какое поле) до реализации, а не гадать.
+    Готовый текст для пересылки — см. чат с Полатом 31.07.2026.
+- **Когда снимется блок:** после ответа Ибрата (или текста issue #6, если там это уже
+  предусмотрено иначе, чем я предположил по коду).
+- **Что осталось (issue #6, реализация после разблокировки):** слать заказы maxsavdo → RAOS на
+  `POST api.raos.uz/api/v1/savdo/orders` (RAOS уже принимает, идемпотентно через
+  `IntegrationOrderImport`, `@@unique([provider, externalOrderId])`). **Важно:**
+  `400 Insufficient stock` от RAOS = наш заказ надо отменять, НЕ ретраить.
+- **Блокер запуска (отдельно, со стороны RAOS):** RAOS ждёт от себя #427 — activation gate
+  `savdoVisible` (у них флаг видимости товара сейчас включается только напрямую в БД; они
+  делают чекбокс/API на своей стороне — это их задача, не наша).
+- **План запуска (со слов Ибрата):** их #427 (savdoVisible через API+админку) → наш #6 →
+  пилот на одном реальном магазине (товар обязательно с фото — без фото витрина не примет) →
+  полный круг товар→витрина→заказ→списание склада→чек.
+- **Ссылки:** Swagger RAOS-стороны `https://api.raos.uz/api/v1/savdo/docs`, полная схема
+  https://claude.ai/code/artifact/b13ba00c-e52d-4797-9753-9d14da42d933 (прислал Ибрат).
+- **⚠️ Известный баг на RAOS-стороне (не наша зона, но блокирует их create-flow):**
+  `SavdoOutboundService.createProduct` (raos-pos-cosmetics, `integrations/savdo/savdo-outbound.service.ts`)
+  распаковывает ответ как `res.product.id` после `json.data`-развёртки, но наш Partner API
+  отдаёт плоский JSON без `data`/`product`-обёртки (см. `docs/contracts/partner-api-raos.md`
+  и реальный `partner.controller.ts` — так было задокументировано с самого начала). Значит
+  `res.product.id` упадёт с TypeError на их стороне в момент первого реального push товара
+  (пока не бьёт, т.к. `savdoVisible` нигде не проставляется — см. issue #427). Надо сообщить
+  Ибрату отдельно, чинить у них, не у нас.
+
+---
+
 ## 🟠 [LEGAL-OFFER-CONTENT-GAPS-001] Оферта maxsavdo — не хватает разделов, обязательных по ст.16 Закона «Об э-коммерции» + рыночной норме
 - **Домен:** apps/web-buyer (Азим, файл) — но формулировки юридические, финальный текст
   нужно утвердить владельцу/юристу, не чисто техзадача · **Кто взял:** не назначено
@@ -291,28 +355,6 @@
 - **Что сделать:** в web-seller списке товаров дергать `search` вместо клиентского `.filter()`;
   debounce ~300ms; при активном поиске пагинация/лимит сохраняются.
 
-## 🔴 [TMA-BECOME-SELLER-GAP-001] TMA ProfilePage «Стать продавцом» — апгрейдит роль без создания магазина
-- **Домен:** apps/tma (Полат) · **Кто взял:** не назначено
-- **Контекст:** аудит онбординга 18.07.2026 (Азим/Claude) — расхождение между `ProfilePage.tsx:56-68`
-  и `SettingsPage.tsx:41-44`, оба реализуют кнопку «Стать продавцом» по-разному.
-  `ProfilePage.handleBecomeSeller` → `applyAsSeller()` (только role BUYER→SELLER) → `reauth()` →
-  `navigate('/seller')`, магазин НЕ создаёт. `SettingsPage.handleBecomeSeller` (как и web-buyer CTA
-  `(shop)/profile/page.tsx:287`) уводит в бот `t.me/maxsavdo_bot?start=become_seller`, где идёт полноценная
-  регистрация с созданием магазина (комментарий `TMA-HYBRID-SETTINGS-BECOMESELLER-012` в самом Settings
-  прямо описывает, что так и должно быть).
-- **Проблема:** `/seller` index-route (`DashboardPage.tsx`) не проверяет наличие магазина — только фетчит
-  `/seller/orders`+`/seller/products` через `Promise.allSettled`, ошибки глотаются молча. `SellerGuard`
-  (`App.tsx:86-92`) проверяет только `role`, не `hasStore`. Продавец без магазина попадает на пустой
-  дашборд без единой подсказки — форма создания магазина есть только на `/seller/store`
-  (`SellerStorePage.tsx`, рендерится при 404 фетча стора, поля name/city/telegram), но пользователя туда
-  никто не ведёт.
-- **Варианты фикса:** (а) убрать флоу из ProfilePage, оставить только bot-flow как в Settings;
-  (б) после `applyAsSeller()` делать `navigate('/seller/store')` вместо `/seller`; (в) добавить
-  `hasStore`-редирект в `DashboardPage`/`SellerLayout` — по образцу web-seller
-  `(dashboard)/layout.tsx:225` (`router.replace('/onboarding')` при 404 стора).
-- **Файлы:** `apps/tma/src/pages/buyer/ProfilePage.tsx`, `apps/tma/src/pages/seller/DashboardPage.tsx`,
-  `apps/tma/src/App.tsx` (SellerLayout/SellerGuard, строки 86-92, 113-136).
-
 ## 🟡 [ONBOARD-SLUG-TRANSLIT-DEDUP-001] Транслитерация кириллицы в slug — API-сторона ОТКАЧЕНА (сломала прод), ждёт web-seller (Азим)
 - **Домен:** apps/web-seller (Азим) + apps/api/telegram (Полат/Claude)
 - **⚠️ 23.07.2026 — откачено:** изначально вынес `toLatinSlug()` в `packages/types/src/slug.ts` и
@@ -340,17 +382,26 @@
      живущий в БД. При переходе на `toLatinSlug` — обязательно `toLatinSlug(name, 60)`, не default.
      (Ремарка: старая запись "toSlug разрешал `\w`/подчёркивание" — неточна, локальный regex
      `[^a-z0-9\s-]` подчёркивание не пропускает — тот же класс неточности, что в `SEO-DOC-DRIFT-001`.)
-  3. **Таблицы транслитерации не совпадают, не только длина:** `й→y`/`щ→sch` (web-seller, live в
-     проде) vs `й→j`/`щ→shch` (packages/types). Версия из packages/types писалась для API-фичи,
-     которую откатили **до продакшена** (см. запись выше) — она никогда не обрабатывала реальный
-     трафик. Значит канонической для дедупа должна стать web-seller-таблица, не наоборот.
-- **🔲 Полату:** обновить `packages/types/src/slug.ts` — таблицу под `й→y`/`щ→sch` (как в
-  web-seller, уже в БД) и держать дефолт `maxLength` осознанным (stores нужен 60). После этого —
-  подтянуть файл в ветки `web-seller`/`web-buyer`, и только тогда `onboarding/page.tsx` можно
-  безопасно переключить на `import { toLatinSlug } from 'types'`.
-- **Азим/Claude сознательно НЕ трогали `packages/types` и не мержили ветки** — вне зоны
-  (`packages/types — Полат пишет`), локальная копия в `onboarding/page.tsx` уже верна и
-  проверена продом, менять её на нерабочий импорт сейчас было бы регрессом.
+  3. **⚠️ ИСПРАВЛЕНО 02.08.2026 — пункт выше был неточным.** Перечитал оба файла напрямую
+     (не по памяти): `apps/web-seller/.../onboarding/page.tsx:18-21` и тогдашний
+     `packages/types/src/slug.ts` — таблицы транслитерации **на самом деле идентичны**,
+     `й→j`/`щ→shch` в обоих. Записи 25.07 про "`й→y`/`щ→sch` в web-seller" не подтвердились —
+     похоже, кто-то принял желаемое/предположение за факт. Реальные различия были только в:
+     (а) дефолт `maxLength` — 40 (packages/types) vs хардкод 60 (web-seller);
+     (б) char-filter regex — `[^a-z0-9\s-]` (packages/types, без подчёркивания) vs `[^\w\s-]`
+     (web-seller, подчёркивание пропускает);
+     (в) web-seller дополнительно стрипает leading/trailing `-` (`^-+|-+$`), packages/types — нет.
+- **✅ 02.08.2026 (Полат/Claude): `packages/types/src/slug.ts` обновлён** — дефолт `maxLength`
+  теперь 60 (матчит исторический контракт `SlugService`/web-seller, не 40), char-filter выровнен
+  на `[^\w\s-]` (безопаснее для уже живых в БД slug с подчёркиванием), добавлен leading/trailing
+  hyphen-strip. Таблицу транслитерации **не трогал** — она уже совпадала. Проверено: `tsc`
+  (`apps/api`) чист (0 консьюмеров `toLatinSlug` из `types` сейчас — только `apps/api`'s
+  independent local copy в `telegram-demo.handler.ts`, не связан импортом), + ручной прогон
+  функции в node на кириллице+подчёркиванием+переполнением длины.
+- **🔲 Осталось (не делал — git-топология/чужая ветка):** подтянуть обновлённый `slug.ts` в ветки
+  `web-seller`/`web-buyer` (main туда не мержится автоматически) и только тогда переключить
+  `onboarding/page.tsx` на `import { toLatinSlug } from 'types'`. `web-seller` сейчас на hold
+  (Азим работает параллельно) — не трогал ни ветку, ни файл.
 
 ---
 
@@ -1101,10 +1152,10 @@ profile под Notifications, добавлен в sitemap. Деталь — `don
   watch'ит `apps/admin/**, packages/types/**, packages/ui/**` (Dockerfile
   копирует `packages/` целиком + отдельно объявляет `package.json` types/ui —
   совпадает). Расхождение из note 12.07 больше не актуально.
-  **Осталось:** п.8 (алертинг = INFRA-UPTIME-ALERTS-001, дубль), CODEOWNERS
-  (нужен GitHub-handle Полата — не найден автоматически, git author =
-  `ogerz3 <polatbekismoilov17@gmail.com>`, но это не обязательно GitHub login;
-  нужно подтверждение).
+  **🆕 25.07 (Claude) — CODEOWNERS создан:** `.github/CODEOWNERS` с `@ogerz3` (git-author
+  handle) для всех трёх `apps/*/railway.toml`. Если `ogerz3` — не реальный GitHub login,
+  поправить владельца одной строкой.
+  **Осталось:** п.8 (алертинг = INFRA-UPTIME-ALERTS-001, дубль — внешний сервис).
 - **Контекст:** инцидент `DEVOPS-RAILWAY-MULTI-DOWN-2026-05-18` (см. `analiz/logs.md`).
   18.05 одновременно offline: `savdo-api` (краш по ETIMEDOUT от ioredis →
   исчерпан `restartPolicyMaxRetries=3`), `telegram-app` (build FAILED, Railpack
@@ -1284,6 +1335,55 @@ root cause ещё не подтверждён.
 `repositories/checkout.repository.ts`.
 
 **Подробности:** `analiz/logs.md` под `[2026-05-15] [API-CHECKOUT-CONFIRM-500-001]`.
+
+**🆕 26.07 (Claude) — попытка живой проверки, заблокирована на входе:**
+на проде `shop.maxsavdo.uz` сейчас 0 товаров во всех магазинах (старый тест-стор
+`azim-mnx4na25` — 404, единственный живой верифицированный магазин — 0 товаров).
+Пытался создать один синтетический тестовый товар для прогона чекаута:
+- `packages/db/prisma/seed.ts` создаёт `test-store` со статусом `PENDING_REVIEW` —
+  даже если прогнать его на проде, магазин не станет видимым на сторфронте без
+  approve (нужен admin), плюс у меня нет DATABASE_URL от прод-БД (только
+  `apps/api/.env.test` → `localhost:5433`, локальная тестовая БД).
+- Прямой POST `/products` требует JWT продавца — тестовых seller-credentials для
+  прода в репо нет (сид создаёт учётки только в локальной/dev БД).
+- Партнёрский `X-Api-Key` (`PARTNER-API-RAOS-001`) привязан к реальному магазину
+  RAOS — использовать его для теста нельзя (чужие живые данные).
+- Admin-панель (`adminsb.up.railway.app`) требует MFA-сессию Полата — нет доступа.
+**Итог:** без прод-DATABASE_URL или тестовых seller-credentials/доступа в admin
+я не могу создать проверяемый товар безопасно. Задача остаётся открытой,
+не закрываю. Нужно решение владельца: либо выдать тестовые credentials/доступ,
+либо approve тестового стора через admin вручную, либо ждать реальный товарный
+фид (RAOS).
+
+**🆕 26.07 (Claude) — доступ выдан, прогресс до фото товара:** владелец залогинился
+в admin (MFA) и выдал тестовый Telegram-аккаунт (номер, оканч. на `4840748`, роль
+Покупатель, уже был в БД). Через уже открытую сессию `web.telegram.org` (аккаунт
+уже был залогинен в браузере, новых credentials не вводил) прошёл реальный
+seller-onboarding бота `@maxsavdo_bot` от лица этого аккаунта:
+1. ✅ Стать продавцом → анкета 1-4 (имя, магазин "ТЕСТ - удалить", описание
+   skip, условия приняты) → магазин создан, slug `test-udalit-ms1gi4um`,
+   `https://shop.maxsavdo.uz/test-udalit-ms1gi4um`.
+2. ✅ Дошёл до создания товара в TMA (Товары → Добавить товар): название
+   "ТЕСТ - удалить", цена 10000 сум, категория Одежда→Мужская→Мужские футболки,
+   размер M, цвет Белый, остаток 10 — всё заполнено.
+3. ❌ **Заблокирован на фото товара.** Кнопка сабмита формы блокируется до
+   добавления фото ("ДОБАВЬТЕ ФОТО"), но это UI-only требование — в
+   `apps/api/src/modules/products/dto/create-product.dto.ts` поля `images`
+   вообще нет, бэкенд фото не требует. Проблема чисто в автоматизации: клик
+   "Добавить фото" в Mini App вызывает НЕ обычный `<input type=file>` внутри
+   iframe (там их 0 — проверено `document.querySelectorAll`), а нативный
+   file-dialog bridge самого Telegram Web (`appDialogsManager`), который
+   держит один глобальный `<input type=file>` в top-frame. `file_upload` на
+   этот инпут технически принимает файл, но внутренний обработчик Telegram
+   Web падает (`TypeError: Cannot read properties of undefined (reading
+   'resolve')` в консоли) — похоже ждёт state, который выставляется только
+   при реальном user-gesture клике, не программном. Это НЕ стена авторизации/
+   credentials — чисто автоматизационный лимит клиента Telegram Web.
+**Нужно от владельца:** самому (на любом устройстве, тем же аккаунтом
+`...4840748`) открыть `@maxsavdo_bot` → Товары → Добавить товар, повторить
+короткую форму (title/price/категория/размер/цвет — 30 сек) и один раз реально
+тапнуть "Добавить фото" — дальше сам прогоню чекаут. Черновик текущей формы не
+сохранён (не сабмитил), начинать по новой.
 
 ## ✅ P1 — `API-TYPES-PAYMENT-METHOD-COLLISION-001` — дубль экспорта `PaymentMethod` (ЗАКРЫТО 15.05.2026)
 
@@ -2286,6 +2386,14 @@ brand-v2 §Связано + `CLAUDE.md` (design-doc path → design-v2). Дет�
   - ❌ Снова 500 → взять из Railway-логов `savdo-api` JSON-строку
     `type:"exception"` с `path` содержащим `/checkout/confirm`, приложить
     stack trace в `analiz/logs.md` — Полат разберёт root cause.
+
+**🆕 26.07 (Claude, со стороны api/backend):** тест-стор `azim-mnx4na25` из
+прогона 21.05 на проде больше не существует (404), товаров нигде на площадке
+нет. Пытался поднять один тестовый товар без фронта/чужой зоны — заблокирован
+(нет прод-DATABASE_URL, нет тестовых seller-credentials для прода, admin
+требует MFA-сессию владельца). См. новую заметку в `API-CHECKOUT-CONFIRM-500-001`
+выше. OTP-степ (п.7) в любом случае требует реального Telegram-номера — эта
+часть проверки физически не автоматизируется без участия человека.
 
 ## ✅ `API-RESPONSE-TYPES-RECONCILE-001` — ПОЛНОСТЬЮ ЗАКРЫТО 19.05.2026
 

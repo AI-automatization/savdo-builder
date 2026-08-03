@@ -54,7 +54,7 @@ export default function RuFaqPage() {
         <FaqList title={dict.faq.title} items={dict.faq.items} headingLevel="h2" />
       </main>
       <FinalCta dict={dict.finalCta} ctaLabel={dict.hero.ctaPrimary} />
-      <Footer locale={locale} dict={dict.footer} />
+      <Footer locale={locale} dict={dict.footer} nav={dict.nav} />
     </>
   );
 }

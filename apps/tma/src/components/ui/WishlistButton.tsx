@@ -41,8 +41,8 @@ export function WishlistButton({ productId, variant = 'card' }: Props) {
   // BUG re-audit 04.06.2026: эмодзи ❤️/🤍 в Telegram WebApp рендерятся
   // системными шрифтами и часто получают фиолетовый/синий оттенок (Apple
   // Color Emoji vs Noto). Заменяем на SVG с brand-цветом Champagne Gold
-  // (#C9A876) для активного состояния — гарантированно одинаково везде.
-  const GOLD = '#C9A876';
+  // (#E8A552) для активного состояния — гарантированно одинаково везде.
+  const GOLD = '#E8A552';
   const iconSize = variant === 'page' ? 22 : 16;
 
   return (
@@ -53,8 +53,8 @@ export function WishlistButton({ productId, variant = 'card' }: Props) {
         width: size,
         height: size,
         borderRadius: variant === 'page' ? 14 : 10,
-        background: active ? 'rgba(201,168,118,0.16)' : 'var(--tg-surface-hover)',
-        border: `1px solid ${active ? 'rgba(201,168,118,0.50)' : 'var(--tg-border)'}`,
+        background: active ? 'rgba(232,165,82,0.16)' : 'var(--tg-surface-hover)',
+        border: `1px solid ${active ? 'rgba(232,165,82,0.50)' : 'var(--tg-border)'}`,
         backdropFilter: 'blur(14px)',
         WebkitBackdropFilter: 'blur(14px)',
         color: active ? GOLD : 'var(--tg-text-secondary)',
