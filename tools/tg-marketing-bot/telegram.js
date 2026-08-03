@@ -25,7 +25,6 @@ const REQUIRED = {
   TELEGRAM_BOT_TOKEN,
   GROQ_API_KEY,
   HF_API_TOKEN,
-  ADMIN_CHAT_ID,
   CHANNEL,
 };
 for (const [name, value] of Object.entries(REQUIRED)) {
@@ -37,6 +36,16 @@ for (const [name, value] of Object.entries(REQUIRED)) {
   }
 }
 
+// ADMIN_CHAT_ID ataylab majburiy emas: uni bilish uchun aynan shu botga /whoami yozish kerak,
+// majburiy qilinsa bot umuman ishga tushmaydi va ID'ni hech qachon bilib bo'lmaydi.
+// To'ldirilmaguncha bot faqat /whoami ga javob beradi, boshqa hamma buyruq yopiq.
+if (!ADMIN_CHAT_ID) {
+  console.warn(
+    "Diqqat: ADMIN_CHAT_ID to'ldirilmagan. Botga /whoami yozing — u sizga chat ID'ingizni qaytaradi,\n" +
+      "keyin uni .env ga qo'yib botni qayta ishga tushiring. Shu holatda boshqa buyruqlar ishlamaydi.",
+  );
+}
+
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
 bot.on("polling_error", (err) => {
@@ -44,6 +53,7 @@ bot.on("polling_error", (err) => {
 });
 
 function isAdmin(chatId) {
+  if (!ADMIN_CHAT_ID) return false;
   return String(chatId) === String(ADMIN_CHAT_ID);
 }
 
@@ -152,9 +162,15 @@ bot.onText(/^\/cancel$/, (msg) => {
   bot.sendMessage(chatId, "Bekor qilindi.");
 });
 
-// Admin o'z chat ID'sini bilib olishi uchun (ADMIN_CHAT_ID sozlash uchun kerak)
+// Admin o'z chat ID'sini bilib olishi uchun (ADMIN_CHAT_ID sozlash uchun kerak).
+// Bu buyruq ataylab hammaga ochiq — ADMIN_CHAT_ID hali ma'lum bo'lmaganda ham ishlashi kerak.
+// Xavfsizlik nuqtai nazaridan zararsiz: odam faqat o'zining chat ID'sini biladi.
 bot.onText(/^\/whoami$/, (msg) => {
-  bot.sendMessage(msg.chat.id, `Sizning chat ID'ingiz: ${msg.chat.id}`);
+  bot.sendMessage(
+    msg.chat.id,
+    `Sizning chat ID'ingiz: ${msg.chat.id}\n\n` +
+      `Shu raqamni .env faylidagi ADMIN_CHAT_ID ga qo'ying va botni qayta ishga tushiring.`,
+  );
 });
 
 console.log("Bot ishga tushdi, xabar kutilmoqda...");

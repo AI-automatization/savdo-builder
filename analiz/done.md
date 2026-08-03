@@ -8897,3 +8897,27 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
     реально существуют в `apps/web-buyer/public/`, 404 нет.
 - **Проверено:** `tsc --noEmit` EXIT 0 в обоих апах, `next build` чист (landing — все роуты
   статичные, включая новый `/llms.txt`... файл лежит в `public/`, не роут, отдаётся as-is).
+
+### ✅ [TG-AUTOPOST-001] Kanalga avtomatik post — sozlash uchun tayyor holatga keltirildi
+- **Важность:** 🟡
+- **Дата:** 01.08.2026
+- **Файлы:** `tools/tg-marketing-bot/{scheduler.js, telegram.js, get_chat_id.js, README.md, .env.example}`
+- **Что сделано:**
+  - Инфраструктура уже существовала (`scheduler.js`: Groq тема+текст → HF картинка → edge-TTS
+    голос → ffmpeg видео → sendVideo в @Maxsavdo_0; `setup_scheduled_task.ps1` для ежедневного
+    запуска). Не работала по двум причинам: нет `.env` (репо переклонирован 29.07, токены
+    были только в старом клоне) и задача `MaxSavdoDailyPost` не зарегистрирована в Task Scheduler.
+  - `REVIEW_MODE` (новый флаг в scheduler.js): при `true` готовый пост уходит админу, а не в
+    канал — админ пересылает вручную. Первую неделю рекомендовано держать `true`: `checkPostQuality`
+    ловит только механику (запрещённые фразы, CTA, хештеги, длина), тон бренда должен увидеть человек.
+  - Исправлена курица-и-яйцо: `telegram.js` требовал `ADMIN_CHAT_ID` при старте, но узнать его
+    можно только командой `/whoami` у этого же бота. Теперь переменная опциональна — без неё
+    работает только `/whoami`, остальные команды закрыты (`isAdmin()` возвращает false).
+  - Новый `get_chat_id.js` — читает `getUpdates` и печатает chat_id всех, кто писал боту
+    (нужен только `TELEGRAM_BOT_TOKEN`).
+  - `README.md` — как настроить, откуда брать каждый ключ, три способа получить `ADMIN_CHAT_ID`,
+    ограничения Task Scheduler (работает только при включённом ПК).
+  - `npm install` выполнен (199 пакетов), `node --check` чист, ffmpeg 8.1.2 в PATH.
+- **Осталось (не сделано, нужен Азим):** заполнить в `.env` `TELEGRAM_BOT_TOKEN`, `GROQ_API_KEY`,
+  `HF_API_TOKEN`, `ADMIN_CHAT_ID` → прогон `node scheduler.js` → регистрация ежедневной задачи.
+  Не проверено вживую: доступность `FLUX.1-schnell` через HF router на бесплатном токене.
