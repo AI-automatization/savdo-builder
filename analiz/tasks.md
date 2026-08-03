@@ -60,6 +60,63 @@
 - **Оговорка по зонам:** сам `apps/landing` — Юсуф, но правка Railway Variables это инфра.
   Кто именно жмёт — согласовать, задача здесь just to unblock, не про код.
 
+## 🔴 [LANDING-SEO-CONTENT-NOT-DEPLOYED-001] Гайды, FAQ и полный sitemap написаны, но в проде 404 — ветка не смержена
+- **Домен:** apps/landing (Юсуф) + merge/деплой · **Кто взял:** не назначено
+- **Кто нашёл:** Claude 03.08.2026 — живая проверка домена + чтение ветки
+  `seo/landing-aeo-geo-2026-07-30` (на ней же и лежит весь контент).
+- **Суть:** весь informational-слой написан и лежит в ветке, но **не в проде**. Ветка на
+  **6 коммитов впереди `origin/main`**, не смержена.
+- **Доказательства (живая проверка 03.08.2026):**
+  ```
+  maxsavdo.uz/faq              → 404
+  maxsavdo.uz/qollanma         → 404
+  maxsavdo.uz/ru/rukovodstva   → 404
+  maxsavdo.uz/sitemap.xml      → 2 URL (/ и /ru)
+  ```
+  При этом `apps/landing/src/app/sitemap.ts:36` генерирует ~12 URL (6 статических + гайды),
+  а `lib/guides.ts` содержит **6 гайдов** (3 темы × uz/ru), 23 FAQ-вопроса, 8 таблиц, 2 HowTo.
+- **Что именно не доехало:** темы попадают ровно в informational-интент, которого сейчас у
+  сайта нет вообще: `telegramda-dokon-ochish`, `telegram-dokon-narxi`,
+  `instagram-dokonni-telegramga-kochirish` (+ ru-двойники).
+- **Качество контента проверено, не «на глаз»:** `content_quality.py` (claude-seo) по uz-гайдам —
+  **80/100**, filler 0, AI-pattern 0. Продуктовые факты соблюдены (Telegram-only вход, без SMS,
+  один продавец = один магазин). То есть блокер чисто в доставке, не в тексте.
+- **Почему это первый приоритет по E-E-A-T:** ни одна другая правка не даёт сопоставимого
+  эффекта — контент уже оплачен работой, просто не отдаётся.
+- **Класс проблемы знакомый:** ср. `LANDING-BRANCH-STALE-002` и `LANDING-BRANCH-DRIFT-001`
+  в `logs.md` — ветки landing уже дважды молча расходились с прод-сборкой.
+- **Проверка что сделано:** `maxsavdo.uz/qollanma` отдаёт 200 и `sitemap.xml` содержит 12 URL.
+- **Файлы:** `apps/landing/src/lib/guides.ts`, `apps/landing/src/app/sitemap.ts`,
+  `apps/landing/src/app/(uz)/qollanma/`, `apps/landing/src/app/(ru)/ru/rukovodstva/`,
+  `apps/landing/src/app/(uz)/faq/`, `apps/landing/src/app/(ru)/ru/faq/`.
+
+## 🟠 [LANDING-EEAT-GAPS-001] E-E-A-T лендинга: Experience и Authoritativeness — слабые
+- **Домен:** apps/landing (Юсуф) · **Кто взял:** не назначено
+- **Кто нашёл:** Claude 03.08.2026 — разбор кода по QRG-фреймворку E-E-A-T (сентябрь 2025).
+- **Оценка по компонентам:** Experience — слабо · Expertise — средне · Authoritativeness — слабо ·
+  Trust — средне-сильно. Итого ≈ 55/100 («moderate»).
+- **Находки, по убыванию дешевизны фикса:**
+  1. **`sameAs` — одна ссылка.** `lib/jsonld.ts:49` → `sameAs: [TELEGRAM_BOT_URL]`. При этом
+     живые профили есть: Instagram `@maxsavdo`, канал `@Maxsavdo_0`. Комментарий в самом коде
+     этого и ждёт («Add real social profiles here as they go live»). Одна строка — и entity
+     reconciliation для GEO-движков становится сильно надёжнее.
+  2. **В гайдах нет ни одной картинки.** `components/GuideBody.tsx` не рендерит изображения
+     вообще. 3-4 реальных скриншота флоу «бот → магазин» — единственное, что поднимает
+     Experience, и ровно то, что конкурент не может выдумать.
+  3. **Автор = организация.** `lib/jsonld.ts:302` → `author: { "@id": ORG_ID }`. Нет имени,
+     нет байлайна, нет био. Плюс у всех 6 гайдов одинаковый `updated: "2026-07-30"` — читается
+     как разовая партия.
+  4. **Нет отзывов вообще.** Ни testimonial-блока, ни `AggregateRating`. Важно: пустой рейтинг
+     ставить нельзя — это ломает Trust, а не чинит. Сначала реальные отзывы продавцов.
+- **Что НЕ трогать:** `HowTo` в `lib/jsonld.ts:105` оставлен осознанно — в комментарии прямо
+  написано, что Google убрал HowTo rich results и разметка держится ради AEO/GEO, а не сниппета.
+  Решение обоснованное.
+- **Что в плюсе (не ломать):** `Organization` с `legalName`/`address`/`contactPoint`/
+  `parentOrganization: TezCode`, честный `lastModified` в `sitemap.ts:5`, прозрачные тарифы,
+  `llms.txt` с прямой оговоркой «если файл устарел — верь странице».
+- **Файлы:** `apps/landing/src/lib/jsonld.ts`, `apps/landing/src/components/GuideBody.tsx`,
+  `apps/landing/src/lib/guides.ts`.
+
 ## 🔴 [BUYER-SITEMAP-TEST-STORE-001] shop.maxsavdo.uz: тестовый магазин в sitemap, отдаётся Google
 - **Домен:** apps/web-buyer + возможно `GET /storefront/sitemap` (Полат) · **Кто взял:** не назначено
 - **Кто нашёл:** Юсуф/Claude 30.07.2026, живая проверка домена (не код-ревью). Подробности,
@@ -68,6 +125,21 @@
   (`priority 0.8`, `changefreq daily`). Страницы живые, 200, `<title>fdgh — ТЕСТ - удалить</title>`,
   `description: "test"`. Из 2 реальных магазинов в выдаче один — тестовый.
 - **Срочность:** GSC подключен на днях — первый краул субдомена увидит эти страницы.
+- **🔄 ПЕРЕПРОВЕРЕНО 03.08.2026 (Claude, живая выгрузка) — описание выше частично устарело:**
+  - `shop.maxsavdo.uz/sitemap.xml` **больше не содержит** тестовый магазин. Сейчас там ровно
+    9 статических URL: `/`, `/terms`, `/privacy`, `/offer`, `/refund`, `/help`, `/stores`,
+    `/products`, `/raos`. Эта половина задачи, судя по всему, закрыта.
+  - **Но магазин по-прежнему живой и виден в каталоге.** `/products` отдаёт 2 товара, оба из
+    `test-udalit-ms1gi4um`, с рабочей `Product` + `Offer`-разметкой (`price: 10000`,
+    `availability: InStock`), `<title>ТЕСТ - удалить — ТЕСТ - удалить</title>`. То есть из
+    поиска они выпали, а живой посетитель каталога всё ещё видит витрину из двух фейков.
+  - Сами карточки товара отдают `<meta name="robots" content="noindex, nofollow">` —
+    индексации нет, но это не отменяет UX/доверие: каталог `/products` собственного `noindex`
+    **не имеет** и индексируется вместе с фейковыми карточками внутри.
+  - **Отдельный вопрос, шире этой задачи:** `noindex` на карточках товара — это правило для
+    непроверенных магазинов или для всех? `/raos/products` (единственный реальный магазин)
+    тоже отдаёт `noindex` и пуст. Если `noindex` стоит на всех товарах, то e-commerce-SEO на
+    `shop.maxsavdo.uz` отсутствует как явление, и это продуктовое решение, а не баг вёрстки.
 - **Что сделать:** фильтр состояния магазина в фиде/`sitemap.ts` (в `StorefrontSitemapFeed`
   сейчас такого признака нет) либо `noindex`; плюс разово удалить тестовый магазин из прод-БД
   (образец — `PROD-DB-CLEANUP-001`) и снять URL через GSC Removals.
