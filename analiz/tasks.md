@@ -5,6 +5,61 @@
 
 ---
 
+## 🔴 [LANDING-MOBILE-NAV-MISSING-001] На мобильном в шапке нет ни меню, ни кнопки CTA
+- **Домен:** `apps/landing` · **Кто взял:** Юсуф
+- **Кто нашёл:** Claude, аудит 04.08.2026 — живая проверка Playwright на вьюпорте 390×844,
+  подтверждено чтением `Header.tsx`, не догадка.
+- **Что случилось:** `apps/landing/src/components/Header.tsx`:
+  - `nav` со всеми 8 пунктами (как ишлайди/imkoniyatlar/do'konlar/tariflar/qo'llanma/keyslar/
+    blog/savollar) — `className="hidden ... md:flex"` (строка 84) — **полностью скрыт до 768px**
+  - CTA-кнопка "Bepul boshlash" — `className="hidden ... sm:inline-flex"` (строка 126) —
+    **скрыта до 640px**
+  - Гамбургер-кнопки/мобильного дропдауна для замены **нет вообще** — ни `useState`, ни toggle,
+    ни `Menu`/`X` иконок в файле.
+  - Итог: посетитель с телефона (390px) видит в шапке только лого и "RU" — не может ни перейти
+    на другую страницу, ни начать регистрацию из шапки.
+- **Это регресс, не изначальный недочёт:** ветка `landing` (`b896b070`, старая прод-версия) уже
+  имела рабочее мобильное меню — `Menu`/`X` из `lucide-react`, `md:hidden` toggle-кнопка,
+  `md:hidden` dropdown с полным списком ссылок. При переносе на `main` (`2cc84cc6`, 31.07) это
+  потерялось и не восстановлено в PR #7.
+- **Почему критично:** продукт для Telegram-продавцов Узбекистана — мобильный трафик
+  доминирует. Без меню в шапке навигация и конверсия на телефоне сломаны.
+- **Файлы:** `apps/landing/src/components/Header.tsx`
+
+## 🟡 [LANDING-LANG-TOGGLE-DOWNGRADE-001] Языковой переключатель — откат к обычной ссылке вместо круглой pill-кнопки
+- **Домен:** `apps/landing` · **Кто взял:** Юсуф
+- **Кто нашёл:** Claude, аудит 04.08.2026, по прямому запросу Азима ("вернуть круглую кнопку,
+  которую делали раньше").
+- **Сейчас (`Header.tsx:114-120`):** прямоугольная (`rounded-lg`) ссылка с ОДНИМ видимым
+  языком (тем, на который переключишься), простой hover, без анимации перехода состояния.
+- **Референс, который нужно вернуть** — `LangToggle.tsx` из прототипа `apps/web-seller`
+  (`Desktop/maxsavdo-landing-gen2-test/repo/apps/web-seller/src/components/landing/LangToggle.tsx`):
+  ```tsx
+  // круглая pill-кнопка (rounded-full), ОБА языка видны одновременно,
+  // активный подсвечен золотым фоном, transition-colors на переключении
+  <div className="inline-flex items-center rounded-full p-0.5" role="group" ...>
+    {[{code:'ru',label:'RU'},{code:'uz',label:'UZ'}].map(o => (
+      <button
+        aria-pressed={active}
+        className="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors"
+        style={{ background: active ? colors.accent : 'transparent', color: active ? colors.accentTextOnBg : colors.textMuted }}
+      >{o.label}</button>
+    ))}
+  </div>
+  ```
+- **Файлы:** `apps/landing/src/components/Header.tsx` (заменить блок `otherHref`-ссылки)
+
+## 🟡 [LANDING-FAQ-DEAD-CONTENT-001] 5 FAQ-ответов лежат в коде, но никуда не подключены
+- **Домен:** `apps/landing` · **Кто взял:** Юсуф (сам пометил как открытый вопрос в PR #7, не решено)
+- **Кто нашёл:** Claude, аудит 04.08.2026 — `grep faqCategories` даёт 3 совпадения только в
+  объявлении (`src/lib/i18n.ts:148,545,973`), ни один компонент/страница это не рендерит.
+- **Что случилось:** при мерже PR #7 в `main`'s FAQ было 10 вопросов в 3 категориях, у ветки
+  Юсуфа — 14 плоским списком. 5 вопросов из `main` (свой бот, сравнение с Uzum/Olcha, что после
+  беты, платёж не прошёл, что-то сломалось) сохранены под `faqCategories`, но никуда не
+  смаршрутизированы — контентное решение, не техническое, за Юсуфом.
+- **Файлы:** `apps/landing/src/lib/i18n.ts`, `apps/landing/src/components/pages/FaqPageContent.tsx`
+
+
 ## 🟠 [PRICING-TIERS-NOT-ENFORCED-001] Pro и Studio различаются только ценой — ни один feature-флаг не enforced
 - **Домен:** монетизация/бизнес-модель — **Азим** (не код) · **Кто взял:** не назначено
 - **Кто нашёл:** Юсуф/Claude 30.07.2026, попутно с `LANDING-PRICING-FALSE-CLAIMS-001` (done.md).
