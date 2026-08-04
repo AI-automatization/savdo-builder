@@ -249,6 +249,54 @@ JSDoc-комментарии `plan-limit-guard.service.ts:25`. Фактичес�
 - **Проверка:** `grep` подтвердил отсутствие старых hex/rgba во всех файлах; не собирал/не деплоил
   (деплой отдельным решением владельца — прод, без staging).
 
+## 2026-07-28 (Claude, разовое исключение по прямому запросу Азима) — LANDING-SELLER-DEDUP-001: убран дублирующий маркетинг из web-seller, обогащён landing
+
+- **Важность:** 🟡 · **Дата:** 28.07.2026 · **Домен:** `apps/landing` (Юсуф) + `apps/web-seller` (Полат)
+- **Контекст:** известный архитектурный дрейф из `docs/superpowers/specs/2026-07-11-landing-entry-points-design.md`
+  §6 («main расходится с прод-ветками лендинга... решение не моё, затрагивает Полата») — тогда отложено.
+  Азим 28.07 явно попросил разрулить как разовое исключение, несмотря на то что обе зоны не его
+  (см. реорганизацию 27.07.2026: Азим не кодит, `apps/landing` — Юсуф, весь код кроме landing — Полат).
+  Спрошено и подтверждено явно в диалоге, прежде чем трогать код.
+
+### Что сделано
+
+1. **Ветка `landing`** (домен `maxsavdo.uz`, `apps/landing` — самостоятельный Next.js-апп, 8 секций) —
+   добавлены 4 отсутствовавшие секции (`SocialProof`, `ProblemSection`, `WhyUs`, `FinalCta`), перенесённые
+   дословно (RU+UZ) из старого лендинга, встроенного в `apps/web-seller`, но перекрашенные под текущую
+   янтарную палитру (`#E8A552`), а не champagne-gold (`#C9A876`) из web-seller.
+2. **Структурно обогащены** `Hero` (мокап телефона с реальной товарной сеткой на 4 фото вместо списка
+   каналов, метрики 5 мин/0%/24-7, строка ниш), `Header` (ссылка на каталог покупателя, мобильное меню,
+   scroll-эффект), `Footer` (4 колонки: лого/документы/контакты/продукт+админка) — по структуре взято из
+   web-seller, **оффер «3 канала продаж» в Hero/How/Features сохранён как есть**, не заменялся на
+   storefront-посыл web-seller (уточнено отдельным вопросом).
+3. `Showcase` (захардкоженные demo-магазины на stock-фото) сознательно не перенесён — есть `FeaturedStores`
+   с реальными магазинами через API. `Pricing`/`FAQ` landing уже полнее web-seller-овских — не трогались.
+4. **Ветка `web-seller`** — корень `/` был маркетинговым лендингом (`LandingPage`), дублирующим то же самое
+   на `seller.maxsavdo.uz`. Возвращён к `redirect('/dashboard')` как на `main`. Удалены
+   `components/landing/` (14 файлов), `lib/landing/` (4 файла), `public/landing/` (8 файлов/фото) —
+   единственный импортёр был `app/page.tsx`. Из `ru.ts`/`uz.ts` убраны только landing-эксклюзивные ключи;
+   `nav.pricing` и `pricing.subtitle/ladder/tier.*/perMonth/free/foundingNote` **сохранены** — их
+   использует настоящая `(dashboard)/pricing/page.tsx` (чуть не снёс по неосторожности, спасло явное
+   грепанье кросс-usage перед удалением).
+
+### Файлы
+
+`apps/landing/src/{app/page.tsx,app/ru/page.tsx,lib/i18n.ts,lib/analytics.ts,lib/buyer-url.ts,
+components/{Hero,Header,Footer,SocialProof,ProblemSection,WhyUs,FinalCta}.tsx,public/landing/*}` ·
+`apps/web-seller/src/app/page.tsx` · `apps/web-seller/src/lib/i18n/{ru,uz}.ts` ·
+удалены `apps/web-seller/src/components/landing/`, `apps/web-seller/src/lib/landing/`,
+`apps/web-seller/public/landing/`.
+
+### Проверено
+
+`tsc --noEmit` EXIT 0 на обеих ветках · `tsc --noUnusedLocals --noUnusedParameters` чисто ·
+`next build` (прод) EXIT 0 на обеих (`landing`: `/`+`/ru` статика; `web-seller`: все 21 роут) ·
+`vitest run` web-seller 15/15 · `eslint` — 6 ошибок/13 warning на web-seller, все в файлах вне
+диффа (`select.tsx`, `use-seller.ts`, `theme-provider.tsx` и т.д., существовавший техдолг) ·
+живая проверка в Playwright (UZ/RU/мобильное меню на landing; редирект `/`→`/dashboard`→`/login`
+на web-seller) · грep по `apps/`+`packages/` на висячие ссылки на удалённый код — чисто.
+Закоммичено и запушено: `landing` `0e88833d..b896b070`, `web-seller` `5c14699a..ac78d480`.
+
 ## 2026-07-27 (Claude) — LANDING-SEO-FIX-001: технический SEO лендинга (P0/P1 из аудита 26.07)
 
 - **Важность:** 🟡 · **Дата:** 27.07.2026 · **Домен:** `apps/landing`
@@ -9119,3 +9167,25 @@ P2: testing gap, DB integrity hardening (VarChar length-limits, CHECK constraint
 - **Осталось (не сделано, нужен Азим):** заполнить в `.env` `TELEGRAM_BOT_TOKEN`, `GROQ_API_KEY`,
   `HF_API_TOKEN`, `ADMIN_CHAT_ID` → прогон `node scheduler.js` → регистрация ежедневной задачи.
   Не проверено вживую: доступность `FLUX.1-schnell` через HF router на бесплатном токене.
+
+## 2026-07-31 (Azim/Claude) — LANDING-MULTIPAGE-EXPANSION-001: мульти-страничный лендинг (About/Как работает/FAQ/Кейсы/Блог/Контакты/Поддержка)
+
+### ✅ [LANDING-MULTIPAGE-EXPANSION-001] apps/landing разбит на 8 страниц вместо одностраничника
+- **Важность:** 🔴 · **Дата:** 31.07.2026 · **Домен:** `apps/landing` (по прямому запросу Азима, без Юсуфа — см. предупреждение ниже)
+- **Контекст:** Азим попросил восстановить удалённый 28.07 второй лендинг (`web-seller` до `LANDING-SELLER-DEDUP-001`), перекрасить в палитру main (`#E8A552`), разбить на отдельные страницы, провести аудит и перенести в реальный `apps/landing` — явно подтвердил «без Юсуфа, пуш».
+- **Что сделано:**
+  1. Восстановил и перекрасил тестовую версию в `Desktop/maxsavdo-landing-gen2-test` (не в репо) — песочница для итерации.
+  2. Аудит нашёл и исправил: 404 на демо-магазине (устаревший слаг `azim-mnx4na25` → живой `raos`), hydration-баг с датами блога (`toLocaleDateString('uz-UZ', …)` расходится между Node/Chromium ICU — заменено на ручной форматтер), непере крашенную светлую тему, отсутствие «Поддержка» в мобильном меню.
+  3. Перенёс 7 страниц × 2 локали (16 роутов: `/about`, `/how-it-works`, `/faq`, `/contacts`, `/cases`, `/blog` + `/blog/[slug]`, `/support`, каждая под `(uz)/` и `(ru)/ru/`) в реальный `apps/landing` — расширил типизированный `Dict` в `lib/i18n.ts`, а не переиспользовал тестовую (нетипизированную) i18n-систему из web-seller.
+  4. Кейсы (`lib/cases-data.ts`) намеренно оформлены как «иллюстративные сценарии» с явным дисклеймером на странице — не выдают вымышленные цитаты за подтверждённые отзывы клиентов.
+  5. Форма на `/contacts` и `/support` (`components/ContactForm.tsx`) собирает `mailto:` — у лендинга нет бэкенда для лидов, честнее открыть письмо в почтовом клиенте, чем рисовать фейковое «сообщение получено».
+  6. `Header.tsx`/`Footer.tsx` — добавлены Кейсы/Блог в шапку, Company/Support-колонки в футере. `sitemap.ts` — все новые роуты с честными `lastModified`.
+- **Проверено:** `next build` — 30 роутов, `tsc`/type-check чист, 0 ошибок. Живой смоук-тест через dev-сервер (главная, `/cases`, `/faq`) — отрендерилось корректно в фирменной дизайн-системе, RU/UZ переключение работает.
+- **Запушено:** 3 коммита в `main` — `2cc84cc6` (фичи), `68aaab69` (пересинк `pnpm-lock.yaml`), `4989e778` (`.npmrc`). Должно задеплоиться на Railway (сервис `landing` собирается из `main`).
+- **⚠️ Побочный инцидент (исправлен в рамках сессии):** старая ошибка с Windows-junction (см. `analiz/logs.md`) в этой же сессии дважды прошла сквозь junction и стёрла реальные пакеты — сперва в `.worktrees/web-seller` (`packages/types` + `node_modules`), затем в **самом `apps/landing/node_modules`** (`@next/env`, `@alloc/quick-lru` и другие). Восстановлено полной переустановкой (`pnpm install --filter ... --force`) после диагностики; ни один отслеживаемый файл не пострадал необратимо (git checkout вернул `packages/types`).
+- **⚠️ Отдельно найдено и исправлено:** голый `pnpm install`/`pnpm dev` в этом репо уходил в бесконечный self-install цикл (`packageManager: pnpm@11.12.0` в package.json vs установленный локально `10.32.1`, самообновление зависает без сети). Добавлен корневой `.npmrc` (`manage-package-manager-versions=false`) — теперь закоммичен, баг не должен повторяться в новых сессиях.
+- **🔲 Открытый конфликт для Юсуфа:** его неслитая ветка `seo/landing-aeo-geo-2026-07-30` уже содержит собственные `(uz)/faq` и `(ru)/ru/faq` — при мерже будет конфликт путей с тем, что запушено здесь. Азим предупреждён, решение (чей FAQ остаётся / как объединить) — за командой при мерже.
+
+**Апдейт 04.08.2026:** конфликт разрешён — PR #7 (`seo/landing-aeo-geo-2026-07-30` → `main`) смержен
+03.08.2026 (`0571f91a`), Юсуф оставил свою версию `/faq` (JSON-LD, hreflang), 5 FAQ-ответов из этой
+записи сохранены под `faqCategories` в `i18n.ts`, но не смаршрутизированы — открытый вопрос в PR.
