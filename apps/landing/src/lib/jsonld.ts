@@ -22,7 +22,11 @@ const APP_ID = `${SITE_URL}/#software`;
 const LEGAL_NAME = 'MCHJ "TEZ KOD"';
 
 function abs(path: string): string {
-  return path === "/" ? SITE_URL : `${SITE_URL}${path}`;
+  // Trailing slash kept for "/" so every @id built from it (`${pageUrl}#foo`)
+  // matches the `${SITE_URL}/#foo` convention ORG_ID/WEBSITE_ID already use —
+  // otherwise the homepage's own nodes read as `maxsavdo.uz#foo` (no slash),
+  // a stray inconsistency in an otherwise identical id scheme.
+  return path === "/" ? `${SITE_URL}/` : `${SITE_URL}${path}`;
 }
 
 function homePath(locale: Locale): string {
@@ -247,6 +251,42 @@ export function faqPageJsonLd(dict: Dict, locale: Locale) {
   };
 }
 
+/**
+ * Simple static content pages (about/support/cases/how-it-works/contacts/blog)
+ * had no page-specific JSON-LD at all beyond the sitewide Organization node —
+ * this gives each one a WebPage + BreadcrumbList without inventing per-page
+ * copy, reusing the same `breadcrumbNode()` the guides/FAQ already rely on.
+ */
+export function staticPageJsonLd(
+  locale: Locale,
+  path: string,
+  name: string,
+  description: string,
+) {
+  const pageUrl = abs(path);
+  const inLanguage = langTag(locale);
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${pageUrl}#webpage`,
+        url: pageUrl,
+        name,
+        description,
+        inLanguage,
+        isPartOf: { "@id": WEBSITE_ID },
+        publisher: { "@id": ORG_ID },
+      },
+      breadcrumbNode(pageUrl, [
+        { name: "MaxSavdo", path: homePath(locale) },
+        { name, path },
+      ]),
+    ],
+  };
+}
+
 /** `/qollanma` · `/ru/rukovodstva` — the guides index. */
 export function guidesIndexJsonLd(dict: Dict, locale: Locale, list: Guide[]) {
   const path = guidesIndexPath(locale);
@@ -278,6 +318,48 @@ export function guidesIndexJsonLd(dict: Dict, locale: Locale, list: Guide[]) {
       breadcrumbNode(pageUrl, [
         { name: "MaxSavdo", path: homePath(locale) },
         { name: dict.guidesPage.h1, path },
+      ]),
+    ],
+  };
+}
+
+/**
+ * `/blog/[slug]` · `/ru/blog/[slug]` — blog posts had zero structured data
+ * (schema audit, 2026-08-04). No `image` field exists on `BlogPost` yet, so
+ * this ships without one rather than inventing a value — add it here once
+ * `BlogPost` gains a real image.
+ */
+export function blogPostJsonLd(
+  locale: Locale,
+  slug: string,
+  title: string,
+  description: string,
+  datePublished: string,
+) {
+  const path = locale === "uz" ? `/blog/${slug}` : `/ru/blog/${slug}`;
+  const pageUrl = abs(path);
+  const inLanguage = langTag(locale);
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        "@id": `${pageUrl}#article`,
+        headline: title,
+        description,
+        url: pageUrl,
+        inLanguage,
+        datePublished,
+        dateModified: datePublished,
+        isPartOf: { "@id": WEBSITE_ID },
+        author: { "@id": ORG_ID },
+        publisher: { "@id": ORG_ID },
+        mainEntityOfPage: { "@id": `${pageUrl}#article` },
+      },
+      breadcrumbNode(pageUrl, [
+        { name: "MaxSavdo", path: homePath(locale) },
+        { name: title, path },
       ]),
     ],
   };

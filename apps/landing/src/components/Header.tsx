@@ -123,7 +123,7 @@ export default function Header({
             href={BOT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden rounded-xl px-4 py-2 text-sm font-semibold text-brand-bg transition-all hover:opacity-90 sm:inline-flex"
+            className="inline-flex rounded-xl px-3 py-1.5 text-xs font-semibold text-brand-bg transition-all hover:opacity-90 sm:px-4 sm:py-2 sm:text-sm"
             style={{
               background: 'linear-gradient(135deg, #E8A552 0%, #D4922E 100%)',
               boxShadow: '0 4px 14px rgba(232,165,82,0.30)',

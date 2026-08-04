@@ -35,6 +35,40 @@ export default function GuideBody({ guide, updatedLabel }: GuideBodyProps) {
         {guide.answer}
       </p>
 
+      {/*
+        The HowTo JSON-LD (see guideJsonLd) describes these exact steps to search
+        engines and answer engines — they have to be visible here too, or the
+        markup claims content the page never actually shows a reader.
+      */}
+      {guide.howTo ? (
+        <section className="mt-12">
+          <h2 className="text-xl font-semibold tracking-tight text-brand-text sm:text-2xl">
+            {guide.howTo.name}
+          </h2>
+          <ol className="mt-4 flex flex-col gap-4">
+            {guide.howTo.steps.map((step, idx) => (
+              <li key={step.name} className="flex gap-3">
+                <span
+                  aria-hidden
+                  className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                  style={{ background: "rgba(232,165,82,0.16)", color: "#E8A552" }}
+                >
+                  {idx + 1}
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-brand-text sm:text-base">
+                    {step.name}
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-brand-muted sm:text-base">
+                    {step.text}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
+
       {guide.sections.map((section) => (
         <section key={section.heading} className="mt-12">
           <h2 className="text-xl font-semibold tracking-tight text-brand-text sm:text-2xl">
@@ -91,42 +125,54 @@ export default function GuideBody({ guide, updatedLabel }: GuideBodyProps) {
           {section.table ? (
             // Wide tables scroll inside their own box; the page itself must never
             // scroll sideways on a phone, which is where most of this traffic lands.
-            <div className="mt-5 overflow-x-auto">
-              <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
-                <thead>
-                  <tr>
-                    {section.table.head.map((cell) => (
-                      <th
-                        key={cell || "spacer"}
-                        scope="col"
-                        className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-brand-muted"
-                        style={{ borderBottom: "1px solid rgba(232,165,82,0.25)" }}
-                      >
-                        {cell}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {section.table.rows.map((row) => (
-                    <tr key={row.join("|")}>
-                      {row.map((cell, cellIdx) => (
-                        <td
-                          key={`${cell}-${cellIdx}`}
-                          className={
-                            cellIdx === 0
-                              ? "px-3 py-3 font-medium text-brand-text"
-                              : "px-3 py-3 text-brand-muted"
-                          }
-                          style={{ borderBottom: "1px solid rgba(232,165,82,0.10)" }}
+            <div className="relative mt-5">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
+                  <thead>
+                    <tr>
+                      {section.table.head.map((cell) => (
+                        <th
+                          key={cell || "spacer"}
+                          scope="col"
+                          className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-brand-muted"
+                          style={{ borderBottom: "1px solid rgba(232,165,82,0.25)" }}
                         >
                           {cell}
-                        </td>
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {section.table.rows.map((row) => (
+                      <tr key={row.join("|")}>
+                        {row.map((cell, cellIdx) => (
+                          <td
+                            key={`${cell}-${cellIdx}`}
+                            className={
+                              cellIdx === 0
+                                ? "px-3 py-3 font-medium text-brand-text"
+                                : "px-3 py-3 text-brand-muted"
+                            }
+                            style={{ borderBottom: "1px solid rgba(232,165,82,0.10)" }}
+                          >
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/*
+                No scrollbar hint on iOS/Android, so the right-most column (often
+                the "how to fix it" one) can be missed entirely on a phone unless
+                there's a visible cue that the table scrolls (2026-08-04 audit).
+              */}
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:hidden"
+                style={{ background: "linear-gradient(to right, transparent, #0F0F0F)" }}
+              />
             </div>
           ) : null}
         </section>

@@ -520,7 +520,7 @@ const uz: Dict = {
     title: "Bo'sh Telegram'dan birinchi buyurtmagacha",
     subtitle: "Besh qadam, har biri bir necha daqiqa. Dasturchisiz va sayt qurishsiz.",
     steps: [
-      { n: "1", title: "Telefon raqami orqali kiring", body: "Kod @maxsavdo_bot'ga keladi, parol kerak emas. Akkaunt birinchi kirishda avtomatik yaratiladi." },
+      { n: "1", title: "@maxsavdo_bot'ga kiring", body: "Kirish Telegram akkauntingiz orqali tasdiqlanadi — SMS kod yoki parol kerak emas. Akkaunt birinchi kirishda avtomatik yaratiladi." },
       { n: "2", title: "Do'kon yarating", body: "Nom, shahar, Telegram havolasi — boshlash uchun shu kifoya." },
       { n: "3", title: "Mahsulot qo'shing", body: "Rasm, narx, tavsif, variantlar. Katalog katta do'konlardagidek ko'rinadi." },
       { n: "4", title: "Havolani ulashing", body: "Bitta havola — Instagram, Telegram kanali, storis uchun. Xaridor o'zi buyurtma beradi." },
@@ -948,7 +948,7 @@ const ru: Dict = {
     title: "От пустого Telegram до первого заказа",
     subtitle: "Пять шагов, каждый — несколько минут. Без разработчика и сайтостроителя.",
     steps: [
-      { n: "1", title: "Войдите по номеру телефона", body: "Код приходит в @maxsavdo_bot, пароль не нужен. Аккаунт создаётся автоматически." },
+      { n: "1", title: "Войдите через @maxsavdo_bot", body: "Вход подтверждается через ваш аккаунт Telegram — SMS-код или пароль не нужны. Аккаунт создаётся автоматически." },
       { n: "2", title: "Создайте магазин", body: "Название, город, ссылка на Telegram — этого достаточно для старта." },
       { n: "3", title: "Добавьте товары", body: "Фото, цена, описание, варианты. Каталог как у больших магазинов." },
       { n: "4", title: "Поделитесь ссылкой", body: "Одна ссылка — в Instagram, Telegram-канал, сторис. Покупатель заказывает сам." },
