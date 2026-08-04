@@ -1,5 +1,52 @@
 # Done — Азим + Полат
 
+## 2026-08-04 (Claude) — SEO-FULL-AUDIT-2026-08-04: полный SEO/GEO/AEO аудит + фиксы в apps/landing
+
+- **Важность:** 🔴 · **Дата:** 04.08.2026 · **Домен:** `apps/landing` (фиксы), `apps/web-buyer`+`apps/api` (только находки, см. tasks.md)
+- **Контекст:** запрос на полный аудит maxsavdo.uz + shop.maxsavdo.uz по SEO/GEO/AEO. Запущено
+  10 параллельных `/seo` subagent'ов (technical, content/E-E-A-T, schema, sitemap, performance,
+  visual, geo, sxo, backlinks, ecommerce) через skill `seo`.
+- **Критичные находки НЕ в apps/landing** (перенесены в `tasks.md`, не мои для фикса —
+  `apps/landing` — только Юсуф, весь остальной код — Полат):
+  - `SEO-SHOP-TEST-STORE-LIVE-001` — тестовый магазин "ТЕСТ - удалить" live+индексируемый,
+    ~50% каталога платформы.
+  - `SEO-SHOP-AVAILABILITY-SCHEMA-001` — Product JSON-LD `availability` захардкожен InStock.
+  - `SEO-SHOP-SITEMAP-FEED-001` — sitemap не полностью использует готовый API-фид; локальная
+    ветка несёт устаревший `apps/web-buyer/sitemap.ts` (актуальный — в `origin/web-buyer`).
+- **Что исправлено в apps/landing (commit `db52aacd` на branch `seo/kassa-ombor-guides-2026-08-04`, запушено):**
+  - hreflang `x-default` отсутствовал на 7 шаблонах × 2 локали (about/support/cases/
+    how-it-works/contacts/blog/blog-[slug]).
+  - **HowTo JSON-LD на гиде `open-shop` описывал 5 шагов, которых не было видно на странице**
+    (schema/content mismatch) — `GuideBody.tsx` теперь рендерит `guide.howTo` визуально.
+  - `/how-it-works` шаг 1 говорил "войдите по номеру телефона", противореча остальному сайту
+    ("откройте бота, подтвердите через Telegram-аккаунт, SMS не нужен") — выровнено (uz+ru).
+  - 6 статичных страниц не имели собственной JSON-LD (только sitewide Organization) — добавлен
+    `staticPageJsonLd()` (WebPage+BreadcrumbList) и `blogPostJsonLd()` (BlogPosting+Breadcrumb,
+    у блога раньше вообще не было structured data).
+  - `@id` на главной странице не совпадал по формату слэша с `ORG_ID`/`WEBSITE_ID` — выровнено
+    в `abs()`.
+  - Таблица WhyUs использовала scroll-reveal с блюром/фейдом (0.8s) на **контентной**, не
+    декоративной таблице — визуальный аудит подтвердил нечитаемость на мобильном мид-скролле.
+    Убрал `reveal`-анимацию именно с этой таблицы (ProblemSection/FinalCta не трогал).
+  - Широкие таблицы (WhyUs + гайды) скроллятся на мобильном без визуальной подсказки — добавлен
+    статичный fade-край ниже `sm`.
+  - Мобильный header не имел постоянного CTA (`hidden sm:inline-flex`) — теперь видим всегда,
+    компактнее на мобильном.
+  - `/public`-ассеты (фото товаров, лого) отдавались с `max-age=0` — теперь кешируются как
+    `_next/static` (`immutable, max-age=31536000`).
+  - Добавлен `Permissions-Policy` header (camera/microphone/geolocation off) — безопасный,
+    без функционального риска.
+- **Сознательно НЕ трогал** (нужны реальные ассеты/бизнес-решение, или не моя зона):
+  скриншоты для гайдов, author/Person entity, именование конкурента на pricing-странице,
+  страница privacy/ToS, несостыковка "5 daqiqa" (hero) vs "5-10 daqiqa" (гайд) — это
+  маркетинговое решение, не баг, IndexNow, CSP header (риск сломать инлайновые скрипты без
+  тестирования), всё в `apps/web-buyer`/`apps/api` (см. tasks.md).
+- **Проверено:** `tsc --noEmit` чисто, `next build` — 42 статичные страницы, вручную сверил
+  сгенерированный HTML на присутствие `x-default`/`BreadcrumbList` и отсутствие класса `reveal`
+  на таблице WhyUs.
+- **Файлы:** 19 файлов в `apps/landing` (список — в теле commit `db52aacd`), `analiz/tasks.md`
+  (3 новые находки для Полата), `analiz/done.md`.
+
 ## 2026-08-04 (Claude) — SEO-KASSA-OMBOR-GUIDES-001: индексация починена + гайды "касса"/"ombor"
 
 - **Важность:** 🟡 · **Дата:** 04.08.2026 · **Домен:** `apps/landing`, GSC
