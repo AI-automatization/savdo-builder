@@ -22,7 +22,12 @@ import type { Locale } from "./i18n";
  */
 
 /** Stable identity across locales — what pairs a uz guide with its ru twin for hreflang. */
-export type GuideKey = "open-shop" | "pricing" | "instagram-migration";
+export type GuideKey =
+  | "open-shop"
+  | "pricing"
+  | "instagram-migration"
+  | "inventory"
+  | "checkout";
 
 export type GuideTable = {
   head: string[];
@@ -346,6 +351,140 @@ const uzGuides: Guide[] = [
       },
     ],
   },
+  {
+    key: "inventory",
+    slug: "telegram-dokonda-ombor-hisobi",
+    title: "Telegram-doʻkonda ombor hisobi qanday yuritiladi",
+    h1: "Telegram-doʻkonda ombor hisobi",
+    description:
+      "MaxSavdo'da tovar qoldigʻi qanday hisoblanadi: buyurtma tushganda son avtomatik kamayadi, bekor qilinsa qaytadi. Alohida ombor dasturi qachon kerak boʻlishi — shu yerda.",
+    answer:
+      "MaxSavdo'da har bir mahsulotga ombordagi son kiritiladi. Xaridor buyurtma bersa, shu son avtomatik kamayadi; buyurtma bekor qilinsa, tovar omborga qaytadi. Qoldiq nolga tushganda mahsulot vitrinada «Mavjud emas» deb koʻrsatiladi va sotib olinmaydi. Bu — bitta doʻkon uchun sotuvga bogʻliq asosiy ombor hisobi; koʻp filial yoki partiya darajasidagi hisobot alohida dastur talab qiladi.",
+    updated: "2026-08-04",
+    sections: [
+      {
+        heading: "Ombor hisobi qanday ishlaydi",
+        bullets: [
+          "Mahsulot qoʻshganda ombordagi sonni kiritasiz — masalan, 30 dona",
+          "Xaridor buyurtma bersa, sotilgan son avtomatik ayiriladi",
+          "Buyurtma bekor qilinsa yoki rad etilsa, son omborga qaytadi",
+          "Qoldiq kam qolganda kartochkada «Qoldi: N dona» koʻrinadi",
+          "Qoldiq nolga tushsa, mahsulot «Mavjud emas» deb belgilanadi va sotib olinmaydi",
+        ],
+      },
+      {
+        heading: "Nega bu muhim",
+        body: [
+          "Ombordagi haqiqiy sondan koʻp sotib yuborish — Instagram-direct yoki qogʻoz daftarda hisob yuritganlarning eng koʻp uchraydigan muammosi: mijozga «bor» deb yozib qoʻyiladi, keyin tovar yoʻqligi maʼlum boʻladi. Buyurtma va ombor bitta tizimda boʻlgani uchun son qoʻlda kuzatilmaydi — avtomatik yangilanadi.",
+        ],
+      },
+      {
+        heading: "Qachon yetarli, qachon yetarli emas",
+        table: {
+          head: ["Holat", "MaxSavdo yetadimi"],
+          rows: [
+            ["Bitta doʻkon, bitta umumiy qoldiq", "Ha — sotuvga bogʻliq son avtomatik hisoblanadi"],
+            ["Bir nechta filial/ombor oʻrtasida boʻlinish", "Yoʻq — hozircha bitta doʻkon uchun bitta umumiy qoldiq"],
+            ["Partiya, seriya yoki yaroqlilik muddati boʻyicha hisob", "Yoʻq — faqat umumiy son, partiya darajasi yoʻq"],
+            ["Fizik doʻkondagi kassa bilan bitta hisobda ishlash", "Yoʻq — MaxSavdo faqat onlayn buyurtmalar boʻyicha qoldiqni hisoblaydi"],
+          ],
+        },
+      },
+      {
+        heading: "Odatiy xatolar",
+        table: {
+          head: ["Xato", "Nima boʻladi", "Qanday toʻgʻrilash"],
+          rows: [
+            [
+              "Ombordagi sonni kiritmaslik",
+              "Tizim doim «mavjud» deb koʻrsatadi, tugagan tovar ham sotiladi",
+              "Har bir mahsulotga aniq son kiritish",
+            ],
+            [
+              "Sonni faqat oy oxirida yangilash",
+              "Kartochkadagi son haqiqiy qoldiqdan farq qiladi",
+              "Yangi partiya kelganda sonni darhol yangilash",
+            ],
+            [
+              "Bekor qilingan buyurtmalarni hisobga olmaslik",
+              "Aslida bor tovar «tugagan» boʻlib koʻrinishi mumkin",
+              "Joriy qoldiqni buyurtmalar tarixi bilan vaqti-vaqtida solishtirish",
+            ],
+          ],
+        },
+      },
+    ],
+    faq: [
+      {
+        q: "MaxSavdo toʻliq ombor dasturi (WMS)mi?",
+        a: "Yoʻq. MaxSavdo har bir mahsulot uchun bitta umumiy qoldiqni sotuvga bogʻlab yuritadi — buyurtma tushganda kamayadi, bekor boʻlsa qaytadi. Koʻp ombor, partiya yoki seriya darajasidagi toʻliq WMS funksiyasi yoʻq.",
+      },
+      {
+        q: "Qoldiq qachon avtomatik yangilanadi?",
+        a: "Ikki holatda: xaridor buyurtma berganda (kamayadi) va buyurtma bekor qilinganda yoki rad etilganda (qaytadi). Boshqa barcha holatda sonni sotuvchi qoʻlda kiritadi va oʻzgartiradi.",
+      },
+      {
+        q: "Tovar tugasa xaridor uni koʻra oladimi?",
+        a: "Ha, lekin sotib ololmaydi — kartochkada «Mavjud emas» belgisi chiqadi. Bu tovar tugaganda ortiqcha buyurtma tushishining oldini oladi.",
+      },
+    ],
+  },
+  {
+    key: "checkout",
+    slug: "telegram-dokonda-onlayn-kassa",
+    title: "Telegram-doʻkonda onlayn kassa qanday ishlaydi",
+    h1: "Telegram-doʻkonda onlayn kassa",
+    description:
+      "MaxSavdo'dagi savatcha va checkout onlayn buyurtmalarni qanday rasmiylashtiradi — va bu nega qonun talab qiladigan fiskal kassa apparatini almashtirmasligi.",
+    answer:
+      "MaxSavdo'dagi «kassa» — bu savatcha va checkout: xaridor mahsulotni tanlaydi, yetkazib berish manzilini kiritadi va naqd yoki karta orqali toʻlov turini tanlaydi, buyurtma esa sotuvchiga @maxsavdo_bot orqali avtomatik tushadi. Bu onlayn buyurtmalarni rasmiylashtiradi, lekin Oʻzbekistonda naqd savdo uchun qonun talab qilishi mumkin boʻlgan fiskal kassa apparatini almashtirmaydi — ular alohida masala.",
+    updated: "2026-08-04",
+    sections: [
+      {
+        heading: "Checkout qanday ishlaydi",
+        bullets: [
+          "Xaridor mahsulotni savatchaga qoʻshadi va miqdorini tanlaydi",
+          "Yetkazib berish hududi va manzilini kiritadi",
+          "Toʻlov turini tanlaydi — naqd (yetkazib berishda) yoki karta orqali oʻtkazma",
+          "Buyurtma tasdiqlangach, sotuvchiga @maxsavdo_bot orqali avtomatik xabar tushadi",
+          "Sotuvchi buyurtma holatini (qabul qilindi, yetkazilmoqda, bajarildi) tizimda yangilaydi",
+        ],
+      },
+      {
+        heading: "Toʻlov turlari",
+        table: {
+          head: ["Toʻlov turi", "Qanday ishlaydi"],
+          rows: [
+            ["Naqd (yetkazib berishda)", "Xaridor kuryerga yoki olib ketishda naqd toʻlaydi"],
+            [
+              "Karta orqali oʻtkazma",
+              "Sotuvchi oʻz karta rekvizitini sozlamalarda yoqadi, xaridor shu raqamga oʻtkazadi",
+            ],
+          ],
+        },
+      },
+      {
+        heading: "Bu fiskal kassa apparatimi?",
+        body: [
+          "Yoʻq. Oʻzbekiston qonunchiligida naqd pul yoki karta orqali savdo qilganda roʻyxatdan oʻtgan fiskal kassa apparati yoki onlayn-kassa moduli talab qilinishi mumkin — bu alohida, davlat tomonidan tasdiqlangan uskuna yoki dastur. MaxSavdo'dagi checkout buyurtmani onlayn rasmiylashtiradi, lekin fiskal chek chiqarmaydi va soliq idorasiga hisobot bermaydi. Fiskal talab sizga tegishli boʻlsa, buni alohida hal qilish kerak.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "MaxSavdo kassa apparatini almashtiradimi?",
+        a: "Yoʻq. MaxSavdo — Telegram-doʻkon uchun onlayn buyurtma va toʻlov qabul qilish tizimi (savatcha, checkout). Qonun talab qiladigan fiskal kassa apparati yoki onlayn-kassa moduli bilan bogʻliq emas va uni almashtirmaydi.",
+      },
+      {
+        q: "Toʻlovni qanday qabul qilish mumkin?",
+        a: "Ikki asosiy usul bor: yetkazib berishda naqd yoki sotuvchining karta rekvizitiga oʻtkazma. Karta raqami xaridorga faqat sotuvchi uni doʻkon sozlamalarida yoqib qoʻygan boʻlsa koʻrinadi.",
+      },
+      {
+        q: "Buyurtma qabul qilingani sotuvchiga qanday yetib boradi?",
+        a: "Xaridor checkoutʼni yakunlashi bilan sotuvchiga @maxsavdo_bot orqali avtomatik xabar tushadi — mahsulot, miqdor, manzil va toʻlov turi bilan. Yozishmani kutib tekshirib oʻtirish shart emas.",
+      },
+    ],
+  },
 ];
 
 const ruGuides: Guide[] = [
@@ -608,6 +747,140 @@ const ruGuides: Guide[] = [
       {
         q: "Нужно ли переносить весь каталог сразу?",
         a: "Нет. Достаточно начать с 10-20 самых продаваемых товаров — этого хватает, чтобы магазин заработал. Остальные товары удобнее добавлять потом, уже в процессе работы.",
+      },
+    ],
+  },
+  {
+    key: "inventory",
+    slug: "uchet-sklada-v-telegram-magazine",
+    title: "Как ведётся учёт склада в Telegram-магазине",
+    h1: "Учёт склада в Telegram-магазине",
+    description:
+      "Как в MaxSavdo считается остаток товара: количество автоматически уменьшается при заказе и возвращается при отмене. Когда нужна отдельная складская программа — здесь.",
+    answer:
+      "В MaxSavdo для каждого товара указывается количество на складе. Когда покупатель делает заказ, это количество автоматически уменьшается; при отмене заказа товар возвращается на склад. Когда остаток доходит до нуля, товар помечается «Нет в наличии» и его нельзя купить. Это базовый складской учёт, привязанный к продажам одного магазина; учёт по нескольким филиалам или партиям требует отдельной программы.",
+    updated: "2026-08-04",
+    sections: [
+      {
+        heading: "Как работает учёт склада",
+        bullets: [
+          "При добавлении товара вы указываете количество на складе — например, 30 штук",
+          "Когда покупатель оформляет заказ, проданное количество автоматически вычитается",
+          "При отмене или отклонении заказа количество возвращается на склад",
+          "Когда остаток небольшой, в карточке видно «Осталось: N шт»",
+          "Когда остаток доходит до нуля, товар помечается «Нет в наличии» и его нельзя купить",
+        ],
+      },
+      {
+        heading: "Почему это важно",
+        body: [
+          "Продать больше, чем реально есть на складе — самая частая проблема у тех, кто ведёт учёт в Instagram-директе или в бумажной тетради: клиенту пишут «есть», а потом оказывается, что товара нет. Заказ и склад находятся в одной системе, поэтому количество не нужно отслеживать вручную — оно обновляется автоматически.",
+        ],
+      },
+      {
+        heading: "Когда достаточно, а когда нет",
+        table: {
+          head: ["Ситуация", "Хватает ли MaxSavdo"],
+          rows: [
+            ["Один магазин, один общий остаток", "Да — количество считается автоматически по продажам"],
+            ["Распределение между несколькими филиалами/складами", "Нет — пока один общий остаток на магазин"],
+            ["Учёт по партиям, сериям или сроку годности", "Нет — только общее количество, без уровня партий"],
+            ["Единый учёт с кассой в физическом магазине", "Нет — MaxSavdo считает остаток только по онлайн-заказам"],
+          ],
+        },
+      },
+      {
+        heading: "Типичные ошибки",
+        table: {
+          head: ["Ошибка", "Что происходит", "Как исправить"],
+          rows: [
+            [
+              "Не указано количество на складе",
+              "Система всегда показывает «в наличии», продаётся и то, чего уже нет",
+              "Указывать точное количество для каждого товара",
+            ],
+            [
+              "Обновлять количество только в конце месяца",
+              "Число в карточке расходится с реальным остатком",
+              "Обновлять количество сразу при поступлении новой партии",
+            ],
+            [
+              "Не учитывать отменённые заказы",
+              "Товар, который на самом деле есть, может выглядеть «закончившимся»",
+              "Периодически сверять текущий остаток с историей заказов",
+            ],
+          ],
+        },
+      },
+    ],
+    faq: [
+      {
+        q: "MaxSavdo — это полноценная складская программа (WMS)?",
+        a: "Нет. MaxSavdo ведёт один общий остаток по каждому товару, привязанный к продажам: уменьшается при заказе, возвращается при отмене. Функций полноценной WMS — несколько складов, партии, серии — нет.",
+      },
+      {
+        q: "Когда остаток обновляется автоматически?",
+        a: "В двух случаях: когда покупатель оформляет заказ (уменьшается) и когда заказ отменяют или отклоняют (возвращается). Во всех остальных случаях количество вводит и меняет продавец вручную.",
+      },
+      {
+        q: "Видит ли покупатель товар, если он закончился?",
+        a: "Да, но купить не может — в карточке появляется отметка «Нет в наличии». Это не даёт принять лишний заказ на закончившийся товар.",
+      },
+    ],
+  },
+  {
+    key: "checkout",
+    slug: "onlayn-kassa-v-telegram-magazine",
+    title: "Как работает онлайн-касса в Telegram-магазине",
+    h1: "Онлайн-касса в Telegram-магазине",
+    description:
+      "Как корзина и оформление заказа в MaxSavdo обрабатывают онлайн-заказы — и почему это не заменяет фискальный кассовый аппарат, требуемый законом.",
+    answer:
+      "«Касса» в MaxSavdo — это корзина и оформление заказа: покупатель выбирает товар, указывает адрес доставки и выбирает способ оплаты — наличными или переводом на карту, а заказ автоматически приходит продавцу через @maxsavdo_bot. Это оформляет онлайн-заказы, но не заменяет фискальный кассовый аппарат, который в Узбекистане может требоваться законом при продаже за наличные — это отдельный вопрос.",
+    updated: "2026-08-04",
+    sections: [
+      {
+        heading: "Как работает оформление заказа",
+        bullets: [
+          "Покупатель добавляет товар в корзину и выбирает количество",
+          "Указывает район и адрес доставки",
+          "Выбирает способ оплаты — наличными при доставке или переводом на карту",
+          "После подтверждения заказа продавцу автоматически приходит уведомление через @maxsavdo_bot",
+          "Продавец обновляет статус заказа (принят, доставляется, выполнен) в системе",
+        ],
+      },
+      {
+        heading: "Способы оплаты",
+        table: {
+          head: ["Способ оплаты", "Как это работает"],
+          rows: [
+            ["Наличные (при доставке)", "Покупатель платит курьеру или при самовывозе"],
+            [
+              "Перевод на карту",
+              "Продавец включает свои реквизиты в настройках, покупатель переводит на этот номер",
+            ],
+          ],
+        },
+      },
+      {
+        heading: "Это фискальный кассовый аппарат?",
+        body: [
+          "Нет. Законодательство Узбекистана может требовать при продаже за наличные или карту зарегистрированный фискальный кассовый аппарат или модуль онлайн-кассы — это отдельное, официально сертифицированное оборудование или программа. Оформление заказа в MaxSavdo обрабатывает заказ онлайн, но не печатает фискальный чек и не отчитывается перед налоговой. Если фискальные требования применимы к вам, это нужно решать отдельно.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Заменяет ли MaxSavdo кассовый аппарат?",
+        a: "Нет. MaxSavdo — это система приёма онлайн-заказов и оплаты для Telegram-магазина (корзина, оформление заказа). Она не связана с фискальным кассовым аппаратом или модулем онлайн-кассы, требуемым законом, и не заменяет его.",
+      },
+      {
+        q: "Как можно принимать оплату?",
+        a: "Есть два основных способа: наличными при доставке или переводом на карту продавца. Номер карты виден покупателю только если продавец включил его в настройках магазина.",
+      },
+      {
+        q: "Как продавец узнаёт о новом заказе?",
+        a: "Как только покупатель завершает оформление заказа, продавцу автоматически приходит уведомление через @maxsavdo_bot — с товаром, количеством, адресом и способом оплаты. Не нужно вручную проверять переписку.",
       },
     ],
   },
