@@ -156,6 +156,28 @@ export async function serverGetStoresCatalog(): Promise<StoresCatalogItem[]> {
   return res.data;
 }
 
+/**
+ * SEO-ITEMLIST-001: платформенный фид `/products` для ItemList JSON-LD.
+ *
+ * `ProductListItem` (packages/types) не объявляет `store` — но
+ * `storefront.controller.ts` (`listStorefrontProducts`, ветка без `storeId`)
+ * реально спредит весь Product-объект в ответ, а `store: {id,name,slug}`
+ * уже в `allPublicProductInclude` и ничем не вырезается из `...rest`. Тип
+ * здесь просто объявляет то, что API и так отдаёт в рантайме — той же
+ * тактикой, что `StorefrontStoreWithPayments` выше (packages/types на этой
+ * ветке отстаёт от main, трогать его тут не будем).
+ */
+export type ProductListItemWithStore = ProductListItem & {
+  store?: { id: string; name: string; slug: string };
+};
+
+export async function serverGetProductsCatalog(limit = 24): Promise<ProductListItemWithStore[]> {
+  const res = await sfetch<{ data: ProductListItemWithStore[] }>('/storefront/products', {
+    limit: String(limit),
+  });
+  return res.data;
+}
+
 export async function serverGetGlobalCategories(): Promise<GlobalCategory[]> {
   return sfetch<GlobalCategory[]>('/storefront/categories');
 }
