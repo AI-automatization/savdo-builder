@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { Product } from 'types';
+import { safeJsonLd } from '@/lib/json-ld';
 
 const BASE = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/v1`;
 const SITE_URL = process.env.NEXT_PUBLIC_BUYER_URL || 'https://maxsavdo.uz';
@@ -92,7 +93,7 @@ export default async function ProductLayout({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       {children}
     </>

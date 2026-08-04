@@ -1,5 +1,5 @@
 import { inter } from "@/lib/fonts";
-import { organizationJsonLd } from "@/lib/jsonld";
+import { organizationJsonLd, safeJsonLd } from "@/lib/jsonld";
 import Analytics from "@/components/Analytics";
 
 type RootShellProps = {
@@ -24,7 +24,7 @@ export default function RootShell({ lang, children }: RootShellProps) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationJsonLd()),
+            __html: safeJsonLd(organizationJsonLd()),
           }}
         />
         {/* Ambient amber orbs — Azim base, Polat colors */}
