@@ -24,7 +24,10 @@ const ICONS: [LucideIcon, LucideIcon, LucideIcon] = [MessageSquare, PackagePlus,
 
 const ACCENT = '#E8A552';
 const ACCENT_DIM = 'rgba(232,165,82,0.35)';
-const SURFACE = 'rgba(255,255,255,0.05)';
+// These sit on the theme-aware .card-glass background (see How()), so they
+// track the same tint tokens as the card itself rather than a fixed white.
+const SURFACE = 'var(--color-tint)';
+const SURFACE_STRONG = 'var(--color-tint-strong)';
 const BORDER = 'rgba(232,165,82,0.18)';
 
 /** Step 1 — logging in via the bot: a chat bubble confirming with a check. */
@@ -53,10 +56,10 @@ function SetupIllustration() {
       <path d="M34 56l8-10 6 6 10-12 10 16" stroke={ACCENT} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
       <circle cx="42" cy="32" r="4" fill={ACCENT} opacity="0.6" />
       <rect x="86" y="24" width="94" height="6" rx="3" fill={ACCENT} opacity="0.55" />
-      <rect x="86" y="38" width="66" height="5" rx="2.5" fill="rgba(255,255,255,0.25)" />
+      <rect x="86" y="38" width="66" height="5" rx="2.5" fill={SURFACE_STRONG} />
       <rect x="86" y="50" width="40" height="14" rx="7" fill="rgba(232,165,82,0.15)" stroke={ACCENT_DIM} />
       <rect x="94" y="55" width="24" height="4" rx="2" fill={ACCENT} opacity="0.7" />
-      <rect x="20" y="86" width="160" height="10" rx="5" fill="rgba(255,255,255,0.06)" />
+      <rect x="20" y="86" width="160" height="10" rx="5" fill={SURFACE} />
       <rect x="20" y="86" width="96" height="10" rx="5" fill={ACCENT} opacity="0.4" />
     </svg>
   );

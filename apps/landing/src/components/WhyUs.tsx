@@ -35,12 +35,12 @@ export default function WhyUs({ dict }: WhyUsProps) {
           <div className="overflow-x-auto rounded-2xl" style={{ border: '1px solid rgba(232,165,82,0.18)' }}>
             <table className="w-full min-w-[640px] text-sm">
               <thead>
-                <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
+                <tr style={{ background: 'var(--color-table-row-tint)' }}>
                   {dict.cols.map((c, i) => (
                     <th
                       key={i}
                       className="px-4 py-3 text-center font-semibold"
-                      style={{ color: i === 1 ? '#E8A552' : '#A0A0A0', borderBottom: '1px solid rgba(232,165,82,0.14)' }}
+                      style={{ color: i === 1 ? '#E8A552' : 'var(--color-muted)', borderBottom: '1px solid rgba(232,165,82,0.14)' }}
                     >
                       {c}
                     </th>
@@ -70,7 +70,7 @@ export default function WhyUs({ dict }: WhyUsProps) {
           <div
             aria-hidden
             className="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-2xl sm:hidden"
-            style={{ background: 'linear-gradient(to right, transparent, #0F0F0F)' }}
+            style={{ background: 'linear-gradient(to right, transparent, var(--color-bg))' }}
           />
         </div>
         <p className="mx-auto mt-4 max-w-2xl text-center text-xs text-brand-muted">{dict.footnote}</p>

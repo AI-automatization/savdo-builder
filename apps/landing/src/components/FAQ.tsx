@@ -71,7 +71,7 @@ export default function FAQ({ locale, dict }: FAQProps) {
                     <ChevronDown
                       size={18}
                       aria-hidden
-                      style={{ color: open ? '#E8A552' : '#A0A0A0', flexShrink: 0, transition: 'transform 0.2s, color 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                      style={{ color: open ? '#E8A552' : 'var(--color-muted)', flexShrink: 0, transition: 'transform 0.2s, color 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
                     />
                   </button>
                 </h3>

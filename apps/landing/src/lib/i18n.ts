@@ -115,6 +115,11 @@ export type Dict = {
     contact: string;
     bot: string;
     resources: string;
+    legal: {
+      offer: string;
+      privacy: string;
+      terms: string;
+    };
   };
   about: {
     eyebrow: string;
@@ -490,6 +495,11 @@ const uz: Dict = {
     contact: "Aloqa",
     bot: "Bot",
     resources: "Foydali",
+    legal: {
+      offer: "Ommaviy oferta",
+      privacy: "Maxfiylik siyosati",
+      terms: "Foydalanish shartlari",
+    },
   },
   about: {
     eyebrow: "Kompaniya haqida",
@@ -918,6 +928,11 @@ const ru: Dict = {
     contact: "Связаться",
     bot: "Бот",
     resources: "Полезное",
+    legal: {
+      offer: "Публичная оферта",
+      privacy: "Политика конфиденциальности",
+      terms: "Условия использования",
+    },
   },
   about: {
     eyebrow: "О компании",

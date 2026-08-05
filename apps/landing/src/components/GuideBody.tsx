@@ -171,7 +171,7 @@ export default function GuideBody({ guide, updatedLabel }: GuideBodyProps) {
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:hidden"
-                style={{ background: "linear-gradient(to right, transparent, #0F0F0F)" }}
+                style={{ background: "linear-gradient(to right, transparent, var(--color-bg))" }}
               />
             </div>
           ) : null}
