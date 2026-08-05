@@ -6,6 +6,7 @@ import { PartnerUpdateStockUseCase } from './partner-update-stock.use-case';
 import { PartnerDeleteProductUseCase } from './partner-delete-product.use-case';
 import { PartnerApiKeyGuard, PartnerContext, sha256Hex } from '../guards/partner-api-key.guard';
 import { downloadPartnerImage } from '../utils/partner-image.util';
+import { lookup } from 'node:dns/promises';
 import { ExecutionContext } from '@nestjs/common';
 
 // DNS не ходит в сеть из тестов: по умолчанию любой хост резолвится в публичный
@@ -13,8 +14,7 @@ import { ExecutionContext } from '@nestjs/common';
 jest.mock('node:dns/promises', () => ({
   lookup: jest.fn().mockResolvedValue([{ address: '93.184.216.34', family: 4 }]),
 }));
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const dnsMock = require('node:dns/promises') as { lookup: jest.Mock };
+const dnsLookup = lookup as unknown as jest.Mock;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -395,8 +395,8 @@ describe('downloadPartnerImage — анти-SSRF и лимит тела', () => 
   const PUBLIC_URL = 'https://public.example/a.png';
 
   beforeEach(() => {
-    dnsMock.lookup.mockReset();
-    dnsMock.lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+    dnsLookup.mockReset();
+    dnsLookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
   });
   afterEach(() => jest.restoreAllMocks());
 
@@ -415,7 +415,7 @@ describe('downloadPartnerImage — анти-SSRF и лимит тела', () => 
   });
 
   it('отклоняет редирект на хост, который резолвится в приватный IP', async () => {
-    dnsMock.lookup
+    dnsLookup
       .mockResolvedValueOnce([{ address: '93.184.216.34', family: 4 }])
       .mockResolvedValueOnce([{ address: '10.0.0.7', family: 4 }]);
     const fetchMock = jest
@@ -479,7 +479,7 @@ describe('downloadPartnerImage — анти-SSRF и лимит тела', () => 
     global.fetch = jest.fn() as any;
     await expect(downloadPartnerImage('http://public.example/a.png')).rejects.toThrow(/https/);
 
-    dnsMock.lookup.mockResolvedValue([]);
+    dnsLookup.mockResolvedValue([]);
     await expect(downloadPartnerImage(PUBLIC_URL)).rejects.toThrow(/public address/);
     expect(global.fetch).not.toHaveBeenCalled();
   });
