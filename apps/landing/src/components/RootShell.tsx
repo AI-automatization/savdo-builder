@@ -21,7 +21,15 @@ type RootShellProps = {
  */
 export default function RootShell({ lang, children }: RootShellProps) {
   return (
-    <html lang={lang} className={inter.variable}>
+    <html
+      lang={lang}
+      className={inter.variable}
+      // ThemeScript below sets data-theme on <html> before hydration (see
+      // lib/theme/theme-script.tsx) — intentional, so React's hydration
+      // mismatch check on this one attribute must be silenced rather than
+      // "fixed"; same pattern web-buyer/src/app/layout.tsx already uses.
+      suppressHydrationWarning
+    >
       <head>
         {/* Must run before hydration to avoid a flash of the wrong theme —
             see lib/theme/theme-script.tsx. Default stays 'dark' so first
