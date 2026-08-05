@@ -41,7 +41,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22, не 20: pnpm 11 требует Node >=22.13 (issue #10).
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
