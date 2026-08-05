@@ -1,0 +1,71 @@
+name: CI — Landing
+
+# apps/landing — самое активное приложение репозитория и единственное, что
+# видит холодный трафик (maxsavdo.uz), а CI у него не было вообще: ни одного
+# из 8 workflow не покрывал apps/landing/**. Между `git push` и Railway не
+# стояло ни одной проверки — так в прод доехали сломанный билд
+# («next: not found», 26.07) и некликабельные Hero CTA (issue #12).
+#
+# Почему npm, а не pnpm: landing — отдельный npm-остров внутри pnpm-воркспейса
+# (свой package-lock.json, свой Dockerfile). CI обязан ставить ровно то же,
+# что ставит прод-образ, иначе проверка не про то, что деплоится.
+
+on:
+  push:
+    branches: [main, landing]
+    paths:
+      - 'apps/landing/**'
+      - '.github/workflows/ci-landing.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/landing/**'
+
+jobs:
+  ci:
+    name: Typecheck · Build (landing)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/landing
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/landing/package-lock.json
+
+      # ci, а не install: лок обязан быть в согласии с package.json, иначе
+      # билд Railway опять разъедется с тем, что проверил CI.
+      - name: Install
+        run: npm ci --legacy-peer-deps
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # TODO(#13): убрать continue-on-error, когда приедет flat-config ESLint.
+      # Сейчас `next lint` без конфига уходит в интерактивный визард и падает —
+      # блокирующим шагом он остановит main до мержа PR по #13.
+      - name: Lint (non-blocking до закрытия issue #13)
+        continue-on-error: true
+        run: npm run lint
+
+      # Именно этот шаг поймал бы оба инцидента 26.07 до деплоя.
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: https://maxsavdo.uz
+          NEXT_PUBLIC_API_URL: https://savdo-api-production.up.railway.app
+          NEXT_PUBLIC_BOT_USERNAME: maxsavdo_bot
+
+      # landing не участвует в pnpm-оверрайдах монорепы (issue #12, часть C —
+      # решение владельца ещё не принято). Пока остров существует, ему нужен
+      # собственный аудит, иначе патчи зависимостей проходят мимо него.
+      - name: npm audit (информативно)
+        continue-on-error: true
+        run: npm audit --audit-level=high

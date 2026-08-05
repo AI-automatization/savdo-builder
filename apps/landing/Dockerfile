@@ -6,8 +6,14 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app/apps/landing
 
-COPY apps/landing/package.json apps/landing/package-lock.json* ./
-RUN npm install --legacy-peer-deps
+# Звёздочку в COPY убрали: при отсутствии лока COPY не падал, и npm резолвил
+# всё с нуля по кареткам — так и словили "next: not found" 26.07. Теперь
+# отсутствие лока роняет билд сразу.
+# ci вместо install: ставим ровно то, что в локе и что проверил CI. install
+# вправе переписать лок, из-за чего два билда одного коммита могли дать разные
+# деревья — на публичном сайте (issue #12).
+COPY apps/landing/package.json apps/landing/package-lock.json ./
+RUN npm ci --legacy-peer-deps
 
 # ── Stage 2: builder ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
