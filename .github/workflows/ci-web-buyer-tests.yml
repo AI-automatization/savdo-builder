@@ -1,4 +1,4 @@
-name: CI — web-buyer tests
+name: CI — web-buyer
 
 on:
   push:
@@ -14,8 +14,8 @@ on:
       - 'packages/types/**'
 
 jobs:
-  test:
-    name: Vitest smoke (web-buyer)
+  ci:
+    name: Typecheck · Build (web-buyer)
     runs-on: ubuntu-latest
 
     steps:
@@ -23,18 +23,48 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
+        # Версию НЕ указываем: action-setup@v4 берёт её из package.json →
+        # packageManager (pnpm@11.12.0) и падает, если задать обе. Единственный
+        # источник истины. Под pnpm 9 overrides читались из package.json, а не
+        # из pnpm-workspace.yaml — 35 оверрайдов не применялись (issue #10).
+        uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22, не 20: pnpm 11 требует Node >=22.13 (issue #10).
+          node-version: 22
           cache: pnpm
 
+      # frozen: расхождение lockfile должно ронять CI, а не молча чиниться.
+      # Раньше здесь стоял --frozen-lockfile=false, из-за чего рассинхрон
+      # lockfile с конфигом в этой джобе не всплывал никогда (issue #11).
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
 
-      - name: Vitest smoke
-        run: pnpm --filter web-buyer test
+      - name: Typecheck
+        run: pnpm --filter web-buyer exec tsc --noEmit
+
+      # Джоба называлась «Vitest smoke» и зеленела на каждом push, не выполняя
+      # ничего: скрипта `test` в пакете нет, а pnpm при отсутствии скрипта в
+      # отфильтрованном пакете выходит с кодом 0 молча. Теперь отсутствие
+      # тестов — видимый warning в логе, а не невидимая зелёная галочка.
+      # Гейт держат Typecheck и Build. Упростить до `pnpm --filter web-buyer test`,
+      # когда появятся настоящие тесты.
+      - name: Tests
+        run: |
+          if node -e "process.exit(require('./apps/web-buyer/package.json').scripts?.test ? 0 : 1)"; then
+            pnpm --filter web-buyer test
+          else
+            echo "::warning title=web-buyer: тестов нет::В apps/web-buyer/package.json нет скрипта 'test' и нет ни одного *.test.* / *.spec.* файла. Гейт держат только Typecheck и Build. См. issue #11."
+          fi
+
+      - name: Build
+        run: pnpm --filter web-buyer build
+
+      # TODO(#14): сделать блокирующим, когда закрыты накопленные lint-ошибки.
+      # Сейчас web-buyer lint красный (13 errors, преимущественно
+      # react-hooks/set-state-in-effect) — блокирующим шагом он остановит main.
+      - name: Lint (non-blocking, см. issue #14)
+        continue-on-error: true
+        run: pnpm --filter web-buyer lint
