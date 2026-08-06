@@ -43,6 +43,12 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // No camera/mic/geolocation anywhere on this site — closing off browser
+          // features we never use is free hardening, no functional risk.
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
           // HSTS: tells browsers to never try http:// again. Also a (small)
           // trust signal for search engines. `preload` is safe here because the
           // apex and every subdomain (shop/seller/api) are already HTTPS-only.
@@ -50,6 +56,21 @@ const nextConfig: NextConfig = {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
           },
+        ],
+      },
+      {
+        // Static assets under /public (product photos, logo) — unlike hashed
+        // /_next/static chunks, these have stable filenames but shipped with
+        // max-age=0, forcing revalidation on every repeat view.
+        source: '/(landing|guides)/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/logo-maxsavdo.svg',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
     ];

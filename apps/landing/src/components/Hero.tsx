@@ -484,7 +484,18 @@ function PhoneFrame({ locale, className = '', ref }: { locale: Locale; className
     <div
       ref={ref}
       className={`relative h-[480px] w-[240px] rounded-[2.5rem] p-3 lg:h-[min(616px,calc(100vh_-_11rem))] lg:w-auto lg:aspect-[300/616] ${className}`}
-      style={{ border: '7px solid rgba(232,165,82,0.42)', background: '#1A1A1A', boxShadow: '0 30px 80px rgba(232,165,82,0.28)' }}
+      style={{
+        border: '7px solid rgba(232,165,82,0.42)',
+        background: '#1A1A1A',
+        boxShadow: '0 30px 80px rgba(232,165,82,0.28)',
+        // This mockup is a permanently-dark screenshot of the app, independent
+        // of the site's light/dark toggle. Its content still uses the
+        // text-brand-text/text-brand-muted utility classes though, so without
+        // pinning these two tokens locally, switching the page to light mode
+        // makes all the mock UI text render dark-on-dark and disappear.
+        ['--color-text' as string]: '#F5F5F5',
+        ['--color-muted' as string]: '#A0A0A0',
+      }}
     >
       <PhoneScreen locale={locale} />
     </div>
@@ -824,15 +835,14 @@ export default function Hero({ locale, dict }: HeroProps) {
               href={BOT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-semibold text-brand-bg transition-all hover:opacity-90 active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-semibold text-brand-onAccent transition-all hover:opacity-90 active:scale-[0.98]"
               style={{ background: 'linear-gradient(135deg, #E8A552 0%, #D4922E 100%)', boxShadow: '0 8px 28px rgba(232,165,82,0.38)' }}
             >
               {dict.ctaPrimary}
             </a>
             <a
               href="#how"
-              className="inline-flex items-center justify-center rounded-xl px-6 py-3.5 text-base font-semibold text-brand-text transition-all hover:border-brand-accent"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(232,165,82,0.20)' }}
+              className="btn-outline-glass inline-flex items-center justify-center rounded-xl px-6 py-3.5 text-base font-semibold text-brand-text transition-all hover:border-brand-accent"
             >
               {dict.ctaSecondary}
             </a>
@@ -911,15 +921,14 @@ export default function Hero({ locale, dict }: HeroProps) {
                   href={BOT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-semibold text-brand-bg transition-all hover:opacity-90 active:scale-[0.98]"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-base font-semibold text-brand-onAccent transition-all hover:opacity-90 active:scale-[0.98]"
                   style={{ background: 'linear-gradient(135deg, #E8A552 0%, #D4922E 100%)', boxShadow: '0 8px 28px rgba(232,165,82,0.38)' }}
                 >
                   {dict.ctaPrimary}
                 </a>
                 <a
                   href="#how"
-                  className="inline-flex items-center justify-center rounded-xl px-6 py-3.5 text-base font-semibold text-brand-text transition-all hover:border-brand-accent"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(232,165,82,0.20)' }}
+                  className="btn-outline-glass inline-flex items-center justify-center rounded-xl px-6 py-3.5 text-base font-semibold text-brand-text transition-all hover:border-brand-accent"
                 >
                   {dict.ctaSecondary}
                 </a>

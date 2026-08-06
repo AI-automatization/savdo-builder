@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import Image from 'next/image';
+import { MaxsavdoLogo } from '@/components/MaxsavdoLogo';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export type Locale = 'uz' | 'ru';
 
@@ -56,7 +57,7 @@ export default function Header({
     <header
       className="sticky top-0 z-40 w-full"
       style={{
-        background: 'rgba(15,15,15,0.70)',
+        background: 'var(--color-header-bg)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid rgba(232,165,82,0.12)',
@@ -68,13 +69,7 @@ export default function Header({
           className="flex items-center gap-2.5"
           aria-label="MaxSavdo"
         >
-          <Image
-            src="/logo-maxsavdo.svg"
-            alt="MaxSavdo"
-            width={36}
-            height={36}
-            priority
-          />
+          <MaxsavdoLogo size={36} />
           <span className="text-lg font-bold tracking-tight text-brand-text">
             MaxSavdo
           </span>
@@ -111,6 +106,8 @@ export default function Header({
         </nav>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
+
           <Link
             href={otherHref}
             className="rounded-lg border px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-brand-muted transition-colors hover:text-brand-accent"
@@ -123,7 +120,7 @@ export default function Header({
             href={BOT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden rounded-xl px-4 py-2 text-sm font-semibold text-brand-bg transition-all hover:opacity-90 sm:inline-flex"
+            className="inline-flex rounded-xl px-3 py-1.5 text-xs font-semibold text-brand-onAccent transition-all hover:opacity-90 sm:px-4 sm:py-2 sm:text-sm"
             style={{
               background: 'linear-gradient(135deg, #E8A552 0%, #D4922E 100%)',
               boxShadow: '0 4px 14px rgba(232,165,82,0.30)',

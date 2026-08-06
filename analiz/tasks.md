@@ -59,6 +59,46 @@
   смаршрутизированы — контентное решение, не техническое, за Юсуфом.
 - **Файлы:** `apps/landing/src/lib/i18n.ts`, `apps/landing/src/components/pages/FaqPageContent.tsx`
 
+## 🔴 [SEO-SHOP-TEST-STORE-LIVE-001] Тестовый магазин "ТЕСТ - удалить" живой и индексируемый на shop.maxsavdo.uz
+- **Домен:** `apps/api`, `apps/web-buyer` — **Полат** (не apps/landing, вне зоны этой сессии)
+- **Найдено:** SEO-аудит 04.08.2026 (`seo-ecommerce` subagent), см. `analiz/done.md` запись
+  `SEO-FULL-AUDIT-2026-08-04` для полного контекста.
+- **Факт:** `GET /api/v1/storefront/stores` (прод API) возвращает магазин `status: APPROVED`,
+  slug `test-udalit-ms1gi4um`, название буквально "ТЕСТ - удалить", 2 товара (один — `"fdgh"`,
+  описание `"test"`, цена 99 999 сум). Рендерится живьём на `shop.maxsavdo.uz/test-udalit-ms1gi4um`,
+  `robots.txt` не блокирует этот путь → индексируемо. Сейчас это ~50% всего живого каталога
+  платформы (2 из 2 approved-магазинов).
+- **Что сделать:** снять approve/скрыть тестовый магазин, либо проставить noindex для
+  внутренних/тестовых магазинов на уровне approve-флоу.
+- **Связано:** `apps/web-buyer/src/lib/seo/index-exclusions.ts` уже содержит ручной
+  deny-list (`SEO_EXCLUDED_STORE_SLUGS`) именно с этим slug — то есть кто-то уже знал про
+  проблему на уровне sitemap, но сам магазин остался live/approved.
+
+## 🟠 [SEO-SHOP-AVAILABILITY-SCHEMA-001] Product JSON-LD availability захардкожен в InStock
+- **Домен:** `apps/web-buyer` — **Полат**
+- **Найдено:** SEO-аудит 04.08.2026 (`seo-ecommerce` subagent).
+- **Факт:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/layout.tsx:32-38` —
+  `offers.availability` литерально `'https://schema.org/InStock'`, не читает
+  `product.status`/`isOutOfStock`/`stockQuantity`, хотя `page.tsx` эти же поля уже использует
+  для видимого UI ("Нет в наличии"). Товар может одновременно показывать "нет в наличии" в UI
+  и заявлять `InStock` в structured data — это ровно то, что Google Merchant/Rich Results
+  флагает как data-quality проблему.
+- **Что сделать:** вычислять `availability` из тех же полей, что уже определяют
+  `isOutOfStock` в `page.tsx`.
+
+## 🟡 [SEO-SHOP-SITEMAP-FEED-001] sitemap.xml не полностью использует готовый /storefront/sitemap фид
+- **Домен:** `apps/web-buyer`, `apps/api` — **Полат**
+- **Найдено:** SEO-аудит 04.08.2026 (`seo-sitemap` + `seo-ecommerce` subagents).
+- **Факт:** `GET /api/v1/storefront/sitemap` (уже существует, комментарий в коде — "фид для
+  динамического sitemap.xml") отдаёт 2 магазина + 2 товара. Живой `shop.maxsavdo.uz/sitemap.xml`
+  берёт из этого фида только 1 магазин и 0 товаров. Также: `apps/web-buyer/src/app/sitemap.ts`
+  **в этой ветке** (основана на `main`) — устаревшая версия с build-timestamp антипаттерном и
+  без товарных URL; актуальная версия живёт в `origin/web-buyer` и уже правильная — при мерже
+  `main`→`web-buyer` эту регрессию не занести поверх рабочей версии.
+- **Что сделать:** свести sitemap.ts (в ветке `web-buyer`) к полному потреблению
+  `/storefront/sitemap` — и магазины, и товары.
+
+---
 
 ## 🟠 [PRICING-TIERS-NOT-ENFORCED-001] Pro и Studio различаются только ценой — ни один feature-флаг не enforced
 - **Домен:** монетизация/бизнес-модель — **Азим** (не код) · **Кто взял:** не назначено

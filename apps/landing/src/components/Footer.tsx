@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import Image from 'next/image';
+import { MaxsavdoLogo } from '@/components/MaxsavdoLogo';
 import { Send, Mail } from 'lucide-react';
 
 export type Locale = 'uz' | 'ru';
@@ -10,6 +10,11 @@ export type FooterDict = {
   contact: string;
   bot: string;
   resources: string;
+  legal: {
+    offer: string;
+    privacy: string;
+    terms: string;
+  };
 };
 
 type FooterProps = {
@@ -43,7 +48,7 @@ export default function Footer({ locale, dict, nav }: FooterProps) {
       className="mt-4"
       style={{
         borderTop: '1px solid rgba(232,165,82,0.12)',
-        background: 'rgba(15,15,15,0.60)',
+        background: 'var(--color-footer-bg)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
       }}
@@ -51,7 +56,7 @@ export default function Footer({ locale, dict, nav }: FooterProps) {
       <div className="mx-auto grid w-full max-w-content gap-10 px-4 py-14 sm:px-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8 lg:px-8">
         <div className="sm:col-span-2 lg:col-span-1">
           <Link href={home} className="flex items-center gap-2.5" aria-label="MaxSavdo">
-            <Image src="/logo-maxsavdo.svg" alt="MaxSavdo" width={34} height={34} />
+            <MaxsavdoLogo size={34} />
             <span className="text-lg font-bold tracking-tight text-brand-text">MaxSavdo</span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-brand-muted">
@@ -112,6 +117,16 @@ export default function Footer({ locale, dict, nav }: FooterProps) {
       <div style={{ borderTop: '1px solid rgba(232,165,82,0.08)' }}>
         <div className="mx-auto flex w-full max-w-content flex-col items-center justify-between gap-3 px-4 py-5 text-xs text-brand-muted sm:flex-row sm:px-6 lg:px-8">
           <span>© {year} MaxSavdo. {dict.rights}</span>
+          {/*
+            Legal entity + terms live on web-buyer (apps/web-buyer/src/app/{offer,privacy,terms})
+            but were never linked from the marketing site — a visitor evaluating
+            trust had no path to them from here (2026-08-06 E-E-A-T audit).
+          */}
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <a href="https://shop.maxsavdo.uz/offer" className="transition-colors hover:text-brand-accent">{dict.legal.offer}</a>
+            <a href="https://shop.maxsavdo.uz/privacy" className="transition-colors hover:text-brand-accent">{dict.legal.privacy}</a>
+            <a href="https://shop.maxsavdo.uz/terms" className="transition-colors hover:text-brand-accent">{dict.legal.terms}</a>
+          </div>
           <span style={{ color: 'rgba(232,165,82,0.40)' }}>Made in Uzbekistan 🇺🇿</span>
         </div>
       </div>

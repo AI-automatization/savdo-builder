@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { t } from "@/lib/i18n";
+import { staticPageJsonLd } from "@/lib/jsonld";
 import HowItWorksContent from "@/components/pages/HowItWorksContent";
 
 const dict = t("ru");
@@ -7,9 +8,24 @@ const dict = t("ru");
 export const metadata: Metadata = {
   title: dict.howPage.title,
   description: dict.howPage.subtitle,
-  alternates: { canonical: "/ru/how-it-works", languages: { uz: "/how-it-works", ru: "/ru/how-it-works" } },
+  alternates: {
+    canonical: "/ru/how-it-works",
+    languages: { uz: "/how-it-works", ru: "/ru/how-it-works", "x-default": "/how-it-works" },
+  },
 };
 
 export default function Page() {
-  return <HowItWorksContent locale="ru" dict={dict} />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            staticPageJsonLd("ru", "/ru/how-it-works", dict.howPage.title, dict.howPage.subtitle),
+          ),
+        }}
+      />
+      <HowItWorksContent locale="ru" dict={dict} />
+    </>
+  );
 }
