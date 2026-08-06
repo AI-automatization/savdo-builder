@@ -37,6 +37,7 @@ import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
 import { ApproveStoreUseCase } from './use-cases/approve-store.use-case';
 import { UnapproveStoreUseCase } from './use-cases/unapprove-store.use-case';
 import { SetStoreVerificationUseCase } from './use-cases/set-store-verification.use-case';
+import { SetStoreVisibilityUseCase } from './use-cases/set-store-visibility.use-case';
 import { AdminUpdateStoreChannelUseCase } from './use-cases/admin-update-store-channel.use-case';
 import { AdminCancelOrderUseCase } from './use-cases/admin-cancel-order.use-case';
 import { GetAuditLogUseCase } from './use-cases/get-audit-log.use-case';
@@ -102,6 +103,7 @@ import { MediaModule } from '../media/media.module';
     ApproveStoreUseCase,
     UnapproveStoreUseCase,
     SetStoreVerificationUseCase,
+    SetStoreVisibilityUseCase,
     AdminUpdateStoreChannelUseCase,
     AdminCancelOrderUseCase,
     GetAuditLogUseCase,

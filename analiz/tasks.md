@@ -282,6 +282,15 @@
 - **Файлы:** `apps/web-buyer/src/app/sitemap.ts`, `apps/api` storefront sitemap use-case,
   `packages/types/src/api/storefront.ts`.
 
+## 🔴 [FEAT-SCHEDULED-PUBLISH-001-DEPLOY] Применить миграцию scheduled_publish к живой БД
+- **Домен:** packages/db · **Кто взял:** не назначено
+- **Контекст:** миграция `20260804000001_scheduled_publish` (ADD COLUMN `products.scheduledPublishAt`,
+  nullable, безопасная) написана и Prisma Client пересобран, но `prisma migrate deploy` НЕ выполнялся —
+  в этой сессии не было доступного `DATABASE_URL` (ни dev, ни prod). Код (`ScheduleProductPublishUseCase`,
+  `ScheduledPublishProcessor`) уже ссылается на это поле — без применённой миграции деплой апи упадёт
+  на первом же обращении к `product.scheduledPublishAt`.
+- **Файлы:** `packages/db/prisma/migrations/20260804000001_scheduled_publish/migration.sql`
+
 ## 🔴 [SEO-AUDIT-002] web-buyer: sitemap не включает товары/магазины + нет priority на LCP-картинках
 - **Домен:** apps/web-buyer · **Кто взял:** не назначено
 - **Контекст:** SEO-аудит 02.08.2026 (полный отчёт — Artifact, см. Obsidian/чат) по 6 факторам

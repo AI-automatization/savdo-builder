@@ -24,9 +24,11 @@ import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { ChangeProductStatusDto } from './dto/change-product-status.dto';
+import { SchedulePublishDto } from './dto/schedule-publish.dto';
 import { CreateProductUseCase } from './use-cases/create-product.use-case';
 import { UpdateProductUseCase } from './use-cases/update-product.use-case';
 import { ChangeProductStatusUseCase } from './use-cases/change-product-status.use-case';
+import { ScheduleProductPublishUseCase } from './use-cases/schedule-product-publish.use-case';
 import { DeleteProductUseCase } from './use-cases/delete-product.use-case';
 import { CreateVariantUseCase } from './use-cases/create-variant.use-case';
 import { UpdateVariantUseCase } from './use-cases/update-variant.use-case';
@@ -64,6 +66,7 @@ export class ProductsController {
     private readonly createProduct: CreateProductUseCase,
     private readonly updateProduct: UpdateProductUseCase,
     private readonly changeProductStatus: ChangeProductStatusUseCase,
+    private readonly schedulePublish: ScheduleProductPublishUseCase,
     private readonly deleteProduct: DeleteProductUseCase,
     private readonly createVariant: CreateVariantUseCase,
     private readonly updateVariant: UpdateVariantUseCase,
@@ -220,6 +223,23 @@ export class ProductsController {
   ) {
     const storeId = await this.resolveStoreId(user.sub);
     return this.changeProductStatus.execute(id, storeId, dto.status);
+  }
+
+  /**
+   * FEAT-SCHEDULED-PUBLISH-001: продавец ставит будущее время публикации
+   * DRAFT-товара — как отложенная отправка в Telegram. `publishAt: null`
+   * отменяет расписание. Cron публикует в срок (см. ScheduledPublishProcessor).
+   */
+  @Patch('seller/products/:id/schedule-publish')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SELLER')
+  async scheduleMyProductPublish(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: SchedulePublishDto,
+  ) {
+    const storeId = await this.resolveStoreId(user.sub);
+    return this.schedulePublish.execute(id, storeId, dto.publishAt);
   }
 
   /**

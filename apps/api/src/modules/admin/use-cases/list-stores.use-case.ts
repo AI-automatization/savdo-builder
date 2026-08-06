@@ -12,6 +12,7 @@ export class ListStoresUseCase {
       page: dto.page,
       limit: dto.limit,
       search: dto.search,
+      isPublic: dto.isPublic === undefined ? undefined : dto.isPublic === 'true',
     });
   }
 }
