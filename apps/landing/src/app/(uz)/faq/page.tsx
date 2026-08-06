@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { t } from "@/lib/i18n";
-import { faqPageJsonLd } from "@/lib/jsonld";
+import { faqPageJsonLd, safeJsonLd } from "@/lib/jsonld";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import FaqList from "@/components/FaqList";
@@ -41,7 +41,7 @@ export default function FaqPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(faqPageJsonLd(dict, locale)),
+          __html: safeJsonLd(faqPageJsonLd(dict, locale)),
         }}
       />
       <Header locale={locale} dict={dict} anchorBase="/" switchHref="/ru/faq" />

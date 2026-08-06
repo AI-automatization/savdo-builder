@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { t } from "@/lib/i18n";
 import { guides } from "@/lib/guides";
-import { guidesIndexJsonLd } from "@/lib/jsonld";
+import { guidesIndexJsonLd, safeJsonLd } from "@/lib/jsonld";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import GuideList from "@/components/GuideList";
@@ -41,7 +41,7 @@ export default function GuidesIndexPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(guidesIndexJsonLd(dict, locale, list)),
+          __html: safeJsonLd(guidesIndexJsonLd(dict, locale, list)),
         }}
       />
       <Header

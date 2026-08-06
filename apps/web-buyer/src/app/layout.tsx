@@ -6,6 +6,7 @@ import { QueryProvider } from "../providers/query-provider";
 import { AuthProvider } from "../lib/auth/context";
 import { ThemeProvider } from "../lib/theme/theme-provider";
 import { ThemeScript } from "../lib/theme/theme-script";
+import { safeJsonLd } from "../lib/json-ld";
 
 const inter = Inter({
   subsets: ['latin', 'latin-ext', 'cyrillic', 'cyrillic-ext'],
@@ -56,7 +57,7 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: safeJsonLd({
               '@context': 'https://schema.org',
               '@type': 'Organization',
               name: 'maxsavdo',

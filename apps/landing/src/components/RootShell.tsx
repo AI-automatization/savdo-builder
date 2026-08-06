@@ -1,5 +1,5 @@
 import { inter } from "@/lib/fonts";
-import { organizationJsonLd } from "@/lib/jsonld";
+import { organizationJsonLd, safeJsonLd } from "@/lib/jsonld";
 import Analytics from "@/components/Analytics";
 import { ThemeScript } from "@/lib/theme/theme-script";
 import { ThemeProvider } from "@/lib/theme/theme-provider";
@@ -40,7 +40,7 @@ export default function RootShell({ lang, children }: RootShellProps) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationJsonLd()),
+            __html: safeJsonLd(organizationJsonLd()),
           }}
         />
         <ThemeProvider defaultTheme="dark">

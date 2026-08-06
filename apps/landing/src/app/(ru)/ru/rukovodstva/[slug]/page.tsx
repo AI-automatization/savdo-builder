@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { guideAlternates, getGuide, guidePath, guides } from "@/lib/guides";
-import { guideJsonLd } from "@/lib/jsonld";
+import { guideJsonLd, safeJsonLd } from "@/lib/jsonld";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import GuideBody from "@/components/GuideBody";
@@ -68,7 +68,7 @@ export default async function RuGuidePage({ params }: PageProps) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(guideJsonLd(dict, locale, guide)),
+          __html: safeJsonLd(guideJsonLd(dict, locale, guide)),
         }}
       />
       <Header
