@@ -5,7 +5,16 @@ import { PartnerUpdateProductUseCase } from './partner-update-product.use-case';
 import { PartnerUpdateStockUseCase } from './partner-update-stock.use-case';
 import { PartnerDeleteProductUseCase } from './partner-delete-product.use-case';
 import { PartnerApiKeyGuard, PartnerContext, sha256Hex } from '../guards/partner-api-key.guard';
+import { downloadPartnerImage } from '../utils/partner-image.util';
+import { lookup } from 'node:dns/promises';
 import { ExecutionContext } from '@nestjs/common';
+
+// DNS не ходит в сеть из тестов: по умолчанию любой хост резолвится в публичный
+// адрес, отдельные тесты переопределяют (редирект на 169.254.169.254 и т.п.).
+jest.mock('node:dns/promises', () => ({
+  lookup: jest.fn().mockResolvedValue([{ address: '93.184.216.34', family: 4 }]),
+}));
+const dnsLookup = lookup as unknown as jest.Mock;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -18,13 +27,41 @@ const CTX: PartnerContext = {
   sellerUserId: 'user-1',
 };
 
-function mockFetchImage(ok = true, mime = 'image/jpeg') {
-  return jest.fn().mockResolvedValue({
+/** Ответ-заглушка для fetch: тело отдаётся стримом, как у настоящего Response. */
+type ImageResponseOpts = {
+  ok?: boolean;
+  status?: number;
+  mime?: string;
+  contentLength?: string | null;
+  location?: string | null;
+  chunks?: Uint8Array[] | AsyncIterable<Uint8Array>;
+};
+
+function imageResponse(opts: ImageResponseOpts = {}) {
+  const ok = opts.ok ?? true;
+  const status = opts.status ?? (ok ? 200 : 404);
+  const mime = opts.mime ?? 'image/jpeg';
+  const chunks = opts.chunks ?? [new Uint8Array([1, 2, 3])];
+  const headers: Record<string, string | null> = {
+    'content-type': mime,
+    'content-length': opts.contentLength ?? null,
+    location: opts.location ?? null,
+  };
+  const body = Symbol.asyncIterator in Object(chunks)
+    ? (chunks as AsyncIterable<Uint8Array>)
+    : (async function* () {
+        for (const c of chunks as Uint8Array[]) yield c;
+      })();
+  return {
     ok,
-    status: ok ? 200 : 404,
-    headers: { get: () => mime },
-    arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
-  });
+    status,
+    headers: { get: (n: string) => headers[n.toLowerCase()] ?? null },
+    body: Object.assign(body, { cancel: async () => undefined }),
+  };
+}
+
+function mockFetchImage(ok = true, mime = 'image/jpeg') {
+  return jest.fn().mockResolvedValue(imageResponse({ ok, mime }));
 }
 
 function makeUseCase() {
@@ -349,5 +386,111 @@ describe('PartnerApiKeyGuard', () => {
     });
     const { ctx } = makeGuardContext({ 'x-api-key': rawKey });
     await expect(guard.canActivate(ctx)).rejects.toThrow(DomainException);
+  });
+});
+
+// ─── downloadPartnerImage: SSRF + OOM (issue #9) ────────────────────────────
+
+describe('downloadPartnerImage — анти-SSRF и лимит тела', () => {
+  const PUBLIC_URL = 'https://public.example/a.png';
+
+  beforeEach(() => {
+    dnsLookup.mockReset();
+    dnsLookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('отклоняет редирект на приватный адрес (cloud metadata)', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        imageResponse({ status: 302, location: 'https://169.254.169.254/latest/meta-data/' }),
+      )
+      .mockResolvedValueOnce(imageResponse({ mime: 'image/png' }));
+    global.fetch = fetchMock as any;
+
+    await expect(downloadPartnerImage(PUBLIC_URL)).rejects.toThrow(/public address/);
+    // второй запрос не должен случиться: цель редиректа зарезана до fetch
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('отклоняет редирект на хост, который резолвится в приватный IP', async () => {
+    dnsLookup
+      .mockResolvedValueOnce([{ address: '93.184.216.34', family: 4 }])
+      .mockResolvedValueOnce([{ address: '10.0.0.7', family: 4 }]);
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(imageResponse({ status: 302, location: 'https://evil.example/i' }));
+    global.fetch = fetchMock as any;
+
+    await expect(downloadPartnerImage(PUBLIC_URL)).rejects.toThrow(/public address/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('отклоняет тело больше 10 МБ без Content-Length (стриминг, не OOM)', async () => {
+    const chunk = new Uint8Array(1024 * 1024); // 1 МБ
+    let produced = 0;
+    async function* endless() {
+      // Если лимит не сработает, генератор уйдёт в бесконечность — тест это ловит.
+      while (produced < 64) {
+        produced++;
+        yield chunk;
+      }
+    }
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(imageResponse({ mime: 'image/png', chunks: endless() })) as any;
+
+    await expect(downloadPartnerImage(PUBLIC_URL)).rejects.toThrow(/10 MB/);
+    // потолок 10 МБ: прочитали 11 чанков и оборвались, а не 64
+    expect(produced).toBeLessThanOrEqual(12);
+  });
+
+  it('отклоняет по Content-Length ДО чтения тела', async () => {
+    const body = jest.fn();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: {
+        get: (n: string) =>
+          ({ 'content-type': 'image/png', 'content-length': String(50 * 1024 * 1024) })[
+            n.toLowerCase()
+          ] ?? null,
+      },
+      get body() {
+        body();
+        return null;
+      },
+    }) as any;
+
+    await expect(downloadPartnerImage(PUBLIC_URL)).rejects.toThrow(/10 MB/);
+    expect(body).not.toHaveBeenCalled();
+  });
+
+  it('обрывает цепочку редиректов после MAX_REDIRECTS', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(imageResponse({ status: 302, location: 'https://public.example/next' })) as any;
+
+    await expect(downloadPartnerImage(PUBLIC_URL)).rejects.toThrow(/too many redirects/);
+  });
+
+  it('отклоняет http (не https) и хост без A-записи', async () => {
+    global.fetch = jest.fn() as any;
+    await expect(downloadPartnerImage('http://public.example/a.png')).rejects.toThrow(/https/);
+
+    dnsLookup.mockResolvedValue([]);
+    await expect(downloadPartnerImage(PUBLIC_URL)).rejects.toThrow(/public address/);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('успешный путь: возвращает буфер и mime', async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(imageResponse({ mime: 'image/webp', chunks: [new Uint8Array([1, 2, 3, 4])] })) as any;
+
+    const res = await downloadPartnerImage(PUBLIC_URL);
+    expect(res.mimeType).toBe('image/webp');
+    expect(res.buffer.length).toBe(4);
   });
 });
