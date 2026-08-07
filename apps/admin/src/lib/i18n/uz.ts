@@ -749,6 +749,15 @@ export const uz: Translations = {
   'storeDetail.modalUnapproveTitle': 'Tasdiqni olib tashlash',
   'storeDetail.modalUnapproveDesc': '«{name}» doʻkoni qidiruvdan yashiriladi va qayta tekshiruvga oʻtkaziladi (holat «Koʻrib chiqilmoqda»).',
 
+  // ADMIN-STORE-VISIBILITY-001
+  'storeDetail.hideFromStorefront': 'Vitrinadan yashirish',
+  'storeDetail.showOnStorefront': 'Vitrinada koʻrsatish',
+  'storeDetail.modalHideTitle': 'Doʻkonni vitrinadan yashirish',
+  'storeDetail.modalHideDesc': '«{name}» doʻkoni katalog va qidiruvdan yoʻqoladi (isPublic=false). Moderatsiya holati oʻzgarmaydi.',
+  'storeDetail.modalShowTitle': 'Doʻkonni vitrinada koʻrsatish',
+  'storeDetail.modalShowDesc': '«{name}» doʻkoni yana katalog va qidiruvda paydo boʻladi (isPublic=true).',
+  'storeDetail.hiddenBadge': 'Vitrinadan yashirilgan',
+
   // ── Store Telegram channel (P1-1, audit-2026-06-04) ───────────────────
   'storeDetail.tgChannelSection': 'Telegram-kanal',
   'storeDetail.tgChannelLabel': 'Kanal (username)',
