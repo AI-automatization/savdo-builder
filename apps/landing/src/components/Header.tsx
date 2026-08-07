@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import Image from 'next/image';
+import { MaxsavdoLogo } from '@/components/MaxsavdoLogo';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export type Locale = 'uz' | 'ru';
 
@@ -10,6 +11,7 @@ export type HeaderDict = {
     stores: string;
     pricing: string;
     faq: string;
+    guides: string;
     start: string;
     cases: string;
     blog: string;
@@ -19,21 +21,43 @@ export type HeaderDict = {
 type HeaderProps = {
   locale: Locale;
   dict: HeaderDict;
+  /**
+   * Where the section anchors point. Omitted on the homepage (plain `#how`).
+   * On any sub-page it must be that locale's home path, otherwise `#how` resolves
+   * against the current URL — `/faq#how` — and the link goes nowhere.
+   */
+  anchorBase?: string;
+  /**
+   * Target of the uz/ru switch. Defaults to the other locale's homepage; sub-pages
+   * pass their own translated URL so switching language keeps you on the same page.
+   */
+  switchHref?: string;
 };
 
 const BOT_URL = 'https://t.me/maxsavdo_bot';
 
-export default function Header({ locale, dict }: HeaderProps) {
+export default function Header({
+  locale,
+  dict,
+  anchorBase = '',
+  switchHref,
+}: HeaderProps) {
   const otherLocale: Locale = locale === 'uz' ? 'ru' : 'uz';
-  const otherHref = otherLocale === 'uz' ? '/' : '/ru';
+  const otherHref = switchHref ?? (otherLocale === 'uz' ? '/' : '/ru');
   const home = locale === 'uz' ? '/' : '/ru';
   const p = (path: string) => (locale === 'uz' ? `/${path}` : `/ru/${path}`);
+  // Anchors have to point at the homepage from every sub-page. Pages that know their
+  // own base pass it explicitly; the rest fall back to `home` rather than to '', which
+  // would emit a bare `#how` and scroll to nothing on About/Blog/Cases/Support.
+  const anchors = anchorBase || home;
+  // Locale-specific slug, so `p()` can't build it.
+  const guidesHref = locale === 'uz' ? '/qollanma' : '/ru/rukovodstva';
 
   return (
     <header
       className="sticky top-0 z-40 w-full"
       style={{
-        background: 'rgba(15,15,15,0.70)',
+        background: 'var(--color-header-bg)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid rgba(232,165,82,0.12)',
@@ -45,13 +69,7 @@ export default function Header({ locale, dict }: HeaderProps) {
           className="flex items-center gap-2.5"
           aria-label="MaxSavdo"
         >
-          <Image
-            src="/logo-maxsavdo.svg"
-            alt="MaxSavdo"
-            width={36}
-            height={36}
-            priority
-          />
+          <MaxsavdoLogo size={36} />
           <span className="text-lg font-bold tracking-tight text-brand-text">
             MaxSavdo
           </span>
@@ -62,9 +80,13 @@ export default function Header({ locale, dict }: HeaderProps) {
           aria-label="primary"
         >
           {[
-            { href: `${home}#how`, label: dict.nav.how },
-            { href: `${home}#features`, label: dict.nav.features },
-            { href: `${home}#pricing`, label: dict.nav.pricing },
+            { href: `${anchors}#how`, label: dict.nav.how },
+            { href: `${anchors}#features`, label: dict.nav.features },
+            { href: `${anchors}#stores`, label: dict.nav.stores },
+            { href: `${anchors}#pricing`, label: dict.nav.pricing },
+            // Real URLs, not anchors: these are crawlable pages of their own and the
+            // internal links are what gets them discovered.
+            { href: guidesHref, label: dict.nav.guides },
             { href: p('cases'), label: dict.nav.cases },
             { href: p('blog'), label: dict.nav.blog },
             { href: p('faq'), label: dict.nav.faq },
@@ -84,6 +106,8 @@ export default function Header({ locale, dict }: HeaderProps) {
         </nav>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
+
           <Link
             href={otherHref}
             className="rounded-lg border px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-brand-muted transition-colors hover:text-brand-accent"
@@ -96,7 +120,7 @@ export default function Header({ locale, dict }: HeaderProps) {
             href={BOT_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden rounded-xl px-4 py-2 text-sm font-semibold text-brand-bg transition-all hover:opacity-90 sm:inline-flex"
+            className="inline-flex rounded-xl px-3 py-1.5 text-xs font-semibold text-brand-onAccent transition-all hover:opacity-90 sm:px-4 sm:py-2 sm:text-sm"
             style={{
               background: 'linear-gradient(135deg, #E8A552 0%, #D4922E 100%)',
               boxShadow: '0 4px 14px rgba(232,165,82,0.30)',

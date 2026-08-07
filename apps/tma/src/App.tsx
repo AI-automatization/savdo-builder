@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useEffect } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
-import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LoadingScreen } from '@/components/layout/LoadingScreen';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/providers/AuthProvider';
@@ -111,19 +111,35 @@ function BuyerLayout() {
 }
 
 function SellerLayout() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // TMA-SELLER-WS-NOTIFY-001: подписаться на realtime events продавца —
   // order:new / order:status_changed / chat:new_message — чтобы продавец
   // на TG-mobile не пропускал заказы. Web-seller это давно делает.
+  //
+  // TMA-BECOME-SELLER-GAP-001: тот же резолв storeId заодно закрывает гэп —
+  // ProfilePage.handleBecomeSeller только апгрейдит роль (POST /seller/apply),
+  // магазин не создаёт. Раньше seller без магазина попадал на пустой /seller
+  // (DashboardPage тихо глотал ошибки своих fetch'ей) без единой подсказки.
+  // Не создаём отдельный запрос — переиспользуем тот же resolveStoreIdForSeller
+  // и редиректим на /seller/store (уже умеет рендерить форму создания при 404),
+  // как web-seller делает через router.replace('/onboarding').
   useEffect(() => {
     let cancelled = false;
     void resolveStoreIdForSeller().then((storeId) => {
-      if (cancelled || !storeId) return;
-      bindSellerNotifications({ storeId });
+      if (cancelled) return;
+      if (storeId) {
+        bindSellerNotifications({ storeId });
+      } else if (location.pathname !== '/seller/store') {
+        navigate('/seller/store', { replace: true });
+      }
     });
     return () => {
       cancelled = true;
       unbindSellerNotifications();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

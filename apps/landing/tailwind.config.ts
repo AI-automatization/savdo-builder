@@ -10,13 +10,20 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          accent: '#E8A552',
-          accentHover: '#D4922E',
-          bg: '#0F0F0F',
-          surface: '#1A1A1A',
-          border: '#2A2A2A',
-          text: '#F5F5F5',
-          muted: '#A0A0A0',
+          // Theme-aware — resolve against the CSS variables defined in
+          // globals.css (:root = dark default, [data-theme="light"] override).
+          // See docs/design/maxsavdo-design-v2.md + docs/brand/maxsavdo-brand-v2.md §5.
+          accent: 'var(--color-accent)',
+          accentHover: 'var(--color-accent-hover)',
+          bg: 'var(--color-bg)',
+          surface: 'var(--color-surface)',
+          border: 'var(--color-border)',
+          text: 'var(--color-text)',
+          muted: 'var(--color-muted)',
+          // Constant ink color for text placed on the gold accent surface
+          // (buttons, ::selection). NOT the same as `bg` — must stay dark
+          // in both themes for contrast, unlike the page background.
+          onAccent: 'var(--color-ink-on-accent)',
         },
       },
       fontFamily: {

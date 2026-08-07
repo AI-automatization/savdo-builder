@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { StoresController } from './stores.controller';
 import { StoresRepository } from './repositories/stores.repository';
 import { SlugService } from './services/slug.service';
@@ -11,12 +12,14 @@ import { UnpublishStoreUseCase } from './use-cases/unpublish-store.use-case';
 import { UpdateChannelTemplateUseCase } from './use-cases/update-channel-template.use-case';
 import { TriggerChannelTestPostUseCase } from './use-cases/trigger-channel-test-post.use-case';
 import { UpdateChannelBindingUseCase } from './use-cases/update-channel-binding.use-case';
+import { NotifyNewArrivalsUseCase } from './use-cases/notify-new-arrivals.use-case';
 import { SellersModule } from '../sellers/sellers.module';
 import { AuthModule } from '../auth/auth.module';
 import { ProductsModule } from '../products/products.module';
 import { ModerationModule } from '../moderation/moderation.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import { MediaModule } from '../media/media.module';
+import { QUEUE_TELEGRAM_NOTIFICATIONS } from '../../queues/queues.module';
 
 @Module({
   imports: [
@@ -26,6 +29,7 @@ import { MediaModule } from '../media/media.module';
     forwardRef(() => ModerationModule),
     forwardRef(() => TelegramModule),
     MediaModule,
+    BullModule.registerQueue({ name: QUEUE_TELEGRAM_NOTIFICATIONS }),
   ],
   controllers: [StoresController],
   providers: [
@@ -40,6 +44,7 @@ import { MediaModule } from '../media/media.module';
     UpdateChannelTemplateUseCase,
     TriggerChannelTestPostUseCase,
     UpdateChannelBindingUseCase,
+    NotifyNewArrivalsUseCase,
   ],
   exports: [StoresRepository, SlugService],
 })

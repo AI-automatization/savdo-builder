@@ -64,7 +64,7 @@ export default function Pricing({ dict }: PricingProps) {
                   <span className="text-sm text-brand-muted">{plan.period}</span>
                 </div>
 
-                <ul className="mt-6 flex flex-col gap-3">
+                <ul className="mt-6 flex flex-1 flex-col gap-3">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2.5 text-sm text-brand-text">
                       <Check size={15} className="mt-0.5 shrink-0" style={{ color: '#E8A552' }} aria-hidden />
@@ -77,19 +77,19 @@ export default function Pricing({ dict }: PricingProps) {
                   href={BOT_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-8 inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition-all"
+                  className={
+                    highlight
+                      ? 'mt-8 inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition-all'
+                      : 'btn-outline-glass mt-8 inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold text-brand-text transition-all'
+                  }
                   style={
                     highlight
                       ? {
                           background: 'linear-gradient(135deg, #E8A552 0%, #D4922E 100%)',
-                          color: '#0F0F0F',
+                          color: 'var(--color-ink-on-accent)',
                           boxShadow: '0 6px 20px rgba(232,165,82,0.30)',
                         }
-                      : {
-                          background: 'rgba(255,255,255,0.04)',
-                          border: '1px solid rgba(232,165,82,0.20)',
-                          color: '#F5F5F5',
-                        }
+                      : undefined
                   }
                 >
                   {plan.cta}
