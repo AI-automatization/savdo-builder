@@ -244,12 +244,16 @@ export class AdminRepository {
     // PERF-API-001: серверный поиск (admin StoresPage фильтровала клиентом
     // только загруженную страницу). name/slug insensitive, trgm-индексы есть.
     search?: string;
+    // ADMIN-STORE-VISIBILITY-001: undefined — без фильтра, true/false — только
+    // публичные/только скрытые (напр. служебные интеграционные магазины).
+    isPublic?: boolean;
   }) {
     const { page, limit, skip } = toPrismaPagination(filters);
 
     const q = filters.search?.trim();
     const where = {
       ...(filters.status ? { status: filters.status as any } : {}),
+      ...(filters.isPublic === undefined ? {} : { isPublic: filters.isPublic }),
       ...(q
         ? {
             OR: [

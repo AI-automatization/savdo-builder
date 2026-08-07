@@ -21,6 +21,8 @@ import { AdjustStockUseCase } from './use-cases/adjust-stock.use-case';
 import { PostProductToChannelUseCase } from './use-cases/post-product-to-channel.use-case';
 import { PreviewChannelPostUseCase } from './use-cases/preview-channel-post.use-case';
 import { GetFeaturedStorefrontUseCase } from './use-cases/get-featured-storefront.use-case';
+import { ScheduleProductPublishUseCase } from './use-cases/schedule-product-publish.use-case';
+import { ScheduledPublishProcessor } from './services/scheduled-publish.processor';
 import { StoresModule } from '../stores/stores.module';
 import { SellersModule } from '../sellers/sellers.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -62,6 +64,8 @@ import { UsersModule } from '../users/users.module';
     PostProductToChannelUseCase,
     PreviewChannelPostUseCase,
     GetFeaturedStorefrontUseCase,
+    ScheduleProductPublishUseCase,
+    ScheduledPublishProcessor,
   ],
   exports: [
     ProductsRepository,

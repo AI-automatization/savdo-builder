@@ -17,6 +17,7 @@ import { UnpublishStoreUseCase } from './use-cases/unpublish-store.use-case';
 import { UpdateChannelTemplateUseCase } from './use-cases/update-channel-template.use-case';
 import { TriggerChannelTestPostUseCase } from './use-cases/trigger-channel-test-post.use-case';
 import { UpdateChannelBindingUseCase } from './use-cases/update-channel-binding.use-case';
+import { NotifyNewArrivalsUseCase } from './use-cases/notify-new-arrivals.use-case';
 import { PreviewChannelPostUseCase } from '../products/use-cases/preview-channel-post.use-case';
 import { ChannelTemplateService } from '../products/services/channel-template.service';
 import { StoresRepository } from './repositories/stores.repository';
@@ -47,6 +48,7 @@ export class StoresController {
     private readonly triggerTestPost: TriggerChannelTestPostUseCase,
     private readonly updateChannelBinding: UpdateChannelBindingUseCase,
     private readonly previewChannelPost: PreviewChannelPostUseCase,
+    private readonly notifyNewArrivals: NotifyNewArrivalsUseCase,
     private readonly storesRepo: StoresRepository,
     private readonly sellersRepo: SellersRepository,
     private readonly mediaRepo: MediaRepository,
@@ -105,6 +107,14 @@ export class StoresController {
   @HttpCode(HttpStatus.OK)
   async unpublishHandler(@CurrentUser() user: JwtPayload) {
     return this.unpublishStore.execute(user.sub);
+  }
+
+  // Вопрос Абубакира 03.08.2026: продавец сама решает, когда объявить о новом
+  // поступлении (вариант 1а — кнопка, не авто на каждый товар/батч).
+  @Post('notify-new-arrivals')
+  @HttpCode(HttpStatus.OK)
+  async notifyNewArrivalsHandler(@CurrentUser() user: JwtPayload) {
+    return this.notifyNewArrivals.execute(user.sub);
   }
 
   // ─── TG-канал: шаблон поста + контакты + тестовая публикация ──────────

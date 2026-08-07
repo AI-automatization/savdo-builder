@@ -74,6 +74,105 @@
   Inspection (сейчас они не в sitemap.xml на проде, появятся после деплоя).
 - **Файлы:** `apps/landing/src/lib/guides.ts`, `analiz/done.md`.
 
+## 2026-08-04 (Claude) — SEO-ITEMLIST-001: ItemList JSON-LD на /stores и /products + llms.txt для shop
+
+- **Важность:** 🟡 · **Дата:** 04.08.2026 · **Домен:** `apps/web-buyer` (ветка `web-buyer`)
+- **Контекст:** Абубакир — `/stores` и `/products` (каталожные hub-страницы) имели metadata, но не
+  structured data. ItemList — стандартный schema.org тип именно для страницы-списка (та же логика,
+  что уже дала Product JSON-LD на странице товара).
+- **Что сделано:** `stores/layout.tsx` и `products/layout.tsx` стали async server components —
+  фетчат каталог на сервере (`serverGetStoresCatalog` / новый `serverGetProductsCatalog`), строят
+  ItemList JSON-LD, рендерят `<script type="application/ld+json">` рядом с children. Исключённые
+  из индекса магазины (`isSeoExcludedStore`) не попадают в список — та же логика, что уже стоит на
+  `page.tsx`/sitemap.
+  Для `/products`: платформенный фид `/storefront/products` (без `storeId`) реально уже отдаёт
+  `store: {id,name,slug}` в каждом айтеме (не вырезается из `...rest` в `storefront.controller.ts`),
+  просто тип `ProductListItem` в `packages/types` это не объявляет. Не стал трогать `packages/types`
+  на этой ветке (она отстаёт от main — тот же риск, что уже описан в комментарии
+  `StorefrontStoreWithPayments`) — завёл локальный тип `ProductListItemWithStore` в
+  `storefront-server.ts`, тем же приёмом.
+  Плюс `apps/web-buyer/public/llms.txt` — раньше был только у `apps/landing`, `shop.maxsavdo.uz/llms.txt`
+  отдавал 404.
+- **Файлы:** `(shop)/stores/layout.tsx`, `(shop)/products/layout.tsx`, `lib/api/storefront-server.ts`,
+  `public/llms.txt` (новый) — все на ветке `web-buyer` (не main, там этих роутов нет вообще).
+- **Проверено:** `tsc --noEmit` + `next build` в `.worktrees/web-buyer-seo` — чисто, 23 роута собрались.
+  Закоммичено и запушено напрямую в `origin/web-buyer` (`7c50c3d`), worktree удалён.
+- **Пункт 3 из отчёта Абубакира (тракер не отражает уже пофикшенное SEO-AUDIT-001 п.1,2,7)** —
+  проверил `analiz/tasks.md`: всё уже помечено ✅ с датами и деталями (12.07-25.07.2026). Правка не
+  нужна была — только подтверждение, как он сам и написал.
+
+## 2026-08-04 (Claude) — FEAT-SCHEDULED-PUBLISH-001: отложенная публикация товара (DRAFT→ACTIVE по расписанию)
+
+- **Важность:** 🟡 · **Дата:** 04.08.2026 · **Домен:** `packages/db` + `apps/api` (products module)
+- **Контекст:** Абубакир (через Telegram-диалог, вопрос 2) уточнил «запланированный постинг» — это как
+  отложенная отправка в Telegram: товар одновременно появляется и в магазине, и в TG-канале в заданное
+  будущее время (вариант 2а, не «расписание только поста в уже видимый товар»).
+- **Что сделано:**
+  - `packages/db/prisma/schema.prisma` — `Product.scheduledPublishAt DateTime?` (nullable, ADD-only).
+    Миграция `20260804000001_scheduled_publish` — написана вручную (`prisma migrate dev` в этом окружении
+    сломан: глобальный `npx prisma` подтянул 7.9.1 несовместимую со схемой на `url = env(...)`; локальный
+    `packages/db` пиннит `^5.0.0` — использовал его напрямую, но `--create-only` тоже требует живой
+    DATABASE_URL, которого в этой сессии нет ни к dev, ни тем более к prod — миграцию НЕ применял,
+    только сгенерировал SQL по образцу существующих ADD COLUMN миграций + `prisma generate` (не требует
+    БД) для обновления типов. **Кто-то должен применить `prisma migrate deploy` к реальной БД перед тем
+    как это заработает в проде.**
+  - `ProductsRepository.setScheduledPublishAt()` / `.findDueScheduledPublish()`.
+  - `ScheduleProductPublishUseCase` — только для DRAFT, publishAt должен быть в будущем, null отменяет.
+  - `ScheduledPublishProcessor` (`@Cron(EVERY_MINUTE)`) — переиспользует существующий
+    `ChangeProductStatusUseCase.execute(..., ACTIVE)` (тот же код что и ручная публикация) — значит и
+    появление в магазине, и автопостинг в TG-канал (FEAT-TG-AUTOPOST-001) срабатывают одновременно, без
+    дублирования логики автопоста.
+  - `PATCH /seller/products/:id/schedule-publish` (`{ publishAt: ISO | null }`).
+- **Файлы:** `schema.prisma`, `migrations/20260804000001_scheduled_publish/`, `products.repository.ts`,
+  `dto/schedule-publish.dto.ts` (новый), `use-cases/schedule-product-publish.use-case.ts` (новый),
+  `services/scheduled-publish.processor.ts` (новый), `products.controller.ts`, `products.module.ts`.
+- **Проверено:** `tsc --noEmit -p apps/api/tsconfig.json` — чисто. **НЕ проверено:** реальный прогон
+  миграции на живой БД (заблокировано отсутствием DATABASE_URL в этой сессии) — сделать перед деплоем.
+- **Осталось:** UI в web-seller/TMA (date-time picker при создании/редактировании DRAFT-товара) — сейчас
+  только backend.
+
+## 2026-08-03 (Claude) — PARTNER-Q1-2026-08-03: продавец может уведомить своих покупателей о новом поступлении
+
+- **Важность:** 🟡 · **Дата:** 03.08.2026 · **Домен:** `apps/api` (stores module)
+- **Контекст:** Абубакир спросил (через Полата) — если продавец докупил ассортимент, узнают ли об этом
+  существующие покупатели. Раньше — нет, такой возможности не было вообще (только per-product автопост
+  в TG-канал продавца при публикации, и per-товар wishlist-нудж — оба не про «новое поступление»).
+  Три варианта триггера обсуждали (кнопка / авто-на-товар / авто-батч раз в день) — выбран **1а (кнопка)**
+  как дефолт: нет риска спама от массовой загрузки товаров, продавец сам решает момент.
+- **Что сделано:** `POST /seller/store/notify-new-arrivals` (`stores.controller.ts`) →
+  `NotifyNewArrivalsUseCase` (`apps/api/src/modules/stores/use-cases/notify-new-arrivals.use-case.ts`) —
+  находит покупателей с ≥1 заказом в этом магазине (`Order.storeId`, distinct по `buyerId`), шлёт им
+  одно Telegram-сообщение со ссылкой на витрину. Переиспользует существующую очередь
+  (`QUEUE_TELEGRAM_NOTIFICATIONS`), тот же job `TELEGRAM_JOB_BROADCAST` и таблицу `broadcast_logs`, что
+  и админский `BroadcastUseCase` — новых таблиц/миграций не потребовалось. Cooldown 6 часов на магазин
+  (защита от спам-кликов) — читается из последней `BroadcastLog` этого продавца, отдельного поля не заводили.
+- **Файлы:** `use-cases/notify-new-arrivals.use-case.ts` (новый), `stores.controller.ts`, `stores.module.ts`.
+- **Проверено:** `tsc --noEmit -p apps/api/tsconfig.json` — чисто.
+- **Осталось:** кнопка в UI (web-seller/TMA) — сейчас только backend-эндпоинт. Если Абубакир/Полат
+  захотят вместо 1а вариант 1б (авто на каждый товар) или 1в (авто-батч раз в день) — код меняется
+  локально в этом же use-case + вызов из `product.created`-листенера вместо ручного эндпоинта.
+
+## 2026-08-03 (Claude) — ADMIN-STORE-VISIBILITY-001: админ может скрыть магазин от storefront напрямую
+
+- **Важность:** 🟡 · **Дата:** 03.08.2026 · **Домен:** `apps/api` (admin module)
+- **Контекст:** RAOS pilot-стор (slug `raos`, PARTNER-API-RAOS-001) — служебный магазин, у него нет
+  реального владельца в TMA/web-seller, поэтому раньше скрыть его от каталога было нечем: видимость
+  переключает только сам продавец через `POST /stores/publish|unpublish` (JWT владельца, `stores.controller.ts`).
+- **Что сделано:** новый `SetStoreVisibilityUseCase` (по образцу `SetStoreVerificationUseCase`) — админ
+  напрямую переключает то же поле `Store.isPublic`, что уже фильтрует storefront/каталог
+  (`products.repository.ts:351,467,510`, `stores.repository.ts:61,106,121`, `storefront.controller.ts:232,286`).
+  Второй источник правды не вводили. Эндпоинты `POST /admin/stores/:id/hide` (требует reason, `AdminActionDto`)
+  и `POST /admin/stores/:id/show`, права `store:moderate`, audit_log (`STORE_HIDDEN`/`STORE_SHOWN`, INV-A01).
+  Плюс фильтр `isPublic` в `GET /admin/stores` (`ListStoresDto`, `admin.repository.ts findStores()`) —
+  админка теперь может отдельно посмотреть, какие магазины скрыты.
+- **Файлы:** `apps/api/src/modules/admin/use-cases/set-store-visibility.use-case.ts` (новый),
+  `admin-stores.controller.ts`, `admin.module.ts`, `dto/list-stores.dto.ts`,
+  `use-cases/list-stores.use-case.ts`, `repositories/admin.repository.ts`.
+- **Проверено:** `tsc --noEmit -p apps/api/tsconfig.json` — чисто.
+- **Осталось:** 1) вызвать `POST /admin/stores/80e1d96e-1cf1-49fa-9e92-8578f56d6942/hide` чтобы реально
+  скрыть RAOS pilot-стор (не сделано в этой сессии — нужен рабочий admin JWT/сессия, не делал вручную в БД);
+  2) фронт admin-панели (apps/admin) — колонка/бэйдж "скрыт" + кнопки hide/show в UI, сейчас только API.
+
 ## 2026-08-02 (Claude) — ONBOARD-SLUG-TRANSLIT-DEDUP-001: packages/types/slug.ts выровнен (частично)
 
 - **Важность:** 🟡 · **Дата:** 02.08.2026 · **Домен:** `packages/types`
