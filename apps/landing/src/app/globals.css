@@ -2,11 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    color-scheme: dark;
-  }
+/* ──────────────────────────────────────────────────────────────────────────
+   Theme tokens — landing (maxsavdo Dark Luxury Minimalist).
+   Source of truth: docs/brand/maxsavdo-brand-v2.md §2/§5 (apps/landing is the
+   canonical palette per the 28.07.2026 v3 update — do not hand-pick new hex
+   here, port them to the brand doc first).
+   :root = dark (unchanged default, matches the pre-light-mode site exactly —
+   keeps first paint identical for crawlers/no-JS). [data-theme="light"]
+   overrides when a visitor opts in via the ThemeToggle (see lib/theme/).
+   ─────────────────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: dark;
 
+  --color-bg: #0F0F0F;
+  --color-surface: #1A1A1A;
+  --color-border: #2A2A2A;
+  --color-text: #F5F5F5;
+  --color-muted: #A0A0A0;
+
+  --color-accent: #E8A552;
+  --color-accent-hover: #D4922E;
+  /* Ink on gold surfaces — constant across themes, do NOT alias to --color-bg. */
+  --color-ink-on-accent: #0F0F0F;
+
+  --color-glass-bg: rgba(255, 255, 255, 0.04);
+  --color-glass-bg-dim: rgba(255, 255, 255, 0.025);
+  --color-glass-border: rgba(232, 165, 82, 0.18);
+  --color-glass-border-dim: rgba(232, 165, 82, 0.10);
+  --color-glass-highlight-bg: rgba(232, 165, 82, 0.08);
+  --color-glass-highlight-border: rgba(232, 165, 82, 0.40);
+
+  --color-outline-btn-bg: rgba(255, 255, 255, 0.04);
+  --color-outline-btn-border: rgba(232, 165, 82, 0.20);
+
+  --color-header-bg: rgba(15, 15, 15, 0.70);
+  --color-footer-bg: rgba(15, 15, 15, 0.60);
+
+  /* Decorative illustration surfaces (Hero phone mockup, How.tsx step SVGs)
+     assume a dark canvas on purpose — those stay hardcoded, not themed here. */
+  --color-tint: rgba(255, 255, 255, 0.05);
+  --color-tint-strong: rgba(255, 255, 255, 0.25);
+  --color-table-row-tint: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --color-bg: #FFFFFF;
+  --color-surface: #F8F8F8;
+  --color-border: #E5E5E5;
+  --color-text: #0F0F0F;
+  --color-muted: #737373;
+
+  --color-accent: #E8A552;
+  --color-accent-hover: #D4922E;
+  --color-ink-on-accent: #0F0F0F;
+
+  --color-glass-bg: rgba(15, 15, 15, 0.035);
+  --color-glass-bg-dim: rgba(15, 15, 15, 0.02);
+  --color-glass-border: rgba(232, 165, 82, 0.25);
+  --color-glass-border-dim: rgba(232, 165, 82, 0.15);
+  --color-glass-highlight-bg: rgba(232, 165, 82, 0.10);
+  --color-glass-highlight-border: rgba(232, 165, 82, 0.45);
+
+  --color-outline-btn-bg: rgba(15, 15, 15, 0.03);
+  --color-outline-btn-border: rgba(232, 165, 82, 0.30);
+
+  --color-header-bg: rgba(255, 255, 255, 0.75);
+  --color-footer-bg: rgba(255, 255, 255, 0.65);
+
+  --color-tint: rgba(15, 15, 15, 0.045);
+  --color-tint-strong: rgba(15, 15, 15, 0.35);
+  --color-table-row-tint: rgba(15, 15, 15, 0.03);
+}
+
+@layer base {
   html {
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
@@ -18,10 +92,11 @@
     @apply bg-brand-bg text-brand-text font-sans antialiased;
     min-height: 100vh;
     text-rendering: optimizeLegibility;
+    transition: background-color 200ms ease, color 200ms ease;
   }
 
   ::selection {
-    @apply bg-brand-accent text-brand-bg;
+    @apply bg-brand-accent text-brand-onAccent;
   }
 
   :focus-visible {
@@ -35,35 +110,42 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-accent px-6 py-3 font-semibold text-brand-bg transition-colors hover:bg-brand-accentHover;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-brand-accent px-6 py-3 font-semibold text-brand-onAccent transition-colors hover:bg-brand-accentHover;
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl border border-brand-border bg-brand-surface px-6 py-3 font-semibold text-brand-text transition-colors hover:border-brand-accent;
   }
 
+  /* Translucent outline button — secondary CTA next to a gold primary
+     (Hero, Pricing non-highlighted plans). */
+  .btn-outline-glass {
+    background: var(--color-outline-btn-bg);
+    border: 1px solid var(--color-outline-btn-border);
+  }
+
   /* Azim glass cards with Polat amber */
   .card-glass {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--color-glass-bg);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(232, 165, 82, 0.18);
+    border: 1px solid var(--color-glass-border);
     border-radius: 20px;
   }
 
   .card-glass-dim {
-    background: rgba(255, 255, 255, 0.025);
+    background: var(--color-glass-bg-dim);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(232, 165, 82, 0.10);
+    border: 1px solid var(--color-glass-border-dim);
     border-radius: 20px;
   }
 
   .card-glass-highlight {
-    background: rgba(232, 165, 82, 0.08);
+    background: var(--color-glass-highlight-bg);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(232, 165, 82, 0.40);
+    border: 1px solid var(--color-glass-highlight-border);
     border-radius: 20px;
     box-shadow: 0 20px 60px -20px rgba(232, 165, 82, 0.28);
   }
@@ -72,5 +154,92 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+/* Scroll-reveal fade used by ProblemSection / WhyUs / FinalCta via useReveal. */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  filter: blur(10px);
+  transition: opacity 0.8s ease, transform 0.8s ease, filter 0.8s ease;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+/* Idle float/glow loops for the Hero phone mockup and its floating chips. */
+@keyframes ms-glow {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.18; }
+}
+@keyframes ms-floaty {
+  0%, 100% { transform: translateY(0px) rotateZ(0deg); }
+  50% { transform: translateY(-10px) rotateZ(0.4deg); }
+}
+@keyframes ms-floaty-2 {
+  0%, 100% { transform: translateY(0px) rotateZ(0deg); }
+  50% { transform: translateY(-14px) rotateZ(-0.6deg); }
+}
+@keyframes ms-floaty-3 {
+  0%, 100% { transform: translateY(0px) rotateZ(0deg); }
+  50% { transform: translateY(-8px) rotateZ(0.8deg); }
+}
+.ms-glow {
+  animation: ms-glow 5s ease-in-out infinite;
+}
+.ms-floaty-idle {
+  animation: ms-floaty 4.5s ease-in-out infinite;
+}
+.ms-floaty-2 {
+  animation: ms-floaty-2 5.5s ease-in-out infinite;
+}
+.ms-floaty-3 {
+  animation: ms-floaty-3 4s ease-in-out infinite;
+}
+
+/* Hero phone, non-pinned layout only (mobile / reduced motion). The pinned
+   desktop hero drives the same arrive-then-breathe motion from GSAP instead,
+   because ScrollTrigger's pin re-inserts that subtree on refresh and restarts
+   any CSS animation on it — see the comment in Hero.tsx. Keep the two in sync:
+   0.8s entrance, then a 7s / -9px float with no rotation (at 520px tall the
+   chips' wobble reads as drift). */
+@keyframes ms-phone-in {
+  from { opacity: 0; transform: translate3d(40px, 10px, 0) scale(0.97); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes ms-phone-idle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-9px); }
+}
+/* Two animations, not one: the entrance holds its end state via `both`, and the
+   idle loop starts exactly where it stops (delay == entrance duration) and then
+   owns `transform` from there — a single keyframe set can't do both without the
+   loop replaying the fly-in every 7s. */
+.ms-phone-enter {
+  animation:
+    ms-phone-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both,
+    ms-phone-idle 7s ease-in-out 0.8s infinite;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-glow,
+  .ms-floaty-idle,
+  .ms-floaty-2,
+  .ms-floaty-3 {
+    animation: none;
+  }
+  .ms-phone-enter {
+    animation: none;
+    opacity: 1;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
   }
 }

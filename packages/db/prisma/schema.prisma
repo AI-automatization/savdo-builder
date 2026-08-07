@@ -408,6 +408,7 @@ model Seller {
   isBlocked                   Boolean                  @default(false)
   blockedReason               String?
   avatarUrl                   String?
+  termsAcceptedAt             DateTime?
   createdAt                   DateTime                 @default(now())
   updatedAt                   DateTime                 @updatedAt
 
@@ -673,6 +674,12 @@ model Product {
   salePrice        Decimal?           @db.Decimal(12, 2)
   currencyCode     String             @default("UZS")
   status           ProductStatus      @default(DRAFT)
+  // FEAT-SCHEDULED-PUBLISH-001: продавец ставит будущее время — cron
+  // (ScheduledPublishProcessor) переводит DRAFT→ACTIVE в это время, что
+  // синхронно триггерит и появление в магазине, и автопостинг в TG-канал
+  // (тот же ChangeProductStatusUseCase, что и ручная публикация). Только
+  // для DRAFT — ACTIVE/ARCHIVED не планируются.
+  scheduledPublishAt DateTime?
   displayType      ProductDisplayType @default(SLIDER)
   hasVariants      Boolean            @default(false)
   totalStock       Int                @default(0)

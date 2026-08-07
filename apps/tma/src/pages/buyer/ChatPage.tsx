@@ -669,7 +669,7 @@ export default function BuyerChatPage() {
                     borderRadius: 12,
                     background: 'var(--tg-accent)',
                     border: '1px solid var(--tg-accent-border)',
-                    color: '#0A0A0A',
+                    color: '#0F0F0F',
                     fontSize: 18,
                     cursor: 'pointer',
                     opacity: (editingId ? editText.trim() : (text.trim() && !sending)) ? 1 : 0.4,
@@ -805,7 +805,7 @@ export default function BuyerChatPage() {
               {unread > 0 && (
                 <span
                   className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center text-xxs font-bold"
-                  style={{ background: 'var(--tg-accent)', color: '#0A0A0A' }}
+                  style={{ background: 'var(--tg-accent)', color: '#0F0F0F' }}
                 >
                   {unread > 9 ? '9+' : unread}
                 </span>

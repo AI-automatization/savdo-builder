@@ -252,7 +252,7 @@ export default function SellerSettingsPage() {
                 background: saving || !fullName.trim()
                   ? 'var(--tg-surface)'
                   : 'var(--tg-accent)',
-                color: saving || !fullName.trim() ? 'var(--tg-text-dim)' : '#0A0A0A',
+                color: saving || !fullName.trim() ? 'var(--tg-text-dim)' : '#0F0F0F',
                 transition: 'all 0.15s',
               }}
             >

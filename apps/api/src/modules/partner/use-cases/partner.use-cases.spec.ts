@@ -1,6 +1,9 @@
 import { ProductStatus } from '@prisma/client';
 import { DomainException } from '../../../common/exceptions/domain.exception';
 import { PartnerCreateProductUseCase } from './partner-create-product.use-case';
+import { PartnerUpdateProductUseCase } from './partner-update-product.use-case';
+import { PartnerUpdateStockUseCase } from './partner-update-stock.use-case';
+import { PartnerDeleteProductUseCase } from './partner-delete-product.use-case';
 import { PartnerApiKeyGuard, PartnerContext, sha256Hex } from '../guards/partner-api-key.guard';
 import { ExecutionContext } from '@nestjs/common';
 
@@ -109,6 +112,183 @@ describe('PartnerCreateProductUseCase', () => {
 
     await expect(useCase.execute(CTX, BASE_DTO as any)).rejects.toThrow(DomainException);
     expect(changeStatus.execute).not.toHaveBeenCalled();
+  });
+});
+
+// ─── PartnerUpdateProductUseCase ────────────────────────────────────────────
+
+function makeProduct(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'p-1',
+    storeId: 'store-1',
+    title: 'Old title',
+    status: ProductStatus.DRAFT,
+    hasVariants: false,
+    totalStock: 5,
+    images: [{ id: 'img-old', isPrimary: true, sortOrder: 0 }],
+    ...overrides,
+  };
+}
+
+function makeUpdateUseCase(product: Record<string, unknown> | null) {
+  const productsRepo = {
+    findById: jest.fn().mockResolvedValue(product),
+    setTotalStock: jest.fn().mockImplementation((id, stock) => Promise.resolve({ id, totalStock: stock })),
+  };
+  const updateProduct = { execute: jest.fn().mockResolvedValue({ id: 'p-1', title: 'New title', status: ProductStatus.DRAFT }) };
+  const changeStatus = { execute: jest.fn().mockImplementation((id, _storeId, status) => Promise.resolve({ id, status })) };
+  const imagesRepo = {
+    clearPrimary: jest.fn().mockResolvedValue(undefined),
+    create: jest.fn().mockResolvedValue({ id: 'img-new' }),
+    delete: jest.fn().mockResolvedValue(undefined),
+  };
+  const uploadDirect = { execute: jest.fn().mockResolvedValue({ mediaFileId: 'm-2', url: 'https://cdn/y.jpg' }) };
+  const useCase = new PartnerUpdateProductUseCase(
+    productsRepo as any,
+    updateProduct as any,
+    changeStatus as any,
+    imagesRepo as any,
+    uploadDirect as any,
+  );
+  return { useCase, productsRepo, updateProduct, changeStatus, imagesRepo, uploadDirect };
+}
+
+describe('PartnerUpdateProductUseCase', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('товар не найден — 404', async () => {
+    const { useCase } = makeUpdateUseCase(null);
+    await expect(useCase.execute(CTX, 'p-1', { name: 'X' })).rejects.toThrow(DomainException);
+  });
+
+  it('чужой магазин — 403', async () => {
+    const { useCase } = makeUpdateUseCase(makeProduct({ storeId: 'other-store' }));
+    await expect(useCase.execute(CTX, 'p-1', { name: 'X' })).rejects.toThrow(DomainException);
+  });
+
+  it('name/price/description — делегирует UpdateProductUseCase', async () => {
+    const { useCase, updateProduct } = makeUpdateUseCase(makeProduct());
+    await useCase.execute(CTX, 'p-1', { name: 'New title', price: 200_000 });
+    expect(updateProduct.execute).toHaveBeenCalledWith('p-1', 'store-1', {
+      title: 'New title',
+      basePrice: 200_000,
+      description: undefined,
+    });
+  });
+
+  it('пустой payload — UpdateProductUseCase не вызывается', async () => {
+    const { useCase, updateProduct } = makeUpdateUseCase(makeProduct());
+    await useCase.execute(CTX, 'p-1', {});
+    expect(updateProduct.execute).not.toHaveBeenCalled();
+  });
+
+  it('isActive=true на DRAFT — публикует (ACTIVE)', async () => {
+    const { useCase, changeStatus } = makeUpdateUseCase(makeProduct({ status: ProductStatus.DRAFT }));
+    await useCase.execute(CTX, 'p-1', { isActive: true });
+    expect(changeStatus.execute).toHaveBeenCalledWith('p-1', 'store-1', ProductStatus.ACTIVE);
+  });
+
+  it('isActive=true на уже ACTIVE — no-op (идемпотентно)', async () => {
+    const { useCase, changeStatus } = makeUpdateUseCase(makeProduct({ status: ProductStatus.ACTIVE }));
+    await useCase.execute(CTX, 'p-1', { isActive: true });
+    expect(changeStatus.execute).not.toHaveBeenCalled();
+  });
+
+  it('isActive=false на ACTIVE — архивирует', async () => {
+    const { useCase, changeStatus } = makeUpdateUseCase(makeProduct({ status: ProductStatus.ACTIVE }));
+    await useCase.execute(CTX, 'p-1', { isActive: false });
+    expect(changeStatus.execute).toHaveBeenCalledWith('p-1', 'store-1', ProductStatus.ARCHIVED);
+  });
+
+  it('isActive=false на DRAFT — no-op, не пытается архивировать черновик', async () => {
+    const { useCase, changeStatus } = makeUpdateUseCase(makeProduct({ status: ProductStatus.DRAFT }));
+    await useCase.execute(CTX, 'p-1', { isActive: false });
+    expect(changeStatus.execute).not.toHaveBeenCalled();
+  });
+
+  it('imageUrl — скачивает, грузит, снимает старую обложку и ставит новую', async () => {
+    global.fetch = mockFetchImage() as any;
+    const { useCase, imagesRepo, uploadDirect } = makeUpdateUseCase(makeProduct());
+
+    await useCase.execute(CTX, 'p-1', { imageUrl: 'https://raos.example.com/new.jpg' });
+
+    expect(uploadDirect.execute).toHaveBeenCalled();
+    expect(imagesRepo.clearPrimary).toHaveBeenCalledWith('p-1');
+    expect(imagesRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ productId: 'p-1', mediaId: 'm-2', isPrimary: true, sortOrder: 0 }),
+    );
+    expect(imagesRepo.delete).toHaveBeenCalledWith('p-1', 'img-old');
+  });
+});
+
+// ─── PartnerUpdateStockUseCase ──────────────────────────────────────────────
+
+describe('PartnerUpdateStockUseCase', () => {
+  function makeStockUseCase(product: Record<string, unknown> | null) {
+    const productsRepo = {
+      findById: jest.fn().mockResolvedValue(product),
+      setTotalStock: jest.fn().mockImplementation((id, stock) => Promise.resolve({ id, totalStock: stock })),
+    };
+    return { useCase: new PartnerUpdateStockUseCase(productsRepo as any), productsRepo };
+  }
+
+  it('товар не найден — 404', async () => {
+    const { useCase } = makeStockUseCase(null);
+    await expect(useCase.execute(CTX, 'p-1', 10)).rejects.toThrow(DomainException);
+  });
+
+  it('чужой магазин — 403', async () => {
+    const { useCase } = makeStockUseCase(makeProduct({ storeId: 'other-store' }));
+    await expect(useCase.execute(CTX, 'p-1', 10)).rejects.toThrow(DomainException);
+  });
+
+  it('hasVariants=true — отклоняет (сток per-variant, не через partner API)', async () => {
+    const { useCase } = makeStockUseCase(makeProduct({ hasVariants: true }));
+    await expect(useCase.execute(CTX, 'p-1', 10)).rejects.toThrow(DomainException);
+  });
+
+  it('single-SKU товар — пишет totalStock напрямую', async () => {
+    const { useCase, productsRepo } = makeStockUseCase(makeProduct());
+    const res = await useCase.execute(CTX, 'p-1', 42);
+    expect(productsRepo.setTotalStock).toHaveBeenCalledWith('p-1', 42);
+    expect(res.totalStock).toBe(42);
+  });
+});
+
+// ─── PartnerDeleteProductUseCase ────────────────────────────────────────────
+
+describe('PartnerDeleteProductUseCase', () => {
+  function makeDeleteUseCase(product: Record<string, unknown> | null) {
+    const productsRepo = {
+      findById: jest.fn().mockResolvedValue(product),
+      delete: jest.fn().mockResolvedValue(undefined),
+    };
+    const changeStatus = { execute: jest.fn().mockResolvedValue({ id: 'p-1', status: ProductStatus.ARCHIVED }) };
+    return { useCase: new PartnerDeleteProductUseCase(productsRepo as any, changeStatus as any), productsRepo, changeStatus };
+  }
+
+  it('товар не найден — 404', async () => {
+    const { useCase } = makeDeleteUseCase(null);
+    await expect(useCase.execute(CTX, 'p-1')).rejects.toThrow(DomainException);
+  });
+
+  it('чужой магазин — 403', async () => {
+    const { useCase } = makeDeleteUseCase(makeProduct({ storeId: 'other-store' }));
+    await expect(useCase.execute(CTX, 'p-1')).rejects.toThrow(DomainException);
+  });
+
+  it('ACTIVE — сначала архивирует, потом удаляет', async () => {
+    const { useCase, productsRepo, changeStatus } = makeDeleteUseCase(makeProduct({ status: ProductStatus.ACTIVE }));
+    await useCase.execute(CTX, 'p-1');
+    expect(changeStatus.execute).toHaveBeenCalledWith('p-1', 'store-1', ProductStatus.ARCHIVED);
+    expect(productsRepo.delete).toHaveBeenCalledWith('p-1');
+  });
+
+  it('DRAFT — удаляет напрямую, без архивации', async () => {
+    const { useCase, productsRepo, changeStatus } = makeDeleteUseCase(makeProduct({ status: ProductStatus.DRAFT }));
+    await useCase.execute(CTX, 'p-1');
+    expect(changeStatus.execute).not.toHaveBeenCalled();
+    expect(productsRepo.delete).toHaveBeenCalledWith('p-1');
   });
 });
 

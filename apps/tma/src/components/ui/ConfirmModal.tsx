@@ -113,7 +113,7 @@ export function ConfirmContainer() {
             style={
               danger
                 ? { background: 'rgba(239,68,68,0.9)', color: '#fff' }
-                : { background: 'var(--tg-accent)', color: '#0A0A0A' }
+                : { background: 'var(--tg-accent)', color: '#0F0F0F' }
             }
           >
             {confirmText}

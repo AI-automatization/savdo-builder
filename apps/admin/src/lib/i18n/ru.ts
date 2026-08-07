@@ -749,6 +749,16 @@ export const ru: Translations = {
   'storeDetail.modalUnapproveTitle': 'Снять одобрение',
   'storeDetail.modalUnapproveDesc': 'Магазин «{name}» будет скрыт из поиска и переведён на повторную проверку (статус «На проверке»).',
 
+  // ADMIN-STORE-VISIBILITY-001: скрыть/показать магазин на витрине напрямую (isPublic),
+  // не меняя статус модерации — для служебных/тестовых магазинов без владельца в TMA/web-seller.
+  'storeDetail.hideFromStorefront': 'Скрыть с витрины',
+  'storeDetail.showOnStorefront': 'Показать на витрине',
+  'storeDetail.modalHideTitle': 'Скрыть магазин с витрины',
+  'storeDetail.modalHideDesc': 'Магазин «{name}» пропадёт из каталога и поиска покупателей (isPublic=false). Статус модерации не меняется.',
+  'storeDetail.modalShowTitle': 'Показать магазин на витрине',
+  'storeDetail.modalShowDesc': 'Магазин «{name}» снова появится в каталоге и поиске покупателей (isPublic=true).',
+  'storeDetail.hiddenBadge': 'Скрыт с витрины',
+
   // ── Store Telegram channel (P1-1, audit-2026-06-04) ───────────────────
   'storeDetail.tgChannelSection': 'Telegram-канал',
   'storeDetail.tgChannelLabel': 'Канал (username)',

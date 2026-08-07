@@ -5,8 +5,9 @@
 //   node post_promo_video.js "<video.mp4 yo'li>" "<caption matni>"
 // Argumentsiz ishga tushirilsa quyidagi standart video va caption ishlatiladi.
 
-require("dotenv").config({ path: "C:/Users/User/Desktop/Max_savdo_tg_bot/.env" });
+require("dotenv").config();
 const fs = require("fs");
+const path = require("path");
 const TelegramBot = require("node-telegram-bot-api");
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -51,7 +52,7 @@ function truncateCaption(text, max = 1024) {
     supports_streaming: true,
   });
   fs.appendFileSync(
-    "C:/Users/User/Desktop/Max_savdo_tg_bot/post_log.jsonl",
+    path.join(__dirname, "post_log.jsonl"),
     JSON.stringify({ ts: new Date().toISOString(), type: "video", message_id: sent.message_id, video: videoPath }) + "\n",
   );
   console.log(`Muvaffaqiyatli joylandi! message_id=${sent.message_id} (o'chirish uchun: node delete_post.js ${sent.message_id})`);

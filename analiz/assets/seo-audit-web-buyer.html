@@ -1,0 +1,480 @@
+<title>maxsavdo web-buyer — Технический SEO-аудит</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --surface: #faf8f4;
+    --surface-2: #f3efe6;
+    --border: #e6e0d4;
+    --text: #17140f;
+    --text-muted: #6e6656;
+    --text-dim: #a39c88;
+    --accent: #b8791f;
+    --accent-bg: rgba(184,121,31,0.10);
+    --accent-border: rgba(184,121,31,0.32);
+    --good: #1f7a4d;
+    --good-bg: rgba(31,122,77,0.10);
+    --warn: #a2650a;
+    --warn-bg: rgba(162,101,10,0.12);
+    --bad: #b3261e;
+    --bad-bg: rgba(179,38,30,0.10);
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f0f0f;
+    --surface: #161412;
+    --surface-2: #1e1a15;
+    --border: #332c22;
+    --text: #f5f1e8;
+    --text-muted: #a89e88;
+    --text-dim: #746b58;
+    --accent: #e8a552;
+    --accent-bg: rgba(232,165,82,0.12);
+    --accent-border: rgba(232,165,82,0.34);
+    --good: #4ade80;
+    --good-bg: rgba(74,222,128,0.12);
+    --warn: #fbbf24;
+    --warn-bg: rgba(251,191,36,0.12);
+    --bad: #f87171;
+    --bad-bg: rgba(248,113,113,0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f0f0f;
+      --surface: #161412;
+      --surface-2: #1e1a15;
+      --border: #332c22;
+      --text: #f5f1e8;
+      --text-muted: #a89e88;
+      --text-dim: #746b58;
+      --accent: #e8a552;
+      --accent-bg: rgba(232,165,82,0.12);
+      --accent-border: rgba(232,165,82,0.34);
+      --good: #4ade80;
+      --good-bg: rgba(74,222,128,0.12);
+      --warn: #fbbf24;
+      --warn-bg: rgba(251,191,36,0.12);
+      --bad: #f87171;
+      --bad-bg: rgba(248,113,113,0.12);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 56px 24px 120px;
+  }
+
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 32px;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  h1 {
+    font-size: clamp(28px, 4vw, 38px);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0;
+    text-wrap: balance;
+    font-weight: 700;
+  }
+  .dek {
+    color: var(--text-muted);
+    font-size: 16px;
+    max-width: 62ch;
+    margin: 4px 0 0;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-top: 14px;
+  }
+  .meta-row b { color: var(--text-muted); font-weight: 600; }
+
+  /* Scorecard */
+  .scorecard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 48px;
+  }
+  .score-tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .score-tile .label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .score-tile .verdict {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 100px;
+    width: fit-content;
+  }
+  .chip.good { background: var(--good-bg); color: var(--good); }
+  .chip.warn { background: var(--warn-bg); color: var(--warn); }
+  .chip.bad  { background: var(--bad-bg); color: var(--bad); }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  section.factor {
+    margin-bottom: 56px;
+    scroll-margin-top: 24px;
+  }
+  .factor-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 6px;
+  }
+  .factor-num {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-dim);
+    min-width: 22px;
+  }
+  h2 {
+    font-size: 22px;
+    margin: 0;
+    letter-spacing: -0.005em;
+    text-wrap: balance;
+  }
+  .factor-body { padding-left: 36px; }
+  .concept {
+    color: var(--text-muted);
+    font-size: 15px;
+    max-width: 68ch;
+    margin: 0 0 18px;
+  }
+  .concept b { color: var(--text); font-weight: 600; }
+
+  .finding {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 8px 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    margin-bottom: 10px;
+  }
+  .finding .dot { font-size: 14px; line-height: 1.5; }
+  .finding.good { border-color: var(--good-bg); }
+  .finding.warn { border-color: var(--warn-bg); }
+  .finding.bad  { border-color: var(--bad-bg); }
+  .finding p { margin: 0; font-size: 14.5px; }
+  .finding .src {
+    display: block;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text-dim);
+    margin-top: 5px;
+  }
+
+  code, .src code {
+    font-family: var(--mono);
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.92em;
+  }
+
+  .callout {
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 14.5px;
+    margin: 14px 0;
+  }
+  .callout b { color: var(--accent); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 12px 0;
+  }
+  .table-wrap { overflow-x: auto; }
+  th, td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--text-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  .action-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .action-list li {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14.5px;
+  }
+  .action-list .pri {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--bad);
+    font-weight: 700;
+  }
+  .action-list li.p2 .pri { color: var(--warn); }
+  .action-list li.p3 .pri { color: var(--text-dim); }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  a { color: var(--accent); }
+</style>
+
+<div class="wrap">
+  <div class="masthead">
+    <span class="eyebrow">O'rganish · SEO texnik audit</span>
+    <h1>6 ранжирующих факторов на примере <code>web-buyer</code></h1>
+    <p class="dek">EEAT, Search Intent, YMYL, Core Web Vitals, Микроразметка, Поведенческие факторы — что каждый значит и как это выглядит в реальном коде maxsavdo прямо сейчас (не теория, не чужие примеры).</p>
+    <div class="meta-row">
+      <span><b>Домен аудита:</b> apps/web-buyer (покупательская витрина, единственная индексируемая Google в зоне Полата)</span>
+      <span><b>Дедлайн:</b> завтра 13:00</span>
+      <span><b>Дата:</b> 02.08.2026</span>
+    </div>
+  </div>
+
+  <div class="scorecard">
+    <div class="score-tile"><span class="label">EEAT</span><span class="chip warn">частично</span></div>
+    <div class="score-tile"><span class="label">Search Intent</span><span class="chip warn">частично</span></div>
+    <div class="score-tile"><span class="label">YMYL</span><span class="chip good">закрыто</span></div>
+    <div class="score-tile"><span class="label">Core Web Vitals</span><span class="chip bad">риск LCP</span></div>
+    <div class="score-tile"><span class="label">Микроразметка</span><span class="chip warn">частично</span></div>
+    <div class="score-tile"><span class="label">Поведенческие</span><span class="chip bad">не измеряются</span></div>
+  </div>
+
+  <!-- 1. EEAT -->
+  <section class="factor" id="eeat">
+    <div class="factor-head"><span class="factor-num">01</span><h2>EEAT — Experience, Expertise, Authoritativeness, Trust</h2></div>
+    <div class="factor-body">
+      <p class="concept">Google оценивает не только контент страницы, а <b>кто стоит за сайтом</b> и можно ли ему доверять: есть ли реальные авторы/бренд, юридические реквизиты, отзывы, история. Для маркетплейса это в первую очередь про <b>доверие к продавцам и к самой платформе</b>, а не про экспертные статьи.</p>
+
+      <div class="finding good">
+        <span class="dot">✅</span>
+        <div><p>Trust-сигналы уже встроены в карточку магазина: <code>isVerified</code>, <code>avgRating</code>, <code>reviewCount</code> подтягиваются на страницу товара, чтобы покупатель видел не абстрактный сайт, а конкретного проверенного продавца.</p>
+        <span class="src">apps/api/.../products.repository.ts — publicProductDetailInclude (store.isVerified/avgRating/reviewCount)</span></div>
+      </div>
+
+      <div class="finding good">
+        <span class="dot">✅</span>
+        <div><p>Организационная сущность объявлена глобально через JSON-LD <code>Organization</code> — Google видит "кто это" на каждой странице, не только на главной.</p>
+        <span class="src">apps/web-buyer/src/app/layout.tsx:56-68</span></div>
+      </div>
+
+      <div class="finding warn">
+        <span class="dot">⚠️</span>
+        <div><p><code>ProductReview</code> — модель отзывов в БД есть (rating 1–5, доступен только после <code>DELIVERED</code>) — но отзывы <b>не попадают в JSON-LD товара</b> как <code>AggregateRating</code>. Google не видит рейтинг товара напрямую в разметке (см. также Микроразметка ниже) — это и EEAT, и rich-snippet одновременно.</p>
+        <span class="src">packages/db/prisma/schema.prisma — model ProductReview · apps/web-buyer/.../products/[id]/layout.tsx (buildProductJsonLd — без reviews)</span></div>
+      </div>
+
+      <div class="finding warn">
+        <span class="dot">⚠️</span>
+        <div><p>Нет отдельной страницы "О компании"/"О платформе" с реквизитами (сайт есть только <code>/offer</code>, <code>/privacy</code>, <code>/terms</code>, <code>/refund</code> — юридические, не про доверие к бренду). Для YMYL-соседства (см. ниже) обычно помогает.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Search Intent -->
+  <section class="factor" id="intent">
+    <div class="factor-head"><span class="factor-num">02</span><h2>Search Intent — соответствие поисковому намерению</h2></div>
+    <div class="factor-body">
+      <p class="concept">Google должен понять, отвечает ли страница на запрос: <b>навигационный</b> ("магазин X в Telegram"), <b>транзакционный</b> ("купить X в Ташкенте") или <b>информационный</b>. Технически это решается structure (заголовки, canonical, breadcrumbs) + тем, что реально можно найти и проиндексировать.</p>
+
+      <div class="finding bad">
+        <span class="dot">❌</span>
+        <div><p><b>Критично:</b> <code>sitemap.xml</code> отдаёт только 5 статических страниц (главная, terms, privacy, offer, refund) — <b>ни одного товара, ни одного магазина</b>. При этом backend уже готов: есть endpoint <code>GET /storefront/sitemap</code> с методом <code>findAllPublicForSitemap()</code>, который возвращает id+updatedAt+slug всех ACTIVE товаров видимых магазинов — но web-buyer его не вызывает.</p>
+        <span class="src">apps/web-buyer/src/app/sitemap.ts (только 5 static URL) · apps/api/.../storefront.controller.ts:94 GET /storefront/sitemap · products.repository.ts:503 findAllPublicForSitemap()</span></div>
+      </div>
+
+      <div class="callout">Это значит: Google физически не знает о существовании страниц товаров/магазинов через sitemap — обнаружение идёт только через внутренние ссылки и ручной crawl, что на маркетплейсе с сотнями товаров = медленная и неполная индексация. Готовый backend-эндпоинт уже есть, нужно 15-20 строк на фронте, чтобы его использовать.</div>
+
+      <div class="finding good">
+        <span class="dot">✅</span>
+        <div><p>Canonical URL проставлен на карточке товара (<code>alternates.canonical</code>) — защита от дублей при query-параметрах.</p>
+        <span class="src">apps/web-buyer/.../products/[id]/layout.tsx:61</span></div>
+      </div>
+
+      <div class="finding warn">
+        <span class="dot">⚠️</span>
+        <div><p><code>robots.ts</code> корректно закрывает приватные разделы (<code>/checkout</code>, <code>/cart</code>, <code>/orders</code>, <code>/wishlist</code>) — хорошо. Но нет <code>hreflang</code>/языковых сигналов, хотя UI поддерживает мультиязычность (<code>languageCode</code> на <code>User</code>) — если контент существует на нескольких языках, это стоит проверить отдельно.</p>
+        <span class="src">apps/web-buyer/src/app/robots.ts</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. YMYL -->
+  <section class="factor" id="ymyl">
+    <div class="factor-head"><span class="factor-num">03</span><h2>YMYL — Your Money or Your Life</h2></div>
+    <div class="factor-body">
+      <p class="concept">Страницы, которые касаются денег покупателя (оплата, возврат, персональные данные), Google проверяет строже — нужны прозрачные условия, реквизиты, политика возврата. Маркетплейс с оплатой = YMYL по определению.</p>
+
+      <div class="finding good">
+        <span class="dot">✅</span>
+        <div><p>Все 4 обязательные страницы существуют и проиндексированы в sitemap: оферта (<code>/offer</code>, реальные реквизиты юрлица — МЧЖ "TEZ KOD", СТИР, ИФУТ, банк), политика конфиденциальности (<code>/privacy</code>), условия (<code>/terms</code>), возврат (<code>/refund</code>).</p>
+        <span class="src">apps/web-buyer/src/app/offer/page.tsx §9 · sitemap.ts (все 4 с priority 0.3)</span></div>
+      </div>
+
+      <div class="finding good">
+        <span class="dot">✅</span>
+        <div><p>HTTPS/security-заголовки прод-уровня: HSTS, строгий CSP, X-Frame-Options DENY, Referrer-Policy — сигнал безопасности сайта, который Google учитывает для YMYL.</p>
+        <span class="src">apps/web-buyer/next.config.ts — securityHeaders</span></div>
+      </div>
+
+      <p class="concept" style="margin-top:14px">Единственный YMYL-фактор — это разделы оферты, которые уже <b>найдены в прошлом research</b> (форс-мажор, порядок изменения оферты, явный раздел "ответственность сторон") — не дублирую здесь, см. <code>LEGAL-OFFER-CONTENT-GAPS-001</code> в <code>analiz/tasks.md</code>.</p>
+    </div>
+  </section>
+
+  <!-- 4. Core Web Vitals -->
+  <section class="factor" id="cwv">
+    <div class="factor-head"><span class="factor-num">04</span><h2>Core Web Vitals — LCP, INP, CLS</h2></div>
+    <div class="factor-body">
+      <p class="concept">Три метрики реального опыта загрузки, напрямую влияющие на ранжирование: <b>LCP</b> (когда прогрузился главный визуальный элемент, цель &lt;2.5с), <b>INP</b> (задержка отклика на клик/тап, сменил FID в 2024, цель &lt;200мс), <b>CLS</b> (насколько сильно едет вёрстка, цель &lt;0.1).</p>
+
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Метрика</th><th>Цель проекта</th><th>Что в коде</th></tr></thead>
+        <tbody>
+          <tr><td>LCP</td><td class="num">&lt; 2.5s (3G)</td><td>заявлено в apps/web-buyer/CLAUDE.md, не проверено live</td></tr>
+          <tr><td>INP</td><td class="num">&lt; 200ms</td><td>не заявлено, не измеряется</td></tr>
+          <tr><td>CLS</td><td class="num">&lt; 0.1</td><td>не заявлено, не измеряется</td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="finding bad">
+        <span class="dot">❌</span>
+        <div><p><b>Самый вероятный LCP-баг:</b> ни один <code>&lt;Image&gt;</code> во всём web-buyer не использует <code>priority</code> (0 совпадений по всему <code>src/</code>). Первая картинка товара/магазина на экране — почти всегда и есть LCP-элемент, а без <code>priority</code> next/image ставит её в ленивую очередь (<code>loading="lazy"</code>), что задерживает именно тот запрос, который решает LCP.</p>
+        <span class="src">grep -rl "priority" apps/web-buyer/src — 0 файлов · ProductCard.tsx, RecentStores.tsx и др. без priority</span></div>
+      </div>
+
+      <div class="finding good">
+        <span class="dot">✅</span>
+        <div><p>Хорошая база под CLS: везде <code>next/image</code> (0 сырых <code>&lt;img&gt;</code>), обязательные <code>width/height</code> зашиты форматом компонента — сама картинка не должна "прыгать". Шрифт с <code>display: 'swap'</code> — не блокирует рендер текста.</p>
+        <span class="src">next/image импортов: 10 файлов · layout.tsx:13 display: 'swap'</span></div>
+      </div>
+
+      <div class="finding bad">
+        <span class="dot">❌</span>
+        <div><p>Нет ни одного упоминания <code>web-vitals</code>/<code>reportWebVitals</code> в кодовой базе — CWV не измеряются в реальном трафике вообще. Все три цифры выше — предположение по коду, не факт с прод-пользователей.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Microdata -->
+  <section class="factor" id="microdata">
+    <div class="factor-head"><span class="factor-num">05</span><h2>Микроразметка — structured data / JSON-LD</h2></div>
+    <div class="factor-body">
+      <p class="concept">Разметка schema.org не двигает ранжирование напрямую, но открывает rich snippets (цена, наличие, рейтинг прямо в выдаче) — а это прямой CTR-буст, который уже влияет на позиции косвенно.</p>
+
+      <div class="finding good">
+        <span class="dot">✅</span>
+        <div><p><code>Organization</code> на каждой странице (глобальный layout) + <code>Product</code> с <code>Offer</code> (цена, валюта UZS, наличие, бренд = название магазина) на карточке товара — оба сгенерированы динамически из реальных данных, не статика.</p>
+        <span class="src">layout.tsx:56-68 · [id]/layout.tsx:19-40 buildProductJsonLd()</span></div>
+      </div>
+
+      <div class="finding warn">
+        <span class="dot">⚠️</span>
+        <div><p>Отсутствует <code>BreadcrumbList</code> — у товара есть иерархия (магазин → категория → товар), но она не размечена, хотя breadcrumb-сниппет в выдаче — один из самых частых rich-результатов для e-commerce.</p></div>
+      </div>
+
+      <div class="finding warn">
+        <span class="dot">⚠️</span>
+        <div><p>Нет <code>AggregateRating</code>/<code>Review</code> внутри <code>Product</code> JSON-LD, хотя данные для этого есть в БД (см. EEAT выше — тот же самый пробел, две проблемы из одной причины).</p></div>
+      </div>
+
+      <div class="finding warn">
+        <span class="dot">⚠️</span>
+        <div><p>Нет <code>LocalBusiness</code>/<code>Store</code> разметки на странице самого магазина (<code>(shop)/[slug]/page.tsx</code>) — только на товаре. Город/регион магазина (<code>Store.city</code>, <code>region</code>) в БД есть, в разметку не идёт.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Behavioral -->
+  <section class="factor" id="behavioral">
+    <div class="factor-head"><span class="factor-num">06</span><h2>Поведенческие факторы</h2></div>
+    <div class="factor-body">
+      <p class="concept">Google (косвенно) и точно Yandex учитывают CTR из выдачи, время на сайте, глубину просмотра, возвраты в поиск ("pogo-sticking"). Технически это не то, что пишется в код напрямую — это то, что код должен <b>позволять измерить</b>, чтобы потом улучшать.</p>
+
+      <div class="finding good">
+        <span class="dot">✅</span>
+        <div><p>Событийная аналитика в принципе спроектирована: обязательный список событий <code>storefront_viewed</code>, <code>product_viewed</code>, <code>add_to_cart</code>, <code>checkout_started</code>, <code>order_created</code> задокументирован как правило проекта.</p>
+        <span class="src">apps/web-buyer/CLAUDE.md — Analytics · docs/V1.1/07_seller_onboarding_funnel.md</span></div>
+      </div>
+
+      <div class="finding bad">
+        <span class="dot">❌</span>
+        <div><p>Ни одного вызова аналитики (<code>gtag</code>, GA4, любой tracking SDK) не найдено в <code>apps/web-buyer/src</code> — задокументированное правило существует, реализации не нашёл. Без этого поведенческие метрики просто не собираются — не только для SEO, но и для продуктовых решений.</p></div>
+      </div>
+
+      <div class="callout">Это два разных типа факторов: <b>EEAT/YMYL/микроразметка</b> — Google читает прямо со страницы, эффект от фикса виден за недели. <b>Поведенческие</b> — это цикл "измерить → увидеть проблему → улучшить UX → снова измерить", без первого шага остальные невозможны в принципе.</div>
+    </div>
+  </section>
+
+  <h2 style="margin-bottom:16px">Что чинить в первую очередь</h2>
+  <ul class="action-list">
+    <li class="p1"><span class="pri">P1</span><span>Sitemap: добавить в <code>web-buyer/src/app/sitemap.ts</code> вызов <code>GET /storefront/sitemap</code> и сгенерировать URL всех товаров/магазинов — backend уже готов, это чисто фронтовая правка.</span></li>
+    <li class="p1"><span class="pri">P1</span><span>Добавить <code>priority</code> на первое/hero-изображение товара и магазина (LCP-элемент) в <code>ProductCard.tsx</code> и странице товара.</span></li>
+    <li class="p2"><span class="pri">P2</span><span>Подключить <code>web-vitals</code> (реальный RUM) + хотя бы один tracking SDK — без этого CWV и поведенческие факторы остаются гипотезой.</span></li>
+    <li class="p2"><span class="pri">P2</span><span>Добавить <code>AggregateRating</code> в Product JSON-LD и <code>BreadcrumbList</code> — данные уже в БД, не хватает только сборки JSON-LD.</span></li>
+    <li class="p3"><span class="pri">P3</span><span><code>LocalBusiness</code>/<code>Store</code> разметка на странице магазина (city/region уже есть в БД).</span></li>
+  </ul>
+
+  <footer>
+    Источник — построчное чтение <code>apps/web-buyer/src</code> и связанного backend-кода 02.08.2026, не generic SEO-чеклист. Каждый пункт указывает на файл — если что-то не совпадает с текущим кодом, значит код успел измениться после аудита.
+  </footer>
+</div>

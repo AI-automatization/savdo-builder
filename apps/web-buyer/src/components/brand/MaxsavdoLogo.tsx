@@ -4,7 +4,7 @@
  * Mark = монограмма (без текста); wordmark = mark + текст "maxsavdo".
  * Левая половина M использует `var(--color-text-primary)` → автоматически
  * адаптируется к light/dark theme (black на light, white на dark).
- * Правая половина + handle = Champagne Gold (#C9A876).
+ * Правая половина + handle = Champagne Gold (#E8A552).
  *
  * Это inline-приближение для немедленного rollout. Когда Полат закроет
  * BRAND-LOGO-SVG-CREATE-001 (vectorize JPG → точный SVG), заменим внутренности
@@ -20,7 +20,7 @@ type Props = {
   withWordmark?: boolean;
 };
 
-const GOLD = '#C9A876';
+const GOLD = '#E8A552';
 
 export function MaxsavdoLogo({ size = 32, className = '', withWordmark = false }: Props) {
   if (withWordmark) {

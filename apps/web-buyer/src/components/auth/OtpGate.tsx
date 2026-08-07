@@ -7,6 +7,13 @@ import { PhoneInput, isValidUzPhone } from '@/components/PhoneInput';
 
 const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'maxsavdo_bot';
 
+function errorText(err: unknown, fallback: string): string {
+  if (!err) return fallback;
+  type ApiError = { response?: { data?: { message?: string; code?: string } }; message?: string };
+  const e = err as ApiError;
+  return e?.response?.data?.message ?? e?.message ?? fallback;
+}
+
 type OtpStep = 'phone' | 'code';
 
 interface OtpGateProps {
@@ -29,8 +36,8 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
     try {
       await requestOtp.mutateAsync({ phone, purpose: 'checkout' });
       setStep('code');
-    } catch {
-      setError('Не удалось отправить код. Проверьте номер.');
+    } catch (err) {
+      setError(errorText(err, 'Не удалось отправить код. Проверьте номер.'));
     }
   }
 
@@ -38,8 +45,8 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
     setError('');
     try {
       await verifyOtp.mutateAsync({ phone, code, purpose: 'checkout' });
-    } catch {
-      setError('Неверный код. Попробуйте ещё раз.');
+    } catch (err) {
+      setError(errorText(err, 'Неверный код. Попробуйте ещё раз.'));
     }
   }
 
@@ -87,6 +94,20 @@ export function OtpGate({ icon, title, subtitle }: OtpGateProps) {
               >
                 {requestOtp.isPending ? 'Отправка...' : 'Получить код'}
               </button>
+              {error && (
+                <p className="text-xs text-center" style={{ color: colors.textDim }}>
+                  Если это первый вход — сначала откройте{' '}
+                  <a
+                    href={`https://t.me/${BOT_USERNAME}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: colors.accent }}
+                  >
+                    @{BOT_USERNAME}
+                  </a>{' '}
+                  и поделитесь номером телефона.
+                </p>
+              )}
             </>
           ) : (
             <>

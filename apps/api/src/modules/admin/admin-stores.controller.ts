@@ -31,6 +31,7 @@ import { ArchiveStoreUseCase } from './use-cases/archive-store.use-case';
 import { ApproveStoreUseCase } from './use-cases/approve-store.use-case';
 import { UnapproveStoreUseCase } from './use-cases/unapprove-store.use-case';
 import { SetStoreVerificationUseCase } from './use-cases/set-store-verification.use-case';
+import { SetStoreVisibilityUseCase } from './use-cases/set-store-visibility.use-case';
 import { AdminUpdateStoreChannelUseCase } from './use-cases/admin-update-store-channel.use-case';
 import { AdminPurgeStoreUseCase } from './use-cases/admin-purge-store.use-case';
 import { AdminContextService } from './services/admin-context.service';
@@ -60,6 +61,7 @@ export class AdminStoresController {
     private readonly approveStoreUseCase: ApproveStoreUseCase,
     private readonly unapproveStoreUseCase: UnapproveStoreUseCase,
     private readonly setStoreVerificationUseCase: SetStoreVerificationUseCase,
+    private readonly setStoreVisibilityUseCase: SetStoreVisibilityUseCase,
     private readonly adminUpdateStoreChannelUseCase: AdminUpdateStoreChannelUseCase,
     private readonly adminPurgeStoreUseCase: AdminPurgeStoreUseCase,
   ) {}
@@ -159,6 +161,36 @@ export class AdminStoresController {
       actorUserId: user.sub,
       isVerified: false,
       reason: dto.reason,
+    });
+  }
+
+  // ADMIN-STORE-VISIBILITY-001: скрыть/показать магазин на storefront
+  // напрямую (без участия продавца) — для служебных/технических магазинов
+  // (напр. RAOS-pilot стор), у которых нет обычного владельца в TMA/web-seller.
+  @Post(':id/hide')
+  @AdminPermission('store:moderate')
+  async hide(
+    @Param('id') id: string,
+    @Body() dto: AdminActionDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    await this.adminContext.requireAdmin(user);
+    return this.setStoreVisibilityUseCase.execute({
+      storeId: id,
+      actorUserId: user.sub,
+      isPublic: false,
+      reason: dto.reason,
+    });
+  }
+
+  @Post(':id/show')
+  @AdminPermission('store:moderate')
+  async show(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    await this.adminContext.requireAdmin(user);
+    return this.setStoreVisibilityUseCase.execute({
+      storeId: id,
+      actorUserId: user.sub,
+      isPublic: true,
     });
   }
 

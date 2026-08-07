@@ -33,8 +33,8 @@ interface ThemeColors {
 
 export const DARK_THEME: ThemeColors = {
   // Фоновые слои — Rich Black
-  bg:           '#0A0A0A',
-  bgGradient:   'linear-gradient(160deg, #0A0A0A 0%, #101010 50%, #0A0A0A 100%)',
+  bg:           '#0F0F0F',
+  bgGradient:   'linear-gradient(160deg, #0F0F0F 0%, #101010 50%, #0F0F0F 100%)',
   surface:      '#141414',
   surfaceHover: '#1F1F1F',
 
@@ -49,14 +49,14 @@ export const DARK_THEME: ThemeColors = {
   borderSoft:   'rgba(255,255,255,0.08)',
 
   // Акценты — Champagne Gold (единственный chromatic accent в design-v2)
-  accent:        '#C9A876',
-  accentDim:     'rgba(201,168,118,0.18)',
-  accentGlow:    'rgba(201,168,118,0.35)',
-  accentText:    '#E8C898',
+  accent:        '#E8A552',
+  accentDim:     'rgba(232,165,82,0.18)',
+  accentGlow:    'rgba(232,165,82,0.35)',
+  accentText:    '#FFC574',
 
   // Cyan убран из палитры — alias на accent чтобы старый код не сломался
-  cyan:          '#C9A876',
-  cyanDim:       'rgba(201,168,118,0.15)',
+  cyan:          '#E8A552',
+  cyanDim:       'rgba(232,165,82,0.15)',
 
   // Статусы — мягкие, чтобы не конкурировали с золотом
   success:    '#34D399',
@@ -73,21 +73,23 @@ export const LIGHT_THEME: ThemeColors = {
   surface:      '#FAFAFA',
   surfaceHover: '#F5F5F5',
 
-  textPrimary:   '#0A0A0A',
+  textPrimary:   '#0F0F0F',
   textSecondary: '#262626',
   textMuted:     '#737373',
-  textDim:       '#A3A3A3',
+  // TMA-LIGHT-THEME-AUDIT-001: было #A3A3A3 (контраст 2.53:1 на белом, не
+  // проходит WCAG AA). #6E6E6E ≈ 5.1:1 — синхронизировано с index.css.
+  textDim:       '#6E6E6E',
 
   border:       '#E5E5E5',
   borderSoft:   '#F0F0F0',
 
-  accent:        '#C9A876',
-  accentDim:     'rgba(201,168,118,0.12)',
-  accentGlow:    'rgba(201,168,118,0.25)',
-  accentText:    '#B89868',
+  accent:        '#E8A552',
+  accentDim:     'rgba(232,165,82,0.12)',
+  accentGlow:    'rgba(232,165,82,0.25)',
+  accentText:    '#D4922E',
 
-  cyan:          '#C9A876',
-  cyanDim:       'rgba(201,168,118,0.10)',
+  cyan:          '#E8A552',
+  cyanDim:       'rgba(232,165,82,0.10)',
 
   success:    '#10B981',
   successDim: 'rgba(16,185,129,0.10)',

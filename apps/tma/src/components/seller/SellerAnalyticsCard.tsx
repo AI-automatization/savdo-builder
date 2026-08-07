@@ -173,8 +173,8 @@ function Sparkline({ daily }: { daily: DailyPoint[] }) {
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" aria-hidden>
         <defs>
           <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(201,168,118,0.40)" />
-            <stop offset="100%" stopColor="rgba(201,168,118,0)" />
+            <stop offset="0%" stopColor="rgba(232,165,82,0.40)" />
+            <stop offset="100%" stopColor="rgba(232,165,82,0)" />
           </linearGradient>
         </defs>
         <polygon
@@ -184,13 +184,13 @@ function Sparkline({ daily }: { daily: DailyPoint[] }) {
         <polyline
           points={points}
           fill="none"
-          stroke="#C9A876"
+          stroke="#E8A552"
           strokeWidth={1.5}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         {Number.isFinite(lx) && Number.isFinite(ly) && (
-          <circle cx={lx} cy={ly} r={2.5} fill="#C9A876" />
+          <circle cx={lx} cy={ly} r={2.5} fill="#E8A552" />
         )}
       </svg>
     </div>

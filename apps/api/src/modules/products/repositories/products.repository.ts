@@ -424,6 +424,46 @@ export class ProductsRepository {
     });
   }
 
+  /**
+   * FEAT-SCHEDULED-PUBLISH-001: продавец ставит/снимает будущее время публикации
+   * DRAFT-товара. `null` — отмена расписания (товар остаётся DRAFT без авто-публикации).
+   */
+  async setScheduledPublishAt(id: string, at: Date | null): Promise<Product> {
+    return this.prisma.product.update({
+      where: { id },
+      data: { scheduledPublishAt: at },
+    });
+  }
+
+  /**
+   * FEAT-SCHEDULED-PUBLISH-001: DRAFT-товары, чьё время публикации наступило —
+   * забирает cron (`ScheduledPublishProcessor`). limit — защита от одного огромного
+   * батча, если cron долго не запускался.
+   */
+  async findDueScheduledPublish(limit: number): Promise<Product[]> {
+    return this.prisma.product.findMany({
+      where: {
+        status: ProductStatus.DRAFT,
+        scheduledPublishAt: { not: null, lte: new Date() },
+      },
+      take: limit,
+      orderBy: { scheduledPublishAt: 'asc' },
+    });
+  }
+
+  /**
+   * INTEG-RAOS-002 (issue #5): прямая запись Product.totalStock — только для
+   * single-SKU товаров (hasVariants=false). Товары с вариантами держат сток
+   * per-variant (AdjustStockUseCase) — вызывающий код обязан проверить
+   * hasVariants до вызова этого метода.
+   */
+  async setTotalStock(id: string, stock: number): Promise<Product> {
+    return this.prisma.product.update({
+      where: { id },
+      data: { totalStock: stock },
+    });
+  }
+
   async findAllPublic(filters?: {
     q?: string;
     globalCategoryId?: string;

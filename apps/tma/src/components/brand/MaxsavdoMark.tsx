@@ -5,7 +5,7 @@
  * (Азим, brand-book v2). Без зависимостей — чистый SVG.
  *
  * Левая половина M = `var(--tg-text-primary)` (theme-adaptive),
- * правая половина + handle = Champagne Gold #C9A876.
+ * правая половина + handle = Champagne Gold #E8A552.
  *
  * TMA-DESIGN-V2-MIGRATE-001, 04.06.2026.
  */
@@ -19,7 +19,7 @@ type Props = {
   withWordmark?: boolean;
 };
 
-const GOLD = '#C9A876';
+const GOLD = '#E8A552';
 
 export function MaxsavdoMark({ size = 32, className = '', withWordmark = false }: Props) {
   if (withWordmark) {
