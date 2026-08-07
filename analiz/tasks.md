@@ -5,6 +5,23 @@
 
 ---
 
+## 🟡 [PARTNER-API-RAOS-BUGS-001] 2 бага в RAOS-интеграции — НЕ наша сторона, сообщить Ибрату
+- **Домен:** cross-team (raos-pos-cosmetics) · **Кто взял:** сообщить RAOS, не чинить самим
+- **Кто нашёл:** Claude 04.08.2026, независимо перепроверено вторым чистым агентом (general-purpose/sonnet, без моего контекста) — оба подтвердили независимо.
+- **Баг 1 — envelope mismatch:** RAOS `savdo-outbound.service.ts` `createProduct()` читает `res.product.id`
+  (ожидает `{data:{product:{id}}}`), наш `POST /partner/products` реально отдаёт плоский `{id,...}` —
+  задокументировано так в `docs/contracts/partner-api-raos.md`, не наша ошибка. Ошибка сейчас глотается
+  try/catch в `savdo-sync.listener.ts:66-87` (`logger.warn`, не крэш) — но `savdoProductId` не сохраняется.
+- **Баг 2 — DTO field mismatch (более фундаментальный, маскирует баг 1):** RAOS шлёт на `POST` поля
+  `{name,price,imageUrl,stock}` — это поля из PATCH-контракта. `POST` по контракту требует
+  `{title,basePrice,imageUrls[]}`. С `ValidationPipe({forbidNonWhitelisted:true})` у нас каждый create-запрос
+  RAOS сейчас получает 400 ДО контроллера — баг 1 сейчас недостижим, замаскирован этим.
+- **Не баг:** несовпадение полей create (`title/basePrice`) vs update (`name/price`) — так и задокументировано
+  в контракте, не рантайм-ошибка. Странный дизайн API, можно предложить унифицировать в след. версии контракта.
+- **Файлы:** `docs/contracts/partner-api-raos.md` (референс), RAOS: `apps/api/src/integrations/savdo/savdo-outbound.service.ts`
+
+---
+
 ## 🔴 [LANDING-MOBILE-NAV-MISSING-001] На мобильном в шапке нет ни меню, ни кнопки CTA
 - **Домен:** `apps/landing` · **Кто взял:** Юсуф
 - **Кто нашёл:** Claude, аудит 04.08.2026 — живая проверка Playwright на вьюпорте 390×844,
