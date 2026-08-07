@@ -610,4 +610,8 @@ export const uz: Translations = {
   // profile.menu — «Qoʻllab-quvvatlash» punkti (SUPPORT-CHANNEL-001)
   'profile.menu.support': 'Qoʻllab-quvvatlash',
   'profile.menu.supportSub': 'Telegramda yozish',
+
+  // profile.menu — SELLER/ADMIN uchun «Sotuvchi kabineti» (PROFILE-SELLER-DASHBOARD-LINK-001)
+  'profile.menu.sellerDashboard': 'Sotuvchi kabineti',
+  'profile.menu.sellerDashboardSub': 'Tovarlar, buyurtmalar, doʻkon',
 };

@@ -610,4 +610,8 @@ export const ru: Translations = {
   // profile.menu — пункт «Поддержка» (SUPPORT-CHANNEL-001)
   'profile.menu.support': 'Поддержка',
   'profile.menu.supportSub': 'Написать в Telegram',
+
+  // profile.menu — «Кабинет продавца» для SELLER/ADMIN (PROFILE-SELLER-DASHBOARD-LINK-001)
+  'profile.menu.sellerDashboard': 'Кабинет продавца',
+  'profile.menu.sellerDashboardSub': 'Товары, заказы, магазин',
 };

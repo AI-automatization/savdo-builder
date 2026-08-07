@@ -35,6 +35,11 @@ const BOT_USERNAME = process.env.NEXT_PUBLIC_TG_BOT_USERNAME ?? 'maxsavdo_bot';
 // выставит NEXT_PUBLIC_SUPPORT_URL в Railway-env. До этого фолбэк на бот
 // (он реально работает), так что битой ссылки в проде не бывает.
 const SUPPORT_URL = process.env.NEXT_PUBLIC_SUPPORT_URL ?? `https://t.me/${BOT_USERNAME}`;
+// PROFILE-SELLER-DASHBOARD-LINK-001: продавец, зашедший в buyer-приложение (тот же
+// аккаунт может покупать и продавать), раньше не имел отсюда пути в свой кабинет —
+// только BUYER видел CTA "Стать продавцом". seller.maxsavdo.uz — отдельное приложение
+// (apps/web-seller), см. public/llms.txt.
+const SELLER_URL = process.env.NEXT_PUBLIC_SELLER_URL ?? 'https://seller.maxsavdo.uz';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -246,6 +251,18 @@ function ProfileView() {
 
       {/* My activity */}
       <SectionLabel>{t('profile.section.activity')}</SectionLabel>
+      {(user?.role === 'SELLER' || user?.role === 'ADMIN') && (
+        <>
+          <MenuRow
+            icon={<Store size={16} />}
+            label={t('profile.menu.sellerDashboard')}
+            sub={t('profile.menu.sellerDashboardSub')}
+            href={SELLER_URL}
+            external
+          />
+          <div style={{ height: 1, background: colors.divider }} className="mx-4" />
+        </>
+      )}
       <MenuRow
         icon={<Package size={16} />}
         label={t('profile.menu.orders')}
