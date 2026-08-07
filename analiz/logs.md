@@ -3117,3 +3117,26 @@ P2: остальное.
 - **Что нужно:** либо добавить обе devDependencies, либо убрать `types` из tsconfig.
   Пока это не сделано, `tsc --noEmit` в web-buyer нельзя использовать как зелёный
   сигнал в CI — он всегда красный.
+
+## [06.08.2026] [FULL-AUDIT-001] Полный аудит web-buyer/web-seller/TMA/Admin — сводка
+- **Статус:** 🟡 Предупреждение (2 системные находки) + отдельные баги вынесены в tasks.md
+- **Метод:** 4 параллельных агента — статика по `main` + живой Playwright-обход прода без логина.
+  Полный отчёт: `analiz/audits/webapp-full-audit-2026-08-06.md`. Критичные баги — `tasks.md`
+  (`ADMIN-IMPERSONATE-NO-AUDIT-001`, `ADMIN-SILENT-API-FAIL-001`, `ADMIN-PRODUCT-ACTION-
+  SWALLOWED-ERROR-001`, `SELLER-PRODUCT-PHOTO-DELETE-001`, `SELLER-DISPLAY-TYPE-MULTI-PHOTO-001`,
+  `SELLER-OTP-ERROR-REGRESSION-001`, `BUYER-ADD-TO-CART-SILENT-FAIL-001` и другие).
+- **Находка 1 — `main` разошёлся с продом ещё сильнее:** живой обход `shop.maxsavdo.uz` показал
+  в шапке пункты навигации/роуты (`/stores`, `/products`), которых нет в `Header.tsx` на `main`.
+  Согласуется с уже известным (`feedback_web_seller_buyer_branch_workflow` в памяти) — но теперь
+  подтверждено конкретно на web-buyer, не только web-seller. Статические находки этого аудита по
+  web-buyer/web-seller — баги в `main` (актуальны для ревью/мёржа), не гарантированно 1-в-1 баги
+  живого прода.
+- **Находка 2 — оба известных прод-URL Admin Panel мертвы:** `savdo-builderadmin-production.
+  up.railway.app` → 404, `adminsb.up.railway.app` → DNS fail. Admin Panel в этом аудите проверен
+  только статически. См. `ADMIN-URL-DEAD-001` в tasks.md — нужен Railway-дашборд.
+- **Живые баги, подтверждённые вживую (не догадки по коду):** OTP-ошибка на web-seller снова
+  голый `Request failed with status code 400` вместо текста от бэкенда (регресс уже чинившегося
+  бага); горизонтальный оверфлоу на каждой мобильной странице web-buyer (тултип кнопки темы,
+  `scrollWidth=634` vs `innerWidth=390`); голый «0» на карточках магазинов без отзывов в TMA
+  (React `&&`-с-числом ловушка, видно в реальном DOM); тестовый магазин «ТЕСТ - удалить» с
+  товаром «fdgh» всё ещё публичен в каталоге и TMA, и web-buyer.

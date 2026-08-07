@@ -1,0 +1,498 @@
+<title>maxsavdo — Sales Funnel v1</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  @font-face {
+    font-family: 'Inter';
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+    src: url(data:font/woff2;base64,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) format('woff2');
+  }
+  @font-face {
+    font-family: 'Inter';
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+    src: url(data:font/woff2;base64,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) format('woff2');
+  }
+
+  :root {
+    --bg: #FFFFFF;
+    --surface: #F8F8F8;
+    --surface-2: #F1F1EF;
+    --border: #E5E5E5;
+    --text: #0F0F0F;
+    --text-2: rgba(15,15,15,.66);
+    --text-3: rgba(15,15,15,.46);
+    --accent: #E8A552;
+    --accent-text: #8A5A18;
+    --accent-soft: rgba(232,165,82,.12);
+    --success: #0E8F63;
+    --warning: #B5750B;
+    --error: #D6362B;
+    --gridline: rgba(15,15,15,.09);
+    --chart-stroke: rgba(15,15,15,.10);
+    --shadow: 0 1px 2px rgba(15,15,15,.04), 0 8px 24px rgba(15,15,15,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0F0F0F;
+      --surface: #1A1A1A;
+      --surface-2: #202020;
+      --border: #2A2A2A;
+      --text: #FFFFFF;
+      --text-2: rgba(255,255,255,.68);
+      --text-3: rgba(255,255,255,.44);
+      --accent: #E8A552;
+      --accent-text: #F0BC7E;
+      --accent-soft: rgba(232,165,82,.14);
+      --success: #34C58C;
+      --warning: #E8A552;
+      --error: #EF6A5E;
+      --gridline: rgba(255,255,255,.08);
+      --chart-stroke: rgba(255,255,255,.10);
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F0F0F; --surface: #1A1A1A; --surface-2: #202020; --border: #2A2A2A;
+    --text: #FFFFFF; --text-2: rgba(255,255,255,.68); --text-3: rgba(255,255,255,.44);
+    --accent: #E8A552; --accent-text: #F0BC7E; --accent-soft: rgba(232,165,82,.14);
+    --success: #34C58C; --warning: #E8A552; --error: #EF6A5E;
+    --gridline: rgba(255,255,255,.08); --chart-stroke: rgba(255,255,255,.10);
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"] {
+    --bg: #FFFFFF; --surface: #F8F8F8; --surface-2: #F1F1EF; --border: #E5E5E5;
+    --text: #0F0F0F; --text-2: rgba(15,15,15,.66); --text-3: rgba(15,15,15,.46);
+    --accent: #E8A552; --accent-text: #8A5A18; --accent-soft: rgba(232,165,82,.12);
+    --success: #0E8F63; --warning: #B5750B; --error: #D6362B;
+    --gridline: rgba(15,15,15,.09); --chart-stroke: rgba(15,15,15,.10);
+    --shadow: 0 1px 2px rgba(15,15,15,.04), 0 8px 24px rgba(15,15,15,.05);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    padding: 0 20px 96px;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+
+  /* ---------- header ---------- */
+  header.page { padding: 56px 0 32px; border-bottom: 1px solid var(--border); }
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent-text); margin: 0 0 14px;
+  }
+  h1 { font-size: 34px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 10px; text-wrap: balance; }
+  .lede { font-size: 16px; color: var(--text-2); max-width: 640px; margin: 0 0 20px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+    padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); color: var(--text-2);
+    background: var(--surface);
+  }
+  .chip.draft { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 40%, var(--border)); }
+  .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ---------- sections ---------- */
+  section { padding: 44px 0; border-bottom: 1px solid var(--border); }
+  section:last-of-type { border-bottom: none; }
+  .section-head { margin-bottom: 24px; }
+  h2 {
+    font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-3); margin: 0 0 6px;
+  }
+  h3 { font-size: 21px; font-weight: 600; margin: 0; letter-spacing: -.005em; text-wrap: balance; }
+  .section-note { font-size: 14px; color: var(--text-2); max-width: 620px; margin: 8px 0 0; }
+
+  /* ---------- stat strip ---------- */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border);
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .stat { background: var(--surface); padding: 20px; display: flex; flex-direction: column; gap: 6px; }
+  .stat .label { font-size: 12px; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .stat .value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .stat .value.accent { color: var(--accent-text); }
+  .stat .sub { font-size: 13px; color: var(--text-2); }
+  @media (max-width: 800px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  /* ---------- funnel pipeline ---------- */
+  .pipeline { display: flex; flex-direction: column; gap: 0; }
+  .lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .lanes { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px;
+  }
+  .card .card-title { font-size: 15px; font-weight: 600; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .card .card-sub { font-size: 13px; color: var(--text-2); margin: 0 0 16px; }
+  .badge {
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px; letter-spacing: .01em;
+  }
+  .badge.owner { background: var(--accent-soft); color: var(--accent-text); }
+  .badge.nodata { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+
+  .mini-funnel { display: flex; align-items: flex-end; gap: 14px; height: 96px; padding-top: 8px; }
+  .mini-funnel .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+  .mini-funnel .bar { width: 100%; max-width: 46px; border-radius: 4px 4px 0 0; }
+  .mini-funnel .figure { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .mini-funnel .figure small { font-weight: 400; color: var(--text-3); display:block; font-size: 10px; }
+  .stage-labels { display: flex; gap: 14px; margin-top: 10px; }
+  .stage-labels span { flex: 1; text-align: center; font-size: 11px; color: var(--text-3); line-height: 1.3; }
+  .conv-row { display: flex; gap: 14px; margin-top: 6px; }
+  .conv-row span { flex: 1; text-align: center; font-size: 11px; color: var(--accent-text); font-weight: 600; }
+
+  .arrow-down { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 18px 0; color: var(--text-3); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .arrow-down svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .stage-band {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  }
+  @media (max-width: 860px) { .stage-band { grid-template-columns: repeat(2, 1fr); } }
+  .stage-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px;
+    display: flex; flex-direction: column; gap: 10px; position: relative;
+  }
+  .stage-card .stage-num { font-size: 11px; font-weight: 600; color: var(--text-3); letter-spacing: .04em; }
+  .stage-card h4 { font-size: 15px; font-weight: 600; margin: 0; }
+  .stage-card p { font-size: 13px; color: var(--text-2); margin: 0; line-height: 1.5; }
+  .stage-card .metric { margin-top: auto; font-size: 12px; font-weight: 600; color: var(--accent-text); }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .pill {
+    font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2);
+  }
+  @media (min-width: 861px) {
+    .stage-band { position: relative; }
+    .stage-card:not(:last-child)::after {
+      content: "→"; position: absolute; right: -18px; top: 50%; transform: translateY(-50%);
+      color: var(--text-3); font-size: 14px; z-index: 1;
+    }
+  }
+
+  /* ---------- chart ---------- */
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; }
+  .chart-scroll { overflow-x: auto; }
+  .chart-scroll svg { display: block; min-width: 560px; width: 100%; height: auto; }
+  .axis-label { fill: var(--text-3); font-size: 10.5px; font-family: 'Inter', sans-serif; }
+  .bar-label { fill: var(--text-2); font-size: 10.5px; font-weight: 600; font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-title { fill: var(--text-3); font-size: 11px; font-family: 'Inter', sans-serif; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  .callout-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+  .callout {
+    flex: 1; min-width: 220px; background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+    border-radius: 8px; padding: 12px 14px; font-size: 12.5px; color: var(--text); line-height: 1.5;
+  }
+  .callout b { color: var(--accent-text); }
+
+  table.data-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12.5px; }
+  table.data-table caption { text-align: left; font-size: 11px; color: var(--text-3); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  table.data-table th, table.data-table td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  table.data-table th:first-child, table.data-table td:first-child { text-align: left; color: var(--text-2); }
+  table.data-table th { color: var(--text-3); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  .table-scroll { overflow-x: auto; }
+
+  /* ---------- ownership ---------- */
+  .owner-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 800px) { .owner-grid { grid-template-columns: 1fr; } }
+  .owner-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .owner-card .name { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+  .owner-card .role { font-size: 12.5px; color: var(--accent-text); font-weight: 600; margin: 0 0 12px; }
+  .owner-card ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-2); line-height: 1.6; }
+
+  /* ---------- blockers ---------- */
+  .blocker-list { display: flex; flex-direction: column; gap: 10px; }
+  .blocker {
+    display: flex; gap: 12px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 16px;
+  }
+  .blocker .mark { color: var(--warning); font-size: 15px; line-height: 1.4; flex-shrink: 0; }
+  .blocker .body { font-size: 13.5px; color: var(--text-2); line-height: 1.5; }
+  .blocker .body b { color: var(--text); font-weight: 600; }
+
+  footer.page { padding: 40px 0 0; font-size: 12px; color: var(--text-3); line-height: 1.7; }
+  footer.page a { color: var(--text-3); }
+
+  ::selection { background: var(--accent-soft); }
+</style>
+
+<div class="wrap">
+
+  <header class="page">
+    <p class="eyebrow">maxsavdo · внутренний документ</p>
+    <h1>Sales Funnel v1</h1>
+    <p class="lede">Полный путь продавца — от первого контакта до платящего клиента и продления. Собирает воедино GTM Phase A, продуктовую активацию и текущую экономику.</p>
+    <div class="meta-row">
+      <span class="chip draft"><span class="dot"></span>Draft</span>
+      <span class="chip">04.08.2026</span>
+      <span class="chip">Автор: Азим</span>
+      <span class="chip">Заменяет цифры в roadmap-to-production (устарели)</span>
+    </div>
+  </header>
+
+  <!-- STATUS STRIP -->
+  <section>
+    <div class="stat-grid">
+      <div class="stat">
+        <span class="label">Платящих клиентов</span>
+        <span class="value">0</span>
+        <span class="sub">вся математика ниже — гипотетическая</span>
+      </div>
+      <div class="stat">
+        <span class="label">Тарифы</span>
+        <span class="value accent">149k / 399k</span>
+        <span class="sub">PRO / STUDIO, сум · мес</span>
+      </div>
+      <div class="stat">
+        <span class="label">Точка безубыточности</span>
+        <span class="value">2 STUDIO</span>
+        <span class="sub">или 5 PRO · покрывает инфру ~660k/мес</span>
+      </div>
+      <div class="stat">
+        <span class="label">Цель $5k MRR</span>
+        <span class="value accent">~267</span>
+        <span class="sub">клиентов, микс 70% PRO / 30% STUDIO</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FUNNEL -->
+  <section>
+    <div class="section-head">
+      <h2>Воронка целиком</h2>
+      <h3>Два источника → одна активация → деньги → удержание</h3>
+      <p class="section-note">Верх воронки — два независимых канала, которые сходятся в единый продуктовый путь активации продавца.</p>
+    </div>
+
+    <div class="pipeline">
+      <div class="lanes">
+
+        <!-- Lane 1: outreach -->
+        <div class="card">
+          <p class="card-title">Ручной аутрич IG/TG <span class="badge owner">Юсуф</span></p>
+          <p class="card-sub">GTM Phase A · целевые диапазоны по когорте</p>
+          <div class="mini-funnel">
+            <div class="bar-col"><span class="figure">80–120<small>контактов</small></span><div class="bar" style="height:100%; background:#6B5330;"></div></div>
+            <div class="bar-col"><span class="figure">25–35<small>ответили</small></span><div class="bar" style="height:30%; background:#8F6B3B;"></div></div>
+            <div class="bar-col"><span class="figure">15–25<small>звонок</small></span><div class="bar" style="height:20%; background:#C08A45;"></div></div>
+            <div class="bar-col"><span class="figure">20–30<small>магазин+товар</small></span><div class="bar" style="height:25%; background:#E8A552;"></div></div>
+          </div>
+          <div class="conv-row">
+            <span></span><span>~30%</span><span>~60%</span><span>~80%</span>
+          </div>
+        </div>
+
+        <!-- Lane 2: organic -->
+        <div class="card">
+          <p class="card-title">Органика landing (SEO/AEO/GEO) <span class="badge owner">Юсуф</span></p>
+          <p class="card-sub">landing после PR#7 · AEO/GEO-апдейт</p>
+          <div style="display:flex; align-items:center; justify-content:center; height:96px;">
+            <span class="badge nodata">⚠ нет данных — измерить после фикса sitemap товаров</span>
+          </div>
+          <p style="font-size:12.5px; color:var(--text-3); margin:0;">Качественная цель: попадание в поиск/AI-ответы по запросам «сделать магазин в Telegram». Число появится после месяца в Yandex.Metrika.</p>
+        </div>
+
+      </div>
+
+      <div class="arrow-down">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v14M6 13l6 6 6-6"/></svg>
+        оба канала ведут в одну активацию
+      </div>
+
+      <div class="stage-band">
+        <div class="stage-card">
+          <span class="stage-num">01</span>
+          <h4>Активация продавца</h4>
+          <p>signup → OTP → магазин → товар → approve → publish → 1-й заказ. Детали — docs/V1.1/07.</p>
+          <span class="metric">% с 1-м заказом за 7 дней</span>
+        </div>
+        <div class="stage-card">
+          <span class="stage-num">02</span>
+          <h4>Конверсия в оплату</h4>
+          <p>Free → 14-дневный триал → Pro/Studio. Авто-suspend при неоплате.</p>
+          <div class="pill-row"><span class="pill">churn &lt;8%/мес</span></div>
+        </div>
+        <div class="stage-card">
+          <span class="stage-num">03</span>
+          <h4>Офферы входа</h4>
+          <p>Migration-оффер для TG-продавцов и приветственная скидка.</p>
+          <div class="pill-row"><span class="pill">−50% / 3 мес</span></div>
+        </div>
+        <div class="stage-card">
+          <span class="stage-num">04</span>
+          <h4>Retention / экспансия</h4>
+          <p>Referral-петля возвращает поток в верх воронки. Апсейл Pro → Studio.</p>
+          <div class="pill-row"><span class="pill">−50% след. месяц</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVENUE CHART -->
+  <section>
+    <div class="section-head">
+      <h2>Куда ведёт рост числа клиентов</h2>
+      <h3>Прибыль/мес после вычета инфры (~660k сум), по трём сценариям микса тарифов</h3>
+      <p class="section-note">Без учёта зарплат команды — только инфраструктура. Источник: ADR «Окупаемость maxsavdo», 02.08.2026.</p>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-scroll">
+        <svg viewBox="0 0 680 320" role="img" aria-label="Прибыль в месяц по числу клиентов и миксу тарифов">
+          <line x1="52" y1="276.0" x2="664" y2="276.0" class="gridline" />
+          <text x="44" y="280.0" class="axis-label" text-anchor="end">0</text>
+          <line x1="52" y1="215.5" x2="664" y2="215.5" class="gridline" />
+          <text x="44" y="219.5" class="axis-label" text-anchor="end">10</text>
+          <line x1="52" y1="155.0" x2="664" y2="155.0" class="gridline" />
+          <text x="44" y="159.0" class="axis-label" text-anchor="end">20</text>
+          <line x1="52" y1="94.5" x2="664" y2="94.5" class="gridline" />
+          <text x="44" y="98.5" class="axis-label" text-anchor="end">30</text>
+          <line x1="52" y1="34.0" x2="664" y2="34.0" class="gridline" />
+          <text x="44" y="38.0" class="axis-label" text-anchor="end">40</text>
+          <text x="20" y="150" class="axis-title" transform="rotate(-90 20 150)" text-anchor="middle">млн сум / мес</text>
+
+          <rect x="78.5" y="271.0" width="28" height="5.0" rx="3" fill="#7A5A2E" stroke="var(--chart-stroke)" stroke-width="1" />
+          <rect x="114.5" y="266.4" width="28" height="9.6" rx="3" fill="#C08A45" stroke="var(--chart-stroke)" stroke-width="1" />
+          <rect x="150.5" y="255.9" width="28" height="20.1" rx="3" fill="#E8A552" stroke="var(--chart-stroke)" stroke-width="1" />
+          <rect x="231.5" y="252.9" width="28" height="23.1" rx="3" fill="#7A5A2E" stroke="var(--chart-stroke)" stroke-width="1" />
+          <rect x="267.5" y="239.3" width="28" height="36.7" rx="3" fill="#C08A45" stroke="var(--chart-stroke)" stroke-width="1" />
+          <rect x="303.5" y="207.6" width="28" height="68.4" rx="3" fill="#E8A552" stroke="var(--chart-stroke)" stroke-width="1" />
+          <rect x="384.5" y="234.9" width="28" height="41.1" rx="3" fill="#7A5A2E" stroke="var(--chart-stroke)" stroke-width="1" />
+          <rect x="420.5" y="212.2" width="28" height="63.8" rx="3" fill="#C08A45" stroke="var(--chart-stroke)" stroke-width="1" />
+          <rect x="456.5" y="159.3" width="28" height="116.7" rx="3" fill="#E8A552" stroke="var(--chart-stroke)" stroke-width="1" />
+          <rect x="537.5" y="189.8" width="28" height="86.2" rx="3" fill="#7A5A2E" stroke="var(--chart-stroke)" stroke-width="1" />
+          <rect x="573.5" y="144.5" width="28" height="131.5" rx="3" fill="#C08A45" stroke="var(--chart-stroke)" stroke-width="1" />
+          <rect x="609.5" y="38.6" width="28" height="237.4" rx="3" fill="#E8A552" stroke="var(--chart-stroke)" stroke-width="1" />
+
+          <text x="92.5" y="265.0" class="bar-label" text-anchor="middle">0,83</text>
+          <text x="128.5" y="260.4" class="bar-label" text-anchor="middle">1,58</text>
+          <text x="164.5" y="249.9" class="bar-label" text-anchor="middle">3,33</text>
+          <text x="245.5" y="246.9" class="bar-label" text-anchor="middle">3,81</text>
+          <text x="281.5" y="233.3" class="bar-label" text-anchor="middle">6,06</text>
+          <text x="317.5" y="201.6" class="bar-label" text-anchor="middle">11,31</text>
+          <text x="398.5" y="228.9" class="bar-label" text-anchor="middle">6,79</text>
+          <text x="434.5" y="206.2" class="bar-label" text-anchor="middle">10,54</text>
+          <text x="470.5" y="153.3" class="bar-label" text-anchor="middle">19,29</text>
+          <text x="551.5" y="183.8" class="bar-label" text-anchor="middle">14,24</text>
+          <text x="587.5" y="138.5" class="bar-label" text-anchor="middle">21,74</text>
+          <text x="623.5" y="32.6" class="bar-label" text-anchor="middle">39,24</text>
+
+          <text x="128.5" y="302.0" class="axis-label" text-anchor="middle">10 клиентов</text>
+          <text x="281.5" y="302.0" class="axis-label" text-anchor="middle">30 клиентов</text>
+          <text x="434.5" y="302.0" class="axis-label" text-anchor="middle">50 клиентов</text>
+          <text x="587.5" y="302.0" class="axis-label" text-anchor="middle">100 клиентов</text>
+        </svg>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:#7A5A2E;"></span>Все PRO (149k)</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#C08A45;"></span>Микс 70% PRO / 30% STUDIO</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:#E8A552;"></span>Все STUDIO (399k)</div>
+      </div>
+
+      <div class="callout-row">
+        <div class="callout"><b>Потолок подписки.</b> Даже 100 клиентов дают $1.2–3.3k/мес — меньше зарплаты одного мидл-разработчика в Ташкенте.</div>
+        <div class="callout"><b>267 клиентов</b> (микс 70/30) — расчётная точка $5k MRR. Это в 2.7 раза больше правого края графика.</div>
+        <div class="callout"><b>Реальные деньги</b> — не в подписке, а в комиссии с оборота (Payme/Click, ЭТАП 3 роадмапа). Не включено в этот расчёт.</div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="data-table">
+          <caption>Значения графика, млн сум / мес</caption>
+          <thead>
+            <tr><th>Клиентов</th><th>Все PRO</th><th>Микс 70/30</th><th>Все STUDIO</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>10</td><td>0,83</td><td>1,58</td><td>3,33</td></tr>
+            <tr><td>30</td><td>3,81</td><td>6,06</td><td>11,31</td></tr>
+            <tr><td>50</td><td>6,79</td><td>10,54</td><td>19,29</td></tr>
+            <tr><td>100</td><td>14,24</td><td>21,74</td><td>39,24</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- OWNERSHIP -->
+  <section>
+    <div class="section-head">
+      <h2>Владельцы этапов</h2>
+      <h3>Актуально на 27.07.2026 — не как в roadmap-to-production</h3>
+    </div>
+    <div class="owner-grid">
+      <div class="owner-card">
+        <p class="name">Юсуф</p>
+        <p class="role">Верх воронки</p>
+        <ul>
+          <li>Аутрич IG/TG</li>
+          <li>Landing (весь домен, контент+код)</li>
+          <li>SEO/AEO/GEO</li>
+          <li>Контент-план IG/TG-каналов</li>
+        </ul>
+      </div>
+      <div class="owner-card">
+        <p class="name">Азим</p>
+        <p class="role">Бизнес-решения</p>
+        <ul>
+          <li>Цены и тарифы</li>
+          <li>Офферы (migration, referral %)</li>
+          <li>Юнит-экономика, финмодель</li>
+          <li>Надзор — не кодит</li>
+        </ul>
+      </div>
+      <div class="owner-card">
+        <p class="name">Полат</p>
+        <p class="role">Биллинг-инфраструктура</p>
+        <ul>
+          <li>Subscription entity + cron</li>
+          <li>Trial → past_due → suspended</li>
+          <li>Storefront read-gate</li>
+          <li>Весь код кроме landing</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- BLOCKERS -->
+  <section>
+    <div class="section-head">
+      <h2>Открытые блокеры</h2>
+      <h3>Что мешает воронке работать по факту, не только на бумаге</h3>
+    </div>
+    <div class="blocker-list">
+      <div class="blocker">
+        <span class="mark">⚠</span>
+        <div class="body"><b>Биллинг-машина не реализована.</b> Trial→past_due→suspended и авто-charge — не в коде. Сейчас оплата вручную через TG-чат + admin MarkPaidUseCase.</div>
+      </div>
+      <div class="blocker">
+        <span class="mark">⚠</span>
+        <div class="body"><b>Landing organic не измеряется.</b> Sitemap товаров и рендер отзывов под aggregateRating не проверены в проде — нет базы для целей по трафику.</div>
+      </div>
+      <div class="blocker">
+        <span class="mark">⚠</span>
+        <div class="body"><b>Referral-петля не реализована в UI/аналитике.</b> Механика описана в бизнес-модели, событий для трекинга ещё нет.</div>
+      </div>
+      <div class="blocker">
+        <span class="mark">⚠</span>
+        <div class="body"><b>roadmap-to-production-2026-06-02.md устарел</b> в двух местах: цены (99/299/899k вместо текущих 149k/399k) и владение зонами (там ещё Азим = фронтенд+маркетинг, до реорганизации 27.07).</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="page">
+    Источники: <code>gtm-phase-a-2026-05-30.md</code> · <code>business-model-v2-2026-05-31.md</code> · <code>docs/V1.1/07_seller_onboarding_funnel.md</code> · ADR «Окупаемость maxsavdo» (Obsidian, 02.08.2026) · <code>roadmap-to-production-2026-06-02.md</code> (частично устарел, см. блокеры).<br/>
+    Визуальный черновик документа <code>docs/business/sales-funnel-v1-2026-08-04.md</code> — не сохранён, ждёт правок.
+  </footer>
+
+</div>

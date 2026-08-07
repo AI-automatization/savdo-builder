@@ -5,6 +5,156 @@
 
 ---
 
+## Полный аудит web-buyer/web-seller/TMA/Admin — 06.08.2026 (Claude, 4 параллельных агента)
+
+> Полный текст со всеми находками (включая 🟢 мелочи и то, что проверено и оказалось в порядке):
+> `analiz/audits/webapp-full-audit-2026-08-06.md`. Ниже — только 🔴 критичные пункты как задачи.
+> Домен всех пунктов — Полат (весь код кроме landing). Метод: статика (grep/read по `main`) +
+> живой Playwright-обход прода без логина. **Важно:** для web-buyer/web-seller прод работает не
+> на том коде, что в `main` (см. отчёт, известное расхождение) — статические находки актуальны
+> для `main`/ревью, живые находки проверены на боевом коде напрямую.
+
+### 🔴 [ADMIN-IMPERSONATE-NO-AUDIT-001] Impersonation не пишет audit_log, хотя UI обещает обратное
+- **Домен:** `apps/admin`, `apps/api` · **Кто взял:** Полат
+- **Что случилось:** `admin-auth.use-case.ts:167-212` (`impersonate`) не вызывает `auditLog.create`,
+  только `logger.warn` (application log, не таблица `audit_log`). При этом клиентская confirm-модалка
+  прямо говорит админу: «Все ваши действия в TMA будут выполнены от имени пользователя и записаны
+  в audit-log с пометкой» (`ru.ts:118`) — это неправда, `AuditLogsPage.tsx` эту запись никогда не
+  покажет. Нарушение INV-A01. Также `super-admin.controller.ts:99-106` зовёт `impersonate()` только
+  с 2 аргументами — IP/UA тоже не попадают в сессию.
+- **Файлы:** `apps/api/src/modules/admin/use-cases/admin-auth.use-case.ts`,
+  `apps/api/src/modules/admin/super-admin.controller.ts`, `apps/admin/src/lib/i18n/ru.ts`
+
+### 🔴 [ADMIN-SILENT-API-FAIL-001] Минимум 9 admin-страниц молча показывают «пусто»/нулевые метрики при падении API
+- **Домен:** `apps/admin` · **Кто взял:** не назначено
+- **Что случилось:** системный паттерн — `useFetch<T>(...)` отдаёт `error`, но компонент его не
+  читает. При 4xx/5xx `data` остаётся `null` → рендерится как честный пустой результат.
+  `ReportsPage.tsx:29` — «Жалоб нет ✅» вместо ошибки (модератор не увидит, что жалобы вообще не
+  подгрузились). `AnalyticsDashboardPage.tsx:92` — все KPI показывают 0, неотличимо от реального
+  нулевого дня. Тот же паттерн: `UsersPage.tsx:45`, `ChatsPage.tsx:45`, `BroadcastPage.tsx:116`,
+  `StoreDetailPage.tsx:132,358`, `SubscriptionsPage.tsx:76`, `SubscriptionDetailModal.tsx:49`,
+  `AdminUsersPage.tsx:67-68,461`, `DatabasePage.tsx:503`.
+- **Файлы:** `apps/admin/src/pages/{Reports,AnalyticsDashboard,Users,Chats,Broadcast,StoreDetail,
+  Subscriptions,SubscriptionDetailModal,AdminUsers,Database}Page.tsx`
+
+### 🔴 [ADMIN-PRODUCT-ACTION-SWALLOWED-ERROR-001] Hide/Restore/Delete товара в StoreDetailPage — ошибка API проглатывается полностью
+- **Домен:** `apps/admin` · **Кто взял:** не назначено
+- **Что случилось:** `toggleProductHide`/`deleteStoreProduct` обёрнуты в `try{...}finally{...}` БЕЗ
+  `catch`, вызываются из `onClick` без `.catch()` дальше. При 403/404/500 — unhandled rejection,
+  спиннер гаснет, никакого сигнала админу что действие не выполнилось (бэкенд при этом корректно
+  пишет audit_log — проблема чисто во фронте).
+- **Файлы:** `apps/admin/src/pages/StoreDetailPage.tsx:373-396`
+
+### 🔴 [SELLER-PRODUCT-PHOTO-DELETE-001] Удаление фото товара в редактировании визуально не работает
+- **Домен:** `apps/web-seller` · **Кто взял:** не назначено
+- **Что случилось:** `image-uploader.tsx:57` — `displayUrl = localPreview ?? previewUrl ?? null`,
+  но на странице редактирования `previewUrl` — проп от данных товара (`product.mediaUrls[0]`), не
+  локальный стейт. Клик «✕» сбрасывает `localPreview`, но `displayUrl` тут же снова резолвится в
+  старую картинку. Плюс тип `mediaId?: string` (не `| null`) не даёт отправить бэкенду сигнал
+  «убрать фото» вообще. Продавец физически не может убрать фото у созданного товара.
+- **Файлы:** `apps/web-seller/src/components/image-uploader.tsx`,
+  `apps/web-seller/src/app/(dashboard)/products/[id]/edit/page.tsx:252-259`,
+  `packages/types/src/api/products.ts:16`
+
+### 🔴 [SELLER-DISPLAY-TYPE-MULTI-PHOTO-001] Слайдер/Сетка 2×2 выбираются, но загрузить больше 1 фото нельзя
+- **Домен:** `apps/web-seller` · **Кто взял:** не назначено
+- **Что случилось:** `ProductDisplayType` включает `SLIDER`/`COLLAGE_2X2` («минимум 2 фото» — в
+  подсказке самого компонента), но и create, и edit товара имеют только один `<ImageUploader>` на
+  весь товар. Продавец может выбрать «Сетка 2×2», сохранить с одной фоткой — без предупреждения
+  получить нерабочий/пустой коллаж на витрине.
+- **Файлы:** `apps/web-seller/src/components/display-type-selector.tsx`,
+  `apps/web-seller/src/app/(dashboard)/products/create/page.tsx:146-152`
+
+### 🔴 [SELLER-OTP-ERROR-REGRESSION-001] OTP-ошибка снова показывает сырой axios-текст (регресс, подтверждён вживую)
+- **Домен:** `apps/web-seller` · **Кто взял:** не назначено
+- **Что случилось:** живая проверка `seller.maxsavdo.uz/login` — ввод невалидного номера →
+  бэкенд честно вернул `{code: TELEGRAM_NOT_LINKED, message: "Telegram не привязан. Откройте
+  @maxsavdo_bot..."}`, на экране только `Request failed with status code 400`. Фронт нигде не
+  парсит `err.response.data.message`, берёт голый `error.message` из axios. Это тот же класс
+  бага, что уже чинили раньше в web-buyer/web-seller (см. done.md, 28.07.2026) — здесь он снова
+  открыт (либо не мёржилось, либо регресснуло).
+- **Файлы:** `apps/web-seller/src/app/(auth)/login/page.tsx:61`
+
+### 🔴 [BUYER-ADD-TO-CART-SILENT-FAIL-001] «В корзину» на странице товара падает без единого сообщения об ошибке
+- **Домен:** `apps/web-buyer` · **Кто взял:** не назначено
+- **Что случилось:** `handleAddToCart` — `await addToCart.mutateAsync(...)` без try/catch, хук
+  `useAddToCart` без `onError`, глобального `MutationCache.onError`/toast для мутаций тоже нет.
+  При сбое (сеть, race по остатку, конфликт «корзина = один магазин» INV-C01) — unhandled promise
+  rejection, кнопка просто возвращается в исходное состояние, пользователь не понимает добавился
+  товар или нет.
+- **Файлы:** `apps/web-buyer/src/app/(shop)/[slug]/products/[id]/page.tsx:188-199`,
+  `apps/web-buyer/src/hooks/use-cart.ts:24-30`
+
+### 🟡 [BUYER-MOBILE-TOOLTIP-OVERFLOW-001] Горизонтальный оверфлоу на КАЖДОЙ странице на мобильном (подтверждено вживую)
+- **Домен:** `apps/web-buyer` · **Кто взял:** не назначено
+- **Что случилось:** живой прод, 390×844, чистая загрузка без единого клика: `scrollWidth=634` vs
+  `innerWidth=390`. Виновник — тултип кнопки темы в `Header.tsx` (`tooltip.tsx:39`),
+  `left-1/2 -translate-x-1/2` без учёта края вьюпорта; триггер у самого правого края + длинный
+  текст «Включить светлую тему» → пилюля вылезает за экран. Элемент `opacity:0`, не `display:none`
+  — участвует в layout всегда, не только при наведении. Затрагивает практически все мобильные
+  страницы с Header — на UZ-рынке это почти весь трафик.
+- **Файлы:** `apps/web-buyer/src/components/tooltip.tsx:39`, `apps/web-buyer/src/components/layout/Header.tsx`
+
+### 🟡 [ADMIN-URL-DEAD-001] Прод-URL Admin Panel не отвечает — нужна проверка Railway-дашборда
+- **Домен:** Railway-сервис admin (инфра) · **Кто взял:** не назначено
+- **Что случилось:** оба известных URL мертвы прямо сейчас — `savdo-builderadmin-production.
+  up.railway.app` → 404 "Application not found", `adminsb.up.railway.app` → не резолвится.
+  Проверено ещё 5 логичных вариантов URL — все недоступны. Грепнут весь репо на упоминания —
+  ничего новее 09.07.2026. Без актуального URL Admin Panel нельзя протестировать живьём вообще.
+- **Что нужно:** зайти в Railway-дашборд, проверить жив ли сервис admin/`savdo-builderadmin`,
+  привязан ли домен, актуален ли последний деплой (тот же класс, что ERR-L005).
+
+## 🟡 [TMA-CHAT-NO-AUTH-GATE-001] ChatPage (buyer и seller) — единственная страница без auth-гейта в TMA
+- **Домен:** `apps/tma` · **Кто взял:** не назначено
+- **Что случилось:** живая проверка вне Telegram — `/buyer/chat` безусловно бьёт в
+  `GET /chat/threads`, получает 401, показывает «⚠️ Не удалось загрузить чаты» + бесполезную кнопку
+  «Повторить» + подвисший баннер «❌ Authentication required». Рядом (Orders/Wishlist/Checkout)
+  для той же ситуации сделан аккуратный locked-state через `useAuth().authenticated` — в ChatPage
+  (buyer и seller) этой проверки просто нет (`grep useAuth` — 0 совпадений в обоих файлах).
+- **Файлы:** `apps/tma/src/pages/buyer/ChatPage.tsx`, `apps/tma/src/pages/seller/ChatPage.tsx`
+- **Похожий рабочий паттерн для копирования:** `apps/tma/src/pages/buyer/OrdersPage.tsx:75,208`
+
+## 🟢 [TMA-REVIEWCOUNT-ZERO-RENDER-001] Магазины без отзывов показывают голый «0» на карточке (подтверждено на DOM прода)
+- **Домен:** `apps/tma` · **Кто взял:** не назначено
+- **Что случилось:** `{store.reviewCount && store.reviewCount > 0 && store.avgRating != null && (...)}`
+  — классическая ловушка `&&` с числом: при `reviewCount === 0` выражение возвращает число `0`,
+  React рендерит его как текстовый узел. Подтверждено `browser_evaluate` на проде: `<p>📦 2</p>0`
+  висит в списке магазинов у обоих текущих магазинов (RAOS, «ТЕСТ - удалить») — то есть у любого
+  магазина без единого отзыва, а таких сейчас все. Фикс: `!!store.reviewCount && ...` (первая
+  проверка `> 0` уже избыточна).
+- **Файлы:** `apps/tma/src/pages/buyer/StoresPage.tsx:440`, `apps/tma/src/pages/buyer/StorePage.tsx:243`
+
+---
+
+## 🟡 [BRAND-SHARED-UI-PACKAGE-001] Единый логотип для всех 5 приложений
+- **Домен:** `packages/ui` + `apps/web-buyer`, `apps/web-seller`, `apps/tma`, `apps/admin` — **Полат**
+  · `apps/landing` (ассеты/цвет там) — **Юсуф** · межзонная задача, координация обязательна
+- **Кто нашёл:** Azim/Claude 07.08.2026 — компонент логотипа задублирован в 5 копиях
+  (`apps/{landing,web-buyer,web-seller,tma,admin}/.../MaxsavdoLogo.tsx` /`MaxsavdoMark.tsx`),
+  `packages/ui` бренд-компонента не содержит вообще. В 3 копиях в коде уже есть комментарий
+  "дубль, ждёт shared-пакета" (`BRAND-SHARED-UI-PACKAGE-001`), но задача никогда не была заведена.
+- **Что случилось:** реальный визуальный разъезд между приложениями —
+  - золото: web-buyer/TMA уже на `#E8A552`, landing/web-seller/admin всё ещё на старом `#C9A876`
+    (`docs/brand/maxsavdo-brand-v2.md:65-76` ошибочно утверждает, что синхронизация везде сделана —
+    по факту нет: landing поменял только CSS-переменную `--color-accent`, сам SVG остался старым;
+    web-seller не трогали с 03.06.2026)
+  - фон карточки-иконки: `#0F0F0F` (landing/web-buyer) vs `#0A0A0A` (web-seller/admin)
+  - состав лого разный: landing/admin/TMA рендерят только иконку, web-buyer/web-seller — иконка+текст
+  - CSS-переменная под цвет буквы "M" называется по-разному в каждом app (`--color-text`, `--text`,
+    `--color-text-primary`, `--tg-text-primary`)
+  - `apps/admin/public/maxsavdo-mark.png` (44 КБ) — не используется нигде, орфан
+- **Канон (решено владельцем 07.08.2026):** золото `#E8A552`, лого = иконка+текст (вордмарк) везде,
+  без исключений для landing/admin/TMA.
+- **Что делать:** вынести единый `MaxsavdoLogo` в `packages/ui`, все 5 apps импортируют его оттуда
+  вместо своих копий; убрать старое золото `#C9A876` и разнобой в фоне/CSS-переменных; удалить
+  орфан `maxsavdo-mark.png`; обновить `docs/brand/maxsavdo-brand-v2.md`, чтобы он отражал
+  реальное состояние, а не ложный "уже синхронизировано".
+- **Файлы:** `packages/ui/`, `apps/landing/src/components/MaxsavdoLogo.tsx`,
+  `apps/landing/public/logo-maxsavdo.svg`, `apps/landing/src/app/icon.svg`,
+  `apps/{web-buyer,web-seller,admin}/src/components/brand/MaxsavdoLogo.tsx`,
+  `apps/tma/src/components/brand/MaxsavdoMark.tsx`, `apps/{web-buyer,web-seller,admin}/src/app/icon.svg`,
+  `apps/admin/public/{favicon.svg,maxsavdo-mark.png}`, `docs/brand/maxsavdo-brand-v2.md`
+
 ## 🔴 [LANDING-MOBILE-NAV-MISSING-001] На мобильном в шапке нет ни меню, ни кнопки CTA
 - **Домен:** `apps/landing` · **Кто взял:** Юсуф
 - **Кто нашёл:** Claude, аудит 04.08.2026 — живая проверка Playwright на вьюпорте 390×844,
@@ -48,6 +198,21 @@
   </div>
   ```
 - **Файлы:** `apps/landing/src/components/Header.tsx` (заменить блок `otherHref`-ссылки)
+
+## 🟡 [LANDING-SELLER-CTA-BOT-VS-WEBSELLER-001] Основной CTA продавца ведёт в Telegram-бота, а не на web-seller
+- **Домен:** `apps/landing` · **Кто взял:** Юсуф
+- **Кто нашёл:** Azim/Claude 07.08.2026, в ходе разбора воронки landing→web-seller/web-buyer/TMA.
+- **Что случилось:** все CTA "стать продавцом"/"начать" на лендинге — `BOT_URL = https://t.me/maxsavdo_bot`:
+  `Header.tsx:37,120`, `Hero.tsx:42,835,921`, `FinalCta.tsx:16,31`, `Pricing.tsx:27,31`, `Footer.tsx:27,97`.
+  Продавец никогда не видит `web-seller` (полноценный десктоп-дашборд) — его целиком заводят через
+  бота/TMA, хотя каталог/фото товаров удобнее вести с десктопа.
+- **Предложение (не решено, нужен фидбек Юсуфа по формулировкам/дизайну):** основной CTA
+  "начать продавать" вести на web-seller-домен (онбординг сразу в дашборде), Telegram-бот оставить
+  как канал OTP-кода при логине (обязателен по правилу проекта — SMS запрещён) и как отдельный
+  быстрый вход "уже есть Telegram" вторым CTA рядом.
+- **Файлы:** `apps/landing/src/components/{Header,Hero,FinalCta,Pricing,Footer}.tsx`
+- **Смежное:** `web-seller` прод-домен (`seller.maxsavdo.uz`) заявлен только в `apps/landing/public/llms.txt:9`,
+  нигде не подключён в env/railway.toml — если делать эту задачу, домен тоже нужно завести по-настоящему.
 
 ## 🟡 [LANDING-FAQ-DEAD-CONTENT-001] 5 FAQ-ответов лежат в коде, но никуда не подключены
 - **Домен:** `apps/landing` · **Кто взял:** Юсуф (сам пометил как открытый вопрос в PR #7, не решено)
