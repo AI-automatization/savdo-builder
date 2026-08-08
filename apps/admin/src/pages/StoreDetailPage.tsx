@@ -45,6 +45,8 @@ interface StoreDetail {
   name: string
   slug: string
   status: string
+  // ADMIN-STORE-VISIBILITY-001: независимо от статуса модерации — витрину скрывает это поле.
+  isPublic: boolean
   description: string | null
   createdAt: string
   updatedAt: string
@@ -360,7 +362,7 @@ export default function StoreDetailPage() {
     [store?.id],
   )
 
-  const [modal, setModal] = useState<'suspend' | 'unsuspend' | 'reject' | 'archive' | 'approve' | 'unapprove' | null>(null)
+  const [modal, setModal] = useState<'suspend' | 'unsuspend' | 'reject' | 'archive' | 'approve' | 'unapprove' | 'hide' | 'show' | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [productActionLoading, setProductActionLoading] = useState<string | null>(null)
@@ -419,6 +421,8 @@ export default function StoreDetailPage() {
     archive:   'archive',
     approve:   'approve',
     unapprove: 'unapprove',
+    hide:      'hide',
+    show:      'show',
   }
 
   const handleAction = async (reason: string) => {
@@ -487,6 +491,11 @@ export default function StoreDetailPage() {
             <span style={{ padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: statusCfg.bg, color: statusCfg.text }}>
               {t(statusCfg.labelKey)}
             </span>
+            {!store.isPublic && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: 'rgba(148,163,184,0.12)', color: '#94A3B8' }}>
+                <EyeOff size={11} /> {t('storeDetail.hiddenBadge')}
+              </span>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: 13 }}>/{store.slug}</span>
@@ -524,6 +533,15 @@ export default function StoreDetailPage() {
           {!isRejected && (
             <button onClick={() => setModal('reject')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.06)', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <XCircle size={14} /> {t('moderation.reject')}
+            </button>
+          )}
+          {store.isPublic ? (
+            <button onClick={() => setModal('hide')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(148,163,184,0.06)', color: '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <EyeOff size={14} /> {t('storeDetail.hideFromStorefront')}
+            </button>
+          ) : (
+            <button onClick={() => setModal('show')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <Eye size={14} /> {t('storeDetail.showOnStorefront')}
             </button>
           )}
           {!isArchived && (
@@ -774,6 +792,30 @@ export default function StoreDetailPage() {
           title={t('storeDetail.modalApproveTitle')}
           description={t('storeDetail.modalApproveDesc', { name: store.name })}
           actionLabel={t('storeDetail.verify')}
+          actionColor="#10B981"
+          requireReason={false}
+          onConfirm={handleAction}
+          onCancel={() => setModal(null)}
+          loading={actionLoading}
+        />
+      )}
+      {modal === 'hide' && (
+        <ConfirmModal
+          title={t('storeDetail.modalHideTitle')}
+          description={t('storeDetail.modalHideDesc', { name: store.name })}
+          actionLabel={t('storeDetail.hideFromStorefront')}
+          actionColor="#94A3B8"
+          requireReason={true}
+          onConfirm={handleAction}
+          onCancel={() => setModal(null)}
+          loading={actionLoading}
+        />
+      )}
+      {modal === 'show' && (
+        <ConfirmModal
+          title={t('storeDetail.modalShowTitle')}
+          description={t('storeDetail.modalShowDesc', { name: store.name })}
+          actionLabel={t('storeDetail.showOnStorefront')}
           actionColor="#10B981"
           requireReason={false}
           onConfirm={handleAction}
