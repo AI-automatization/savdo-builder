@@ -1,5 +1,23 @@
 # Logs — локальные тесты и баги
 
+## [2026-08-08] [SUBSCRIPTION-FLOW-CODE-REVIEW-001] Ревью подписочного флоу (web-seller + TMA + MarkPaidUseCase) — 2 бага
+- **Статус:** 🔴 2 бага найдены, тикеты заведены в `tasks.md`, зона Полата
+- **Контекст:** Азим спросил, где в web-seller/TMA покупается подписка и всё ли там правильно.
+  Нашли точки входа («Тарифы» в сайдбаре web-seller, «💎 Тариф» в шапке TMA-дашборда) и запустили
+  `/code-review medium` по файлам подписочного флоу (`subscription/page.tsx`, TMA `SubscriptionPage.tsx`
+  + `DashboardPage.tsx`, `mark-paid.use-case.ts`, `mark-paid.dto.ts`, `SubscriptionDetailModal.tsx`).
+- **Найдено (🔴 логируется, есть ещё 2 🟡/🟢 помельче — дублирование цен тарифов и захардкоженные
+  цвета кнопки в TMA, тикеты на них не заводили, см. ответ в чате):**
+  1. 🔴 `SUBSCRIPTION-MARKPAID-STATE-GUARD-001` — `mark-paid.use-case.ts:68` переводит подписку в
+     `ACTIVE` без проверки текущего статуса, нет server-side guard state machine. Клиент
+     (`SubscriptionDetailModal.tsx:247,267`, `isTerminal`) прячет кнопку только в UI — прямой POST
+     на `/api/v1/admin/subscriptions/:id/mark-paid` реактивирует даже CHURNED/CANCELLED подписку.
+     Нарушает инвариант CLAUDE.md «переходы статусов — только по таблицам state machine».
+  2. 🔴 `TMA-DASHBOARD-PENDING-COUNT-001` — `DashboardPage.tsx:81` считает бейдж «ожидающих заказов»
+     фильтром по 5 последним заказам (`/seller/orders?limit=5`), а не реальным total pending count.
+     Продавец с бэклогом из старых PENDING-заказов и свежими DELIVERED увидит 0 и не узнает о
+     забытых заказах.
+
 ## [2026-08-04] [LANDING-POST-PR7-AUDIT-001] Полный аудит `apps/landing` после мержа PR #7 — 1 критичный баг, 2 задачи
 - **Статус:** 🔴 Найден баг (мобильное меню) + 2 🟡 задачи — все внесены в `tasks.md`, зона Юсуфа
 - **Что проверено (живьём, Playwright + curl, не догадка):** все 28 роутов (uz+ru, включая
